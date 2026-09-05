@@ -1,0 +1,56 @@
+# ---- Flutter / Dart (mobile/) ----
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/**/ios/Pods/
+mobile/**/ios/.symlinks/
+mobile/**/ios/Flutter/Flutter.framework
+mobile/**/android/.gradle/
+mobile/**/android/local.properties
+mobile/**/*.g.dart
+mobile/**/*.freezed.dart
+mobile/coverage/
+mobile/*.iml
+
+# ---- Laravel / PHP (backend/) ----
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/storage/*.key
+backend/storage/app/*
+!backend/storage/app/.gitkeep
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+!backend/storage/**/.gitkeep
+backend/bootstrap/cache/*.php
+backend/public/hot
+backend/public/storage
+backend/.phpunit.result.cache
+
+# ---- Node (tooling scripts, if any) ----
+node_modules/
+npm-debug.log*
+
+# ---- Docker ----
+docker-compose.override.yml
+
+# ---- IDE / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# ---- Secrets ----
+*.pem
+*.key
+!mobile/**/debug.keystore
