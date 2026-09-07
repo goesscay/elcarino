@@ -38,11 +38,25 @@ Kotlin + `android-ndk-r28c` download (Gradle pulls the NDK automatically — no 
 install needed), then compile + dex. Subsequent builds are minutes or less with the
 Gradle daemon and caches warm.
 
-**To run the app** you still need either a physical Android device with USB debugging,
-or an emulator (`sdkmanager "emulator" "system-images;android-36;google_apis;x86_64"`
-then `avdmanager create avd ...` — ~2 GB, and the emulator needs hardware acceleration
-enabled on this machine). `flutter build apk` working is sufficient proof the toolchain
-is correct.
+**To run the app on Android** you need either a physical device with USB debugging, or
+an emulator (`sdkmanager "emulator" "system-images;android-36;google_apis;x86_64"` then
+`avdmanager create avd ...` — ~2 GB, needs hardware acceleration). `flutter build apk`
+working is sufficient proof the toolchain is correct.
+
+**Quick visual preview (web).** The `web` platform is enabled purely for fast previews
+during development — the product ships iOS/Android only. To eyeball the current UI
+without a device:
+
+```powershell
+cd C:\DatingApp\mobile
+flutter run -d chrome --dart-define-from-file=config/dev.json
+# or, static build served locally:
+flutter build web --dart-define-from-file=config/dev.json
+python -m http.server 5555 --directory build\web
+```
+
+(Web's `API_BASE_URL` should be `http://localhost:8000`, not the Android-emulator
+`10.0.2.2` — add a `config/web.json` when web previews start hitting the real API.)
 
 ## Backend (`/backend` — Laravel 13)
 
