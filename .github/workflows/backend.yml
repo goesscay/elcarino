@@ -42,9 +42,9 @@ jobs:
           php artisan key:generate
           touch database/database.sqlite
 
-      - name: Static analysis
+      - name: Style + advisories
         run: |
-          vendor/bin/pint --test || true   # style check, non-blocking until baseline is clean
+          vendor/bin/pint --test
           composer audit --no-interaction
 
       - name: Run tests
