@@ -33,18 +33,23 @@ fundamentals mid-build.
       `.github/workflows/{backend,mobile}.yml`, `backend/.env.example` (all integration
       keys documented), `mobile/config/{dev,staging,prod}.json` + `AppConfig`,
       `docs/08-environment-setup.md`.
-- [~] Laravel scaffolded in `/backend` (Laravel 13, SQLite local dev) — **boots,
-      migrates, `php artisan test` + Pint green.** Flutter scaffolded in `/mobile`
+- [x] Laravel scaffolded in `/backend` (Laravel 13, SQLite local dev) — boots,
+      migrates, `php artisan test` + Pint green. Flutter scaffolded in `/mobile`
       (Flutter 3.47.2, Riverpod, go_router, feature-first folders, themed placeholder
-      home) — **`flutter analyze` + `flutter test` green.** Remaining: Android SDK not
-      installed, so an on-device / emulator run is not yet verified (widget-test boot
-      path is). Feature migrations/models land in Phase 1, one feature at a time.
+      home) — `flutter analyze` + `flutter test` green, **and `flutter build apk
+      --debug` produces a valid `com.mgs.datingapp` APK** (JDK 17 + Android SDK 36
+      installed, `flutter doctor` Android toolchain OK). Feature migrations/models land
+      in Phase 1, one feature at a time.
 
-**Gate:** design signed off (wireframe layer done; hi-fi visual design still pending);
-`/backend` boots locally and `php artisan migrate` succeeds (Laravel default
-migrations — the `02-database-schema.md` tables land per-feature in Phase 1);
-`/mobile` compiles and the placeholder home renders (verified via `flutter test`;
-on-device pending Android SDK).
+**Gate — MET** (except hi-fi visual design):
+- Design: wireframe + IA layer done (`07-ui-ux-design.md`); high-fidelity visual design
+  + prototype still outstanding (needs brand direction #2 / a designer) — this is the
+  one open gate item, and it does not block starting Phase 1 engineering.
+- Backend: boots locally, `php artisan migrate` succeeds (Laravel default migrations —
+  `02-database-schema.md` tables land per-feature in Phase 1), tests + lint green.
+- Mobile: compiles to a debug APK; placeholder home renders under `flutter test`.
+  Running on a device/emulator needs a connected Android phone or an AVD install
+  (see `08-environment-setup.md`) — not required for the gate.
 
 ---
 

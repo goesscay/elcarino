@@ -9,12 +9,40 @@ macOS/Linux.
 | Tool | Version | Notes |
 |---|---|---|
 | PHP | 8.3+ | needs `pdo_sqlite` + `sqlite3` (local dev), `pdo_pgsql` (staging/prod + CI), `mbstring`, `openssl`, `gd`. On the winget PHP build these are shipped but commented — enable `extension=pdo_sqlite` and `extension=sqlite3` in `php.ini` (done on this machine). |
-| Composer | 2.x | |
-| Flutter | stable (3.47.2) | SDK cloned to `C:\Users\user\flutter` on this machine — add `C:\Users\user\flutter\bin` to `PATH` |
-| Android SDK | latest | **not yet installed** — needed to run the app on an Android device/emulator and to build APKs. `flutter analyze` + `flutter test` work without it; a device run does not. |
+| Composer | 2.x | works from PowerShell; not on the Git-Bash PATH |
+| Flutter | stable (3.47.2) | SDK at `C:\Users\user\flutter`; `C:\Users\user\flutter\bin` on the user PATH |
+| JDK | Temurin 17 | portable extract at `C:\Users\user\jdk-17`, `JAVA_HOME` set. Needed for Gradle / the Android build. (The winget MSI install stalled on UAC elevation — the portable zip is the working path here.) |
+| Android SDK | cmdline-tools install | at `C:\Users\user\Android\Sdk`, `ANDROID_HOME` / `ANDROID_SDK_ROOT` set. Packages: `platform-tools`, `platforms;android-36`, `build-tools;36.0.0`, `cmdline-tools;latest`. **No emulator/system-image yet** — a physical device or a later `sdkmanager "emulator" "system-images;android-36;google_apis;x86_64"` is needed to run an AVD. |
 | Node | 20+ | only for tooling scripts / Reverb's front-end asset build / Filament asset compile |
 | PostgreSQL | 16 | **not required locally** — used in staging/prod and the CI parity job. Install only if you want to test PG-specific behaviour locally. |
 | Docker | — | optional; not currently used |
+
+### Android SDK notes (this machine)
+
+`sdkmanager` downloads from `dl.google.com` **stall** on this network for larger files
+(the Java HTTP client hangs with no timeout). The packages were installed by downloading
+the archive ZIPs directly with `curl --speed-limit 2000 --speed-time 20 -C -` (stall-
+detect + resume) and laying them out under `C:\Users\user\Android\Sdk\`:
+`platform-tools/`, `build-tools/36.0.0/`, `platforms/android-36/`. If you need more
+packages and `sdkmanager` hangs, use the same curl approach against the URLs in
+`https://dl.google.com/android/repository/repository2-3.xml`.
+
+`flutter doctor` reports the Android toolchain as OK (SDK 36.0.0, licenses accepted).
+The only remaining `flutter doctor` `[X]` is Visual Studio (Windows *desktop* apps) —
+irrelevant for a mobile app.
+
+**Verified:** `flutter build apk --debug` succeeds end to end — produces
+`build/app/outputs/flutter-apk/app-debug.apk` (`com.mgs.datingapp`, compileSdk 36).
+The first build takes ~15 min: Gradle 9.3.1 unpacks, the Android Gradle Plugin +
+Kotlin + `android-ndk-r28c` download (Gradle pulls the NDK automatically — no manual
+install needed), then compile + dex. Subsequent builds are minutes or less with the
+Gradle daemon and caches warm.
+
+**To run the app** you still need either a physical Android device with USB debugging,
+or an emulator (`sdkmanager "emulator" "system-images;android-36;google_apis;x86_64"`
+then `avdmanager create avd ...` — ~2 GB, and the emulator needs hardware acceleration
+enabled on this machine). `flutter build apk` working is sufficient proof the toolchain
+is correct.
 
 ## Backend (`/backend` — Laravel 13)
 
