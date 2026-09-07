@@ -8,7 +8,7 @@ Built for MGS's client; launching in Malaysia first, then the Maldives and India
 - **Client-facing material** (proposal deck, cost estimate) lives in
   [`/proposal`](proposal) — reference only, not a source of engineering truth.
 - **Mobile app:** [`/mobile`](mobile) (Flutter — not yet scaffolded, Phase 0 task).
-- **Backend API:** [`/backend`](backend) (Laravel 12 — not yet scaffolded, Phase 0 task).
+- **Backend API:** [`/backend`](backend) (Laravel 13 — not yet scaffolded, Phase 0 task).
 
 ## Status
 

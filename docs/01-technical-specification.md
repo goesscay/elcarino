@@ -22,7 +22,7 @@ niche/community **[TBD-1]** rather than competing head-on with large dating plat
 | Component | Technology |
 |---|---|
 | Mobile | Flutter |
-| Backend | Laravel 12 |
+| Backend | Laravel 13 |
 | Language | PHP 8.3+ |
 | Database | PostgreSQL |
 | Cache | Redis |
@@ -111,10 +111,11 @@ feature_x/
 └── data/           API clients, DTOs/models, repository implementations
 ```
 
-**State management [TBD]:** not yet chosen (e.g. Riverpod vs Bloc). Recommendation:
-Riverpod for a feature-first codebase built incrementally by an AI-assisted workflow —
-less boilerplate per feature, easier to scaffold one module at a time. Confirm before
-Phase 1 so `core/` DI wiring is consistent across every feature from the start.
+**State management: Riverpod** (confirmed). Chosen for a feature-first codebase built
+incrementally — less boilerplate per feature, compile-safe DI, easy to scaffold one
+module at a time. Do not introduce a second state pattern anywhere in the app.
+`core/` holds shared providers (API client, auth state, config); each feature owns its
+own providers under `presentation/`.
 
 ## 5. Authentication — **[REQUIRED]**
 

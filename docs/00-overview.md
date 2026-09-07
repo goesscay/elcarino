@@ -33,7 +33,7 @@ we're building; read `CLAUDE.md` for *how* to build it.
 | **Not** | A visual or functional clone of Tinder/Bumble — distinct branding, UI/UX and a defined niche/community |
 | **Launch markets** | Malaysia (launch), then Maldives and India (phased rollout) |
 | **Mobile** | Flutter, feature-first + Clean Architecture |
-| **Backend** | Laravel 12 / PHP 8.3+, PostgreSQL, Redis, REST API |
+| **Backend** | Laravel 13 / PHP 8.3+, PostgreSQL, Redis, REST API |
 | **Status as of this doc** | Pre-development — Phase 0 (Architecture & Design) |
 
 ## How scope is expressed in these docs

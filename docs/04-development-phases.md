@@ -23,19 +23,28 @@ fundamentals mid-build.
       inventory, navigation map, per-screen specs, placeholder design system, state
       checklist. **High-fidelity visual design + clickable prototype still outstanding**
       — needs brand direction (decision #2) and ideally a visual designer.
-- [ ] Resolve enough of [`05-open-decisions.md`](05-open-decisions.md) to unblock
-      Phase 1 specifically: app name/branding, gender options, age range policy,
-      state-management choice (Riverpod/Bloc), SMS provider
-- [ ] Repo, CI skeleton, environment config (`.env.example` for backend, Flutter
-      flavors for dev/staging/prod)
-- [ ] Laravel project scaffolded in `/backend`, Flutter project scaffolded in `/mobile`
-      — **blocked on local tooling:** PHP 8.3 + Composer are available (backend scaffold
-      can proceed); **Flutter/Dart and Docker are not installed** on this machine, and
-      no local PostgreSQL is confirmed. Decide: install Flutter + a Postgres option
-      (Docker or native), or scaffold backend now and mobile later.
+- [x] Resolve enough of [`05-open-decisions.md`](05-open-decisions.md) to unblock
+      Phase 1: gender options (#6 → man/woman/non-binary), age policy (#4 → 18+),
+      state management (Riverpod), local DB (SQLite local / Postgres staging+prod).
+      **Still open (do not block Phase 1):** app name/branding (#2, staying on
+      placeholder `DatingApp` / `com.mgs.datingapp`), SMS/OTP provider (Phase 1 builds
+      a provider-agnostic sender, default impl Twilio).
+- [x] Repo, CI skeleton, environment config — `.gitattributes`,
+      `.github/workflows/{backend,mobile}.yml`, `backend/.env.example` (all integration
+      keys documented), `mobile/config/{dev,staging,prod}.json` + `AppConfig`,
+      `docs/08-environment-setup.md`.
+- [~] Laravel scaffolded in `/backend` (Laravel 13, SQLite local dev) — **boots,
+      migrates, `php artisan test` + Pint green.** Flutter scaffolded in `/mobile`
+      (Flutter 3.47.2, Riverpod, go_router, feature-first folders, themed placeholder
+      home) — **`flutter analyze` + `flutter test` green.** Remaining: Android SDK not
+      installed, so an on-device / emulator run is not yet verified (widget-test boot
+      path is). Feature migrations/models land in Phase 1, one feature at a time.
 
-**Gate:** design signed off; `/backend` boots locally with migrations from
-`02-database-schema.md` applied; `/mobile` boots to a placeholder home screen.
+**Gate:** design signed off (wireframe layer done; hi-fi visual design still pending);
+`/backend` boots locally and `php artisan migrate` succeeds (Laravel default
+migrations — the `02-database-schema.md` tables land per-feature in Phase 1);
+`/mobile` compiles and the placeholder home renders (verified via `flutter test`;
+on-device pending Android SDK).
 
 ---
 

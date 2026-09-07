@@ -15,14 +15,14 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 | 1 | Exact target niche / community | Not yet defined — building generic-but-safety-focused UX that a niche layer can sit on top of | 🔴 |
 | 2 | Brand name | Placeholder: "DatingApp" / `com.mgs.datingapp` | 🔴 |
 | 3 | Countries for initial launch | Malaysia first, then Maldives and India | 🟢 |
-| 4 | Age restrictions | 18+ only, no upper bound, verified via `birth_date` | 🟡 |
+| 4 | Age restrictions | 18+ minimum (hard gate at signup via `birth_date`), no upper bound. Confirmed as the working policy — revisit only if a launch market's law requires stricter | 🟢 |
 | 5 | Relationship categories | Free-text `relationship_goal` for now; convert to enum once list is confirmed | 🔴 |
 
 ## Matching
 
 | # | Decision | Working assumption | Status |
 |---|---|---|---|
-| 6 | Gender options | Placeholder 3-value set (man / woman / non-binary) in `profiles.gender` — confirm before Phase 1 UI lock | 🔴 |
+| 6 | Gender options | **Man / Woman / Non-binary** — `profiles.gender` enum; "interested in" is a multi-select of the same three (`user_preferences.interested_in_genders`) | 🟢 |
 | 7 | Age range | User-configurable min/max in `user_preferences`, no hard platform limits beyond #4 | 🟡 |
 | 8 | Distance range | User-configurable `max_distance_km`, platform cap TBD (assume 200 km max) | 🟡 |
 | 9 | Matching criteria | Rule-based v1 (preferences + interest overlap); AI score deferred to Phase 4 | 🟡 |
@@ -79,3 +79,9 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 |---|---|
 | Target market / launch sequencing | Malaysia → Maldives → India |
 | Vendor/company name for client-facing material | MGS |
+| #4 Age restrictions | 18+ minimum, no upper bound |
+| #6 Gender options | Man / Woman / Non-binary |
+| Flutter state management (engineering, not a client decision) | Riverpod |
+| Local dev database (engineering) | SQLite locally; PostgreSQL in staging/prod |
+| Backend framework version (engineering) | Laravel 13 — latest stable at scaffold time (2026-09); spec originally said 12 |
+| Flutter routing (engineering) | `go_router` |

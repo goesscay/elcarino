@@ -1,9 +1,24 @@
-# backend/ — Laravel API (not yet scaffolded)
+# backend/ — DatingApp API (Laravel 13)
 
-This folder will hold the Laravel 12 project once Phase 0 scaffolding runs
-(`laravel new .` or `composer create-project laravel/laravel .`), with migrations
-matching [`../docs/02-database-schema.md`](../docs/02-database-schema.md) and routes
-matching [`../docs/03-api-specification.md`](../docs/03-api-specification.md).
+REST API for the DatingApp mobile client, plus the Filament admin panel.
 
-Do not add code here ahead of that scaffolding step — see
-[`../CLAUDE.md`](../CLAUDE.md) for the build order.
+- **How to work here:** [`CLAUDE.md`](CLAUDE.md) (Laravel specifics) + the repo root
+  [`../CLAUDE.md`](../CLAUDE.md).
+- **What to build:** [`../docs/01-technical-specification.md`](../docs/01-technical-specification.md),
+  schema in [`../docs/02-database-schema.md`](../docs/02-database-schema.md), endpoints
+  in [`../docs/03-api-specification.md`](../docs/03-api-specification.md).
+- **Local setup:** [`../docs/08-environment-setup.md`](../docs/08-environment-setup.md).
+
+## Quick start
+
+```powershell
+composer install
+Copy-Item .env.example .env
+php artisan key:generate
+New-Item -ItemType File database\database.sqlite -Force
+php artisan migrate
+php artisan serve
+```
+
+Status: Phase 0 scaffold. Feature migrations, models, and endpoints land in Phase 1,
+one feature at a time (auth first).

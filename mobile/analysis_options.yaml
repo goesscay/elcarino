@@ -1,0 +1,27 @@
+# Static analysis config. `flutter analyze` and `dart format --set-exit-if-changed .`
+# must both pass — CI enforces both (see .github/workflows/mobile.yml).
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+  language:
+    strict-casts: true
+    strict-raw-types: true
+  errors:
+    # Feature-first discipline & doc-sync rules live in CLAUDE.md, not the analyzer.
+    todo: ignore
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    require_trailing_commas: true
+    directives_ordering: true
+    unawaited_futures: true
+    always_declare_return_types: true
+    prefer_relative_imports: true

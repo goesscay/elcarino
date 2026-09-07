@@ -34,8 +34,8 @@ table below becomes one Laravel migration. Conventions used throughout:
 | id | bigint PK | |
 | user_id | FK → users, unique | one profile per user |
 | display_name | string | |
-| birth_date | date | age derived, never store raw age |
-| gender | string | values per open decision #6 |
+| birth_date | date | age derived, never store raw age; 18+ enforced at signup |
+| gender | enum: man, woman, non_binary | open decision #6 — confirmed |
 | bio | text, nullable | |
 | relationship_goal | string, nullable | |
 | is_verified | boolean | default false; set by verification pipeline |
@@ -86,9 +86,9 @@ table below becomes one Laravel migration. Conventions used throughout:
 |---|---|---|
 | id | bigint PK | |
 | user_id | FK → users, unique | |
-| min_age / max_age | smallint | |
+| min_age / max_age | smallint | min_age floor 18 |
 | max_distance_km | smallint | |
-| interested_in_genders | jsonb | multi-select |
+| interested_in_genders | jsonb | multi-select of man / woman / non_binary |
 | religion_filter | jsonb, nullable | advanced filter |
 | politics_filter | jsonb, nullable | advanced filter |
 | relationship_goal_filter | jsonb, nullable | |

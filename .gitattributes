@@ -1,0 +1,26 @@
+# Normalize line endings — repo canonical is LF; Git converts on checkout per-OS.
+* text=auto eol=lf
+
+# Windows-only tooling that must stay CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary — never touch
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.pptx binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.keystore binary
+*.jks  binary
+
+# Generated Dart — diff-suppress in reviews
+*.g.dart       linguist-generated=true
+*.freezed.dart linguist-generated=true

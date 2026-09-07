@@ -52,6 +52,10 @@ business/product decisions. Code that depends on one of them carries a `// TBD-#
 - Migrations mirror [`docs/02-database-schema.md`](docs/02-database-schema.md) exactly
   — column names, types, and enum values. If a migration needs to diverge, update the
   doc in the same commit.
+- **Local dev DB is SQLite; staging/prod is PostgreSQL.** Write migrations portably
+  (`$table->json()` not raw `jsonb`, `$table->double()` for coordinates,
+  `$table->enum()` for enums). Anything Postgres-specific (geohash proximity queries,
+  `jsonb` operators) goes behind a repository method and is verified in staging.
 - Every mutating endpoint: **Form Request** for validation, **Policy** for
   authorization, **API Resource** for the response shape. No raw Eloquent models
   returned from controllers.
@@ -71,9 +75,9 @@ business/product decisions. Code that depends on one of them carries a `// TBD-#
 - Feature-first + Clean Architecture per `docs/01-technical-specification.md` §4:
   every feature under `lib/<feature>/{presentation,domain,data}/`. Shared code only in
   `lib/core/`.
-- State management: see `01-technical-specification.md` §4 for the current
-  recommendation/decision — use whatever that doc says, don't introduce a second
-  pattern partway through the app.
+- State management: **Riverpod** (confirmed). Do not introduce a second state pattern
+  anywhere. Shared providers in `lib/core/`; feature-local providers under the
+  feature's `presentation/`.
 - Networking goes through a single typed API client in `core/` that mirrors
   [`docs/03-api-specification.md`](docs/03-api-specification.md) — if you add a call the
   spec doesn't have, add it to the spec in the same commit.
@@ -93,5 +97,11 @@ business/product decisions. Code that depends on one of them carries a `// TBD-#
 
 - Windows 11, PowerShell is the primary shell; the Bash tool is also available but
   uses POSIX syntax — don't mix syntaxes in one command.
-- No CI/remote configured yet (Phase 0 task). Until then, "tests pass locally" is the
-  bar for a feature being done.
+- Flutter SDK is at `C:\Users\user\flutter` (not on the global PATH by default —
+  prefix `C:\Users\user\flutter\bin\flutter` or add it to PATH for the session).
+  Composer works from PowerShell; from the Bash tool it isn't on PATH.
+- CI workflows exist (`.github/workflows/`) but **there is no git remote yet** — they
+  don't run. Until a remote is added, "`php artisan test` / `flutter test` +
+  analyze/lint pass locally" is the bar for a task being done.
+- Local dev DB is SQLite; no Redis, Docker, or Android SDK installed yet. Full setup
+  state is in [`docs/08-environment-setup.md`](docs/08-environment-setup.md).
