@@ -16,16 +16,23 @@ fundamentals mid-build.
 - [x] Technical specification (`01-technical-specification.md`)
 - [x] Database schema (`02-database-schema.md`)
 - [x] API specification (`03-api-specification.md`)
-- [ ] UI/UX design (wireframes → high-fidelity, per screen, matching the module list in
-      the technical spec)
-- [ ] Security architecture review (auth flow, token lifetimes, PII handling, the
-      server-side enforcement points called out in spec §12/§13)
+- [x] Security architecture review (`06-security-architecture.md`) — auth, authz,
+      geolocation privacy, PII handling, the server-side enforcement points from spec
+      §12/§13, rate limiting, audit, compliance flags
+- [x] UI/UX design — **wireframe + IA layer** (`07-ui-ux-design.md`): full screen
+      inventory, navigation map, per-screen specs, placeholder design system, state
+      checklist. **High-fidelity visual design + clickable prototype still outstanding**
+      — needs brand direction (decision #2) and ideally a visual designer.
 - [ ] Resolve enough of [`05-open-decisions.md`](05-open-decisions.md) to unblock
       Phase 1 specifically: app name/branding, gender options, age range policy,
       state-management choice (Riverpod/Bloc), SMS provider
 - [ ] Repo, CI skeleton, environment config (`.env.example` for backend, Flutter
       flavors for dev/staging/prod)
 - [ ] Laravel project scaffolded in `/backend`, Flutter project scaffolded in `/mobile`
+      — **blocked on local tooling:** PHP 8.3 + Composer are available (backend scaffold
+      can proceed); **Flutter/Dart and Docker are not installed** on this machine, and
+      no local PostgreSQL is confirmed. Decide: install Flutter + a Postgres option
+      (Docker or native), or scaffold backend now and mobile later.
 
 **Gate:** design signed off; `/backend` boots locally with migrations from
 `02-database-schema.md` applied; `/mobile` boots to a placeholder home screen.

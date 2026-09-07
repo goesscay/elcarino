@@ -18,6 +18,8 @@ drive the actual build. Read them in order:
 | 3 | [`03-api-specification.md`](03-api-specification.md) | REST endpoint catalogue with request/response shapes |
 | 4 | [`04-development-phases.md`](04-development-phases.md) | Phase 0–5 task breakdown, testing gates, timeline |
 | 5 | [`05-open-decisions.md`](05-open-decisions.md) | The 30 client decisions — tracked with current working assumptions |
+| 6 | [`06-security-architecture.md`](06-security-architecture.md) | Threat model, auth/authz, geolocation privacy, data classification, rate limiting, compliance flags |
+| 7 | [`07-ui-ux-design.md`](07-ui-ux-design.md) | Screen inventory, navigation map, per-screen wireframe specs, placeholder design system |
 
 The root [`CLAUDE.md`](../CLAUDE.md) tells Claude Code *how* to work in this repo
 (phase discipline, coding conventions, commit style). Read this overview for *what*
