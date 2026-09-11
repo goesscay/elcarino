@@ -15,10 +15,20 @@ Every route below is subject to all of the following unless explicitly marked `p
 - **Resources:** responses shaped via API Resource classes, never raw Eloquent models.
 - **Rate limiting:** per-route throttling, tightest on `auth/otp`, `swipes`, and
   `chat/messages` (abuse/scraping surface).
-- **Error envelope (consistent across all endpoints):**
+- **Error envelope, for business-rule failures a controller raises deliberately**
+  (invalid credentials, expired OTP, invalid OAuth token, etc.) — every such
+  response across every feature uses this shape:
   ```json
-  { "error": { "code": "string_error_code", "message": "human readable", "fields": {} } }
+  { "error": { "code": "string_error_code", "message": "human readable" } }
   ```
+  **422 request-validation failures** (a Form Request's rules didn't pass) use
+  Laravel's standard shape instead — `{ "message": "...", "errors": { "field":
+  ["msg"] } }` — rather than being force-fitted into the envelope above. This is
+  a deliberate, documented exception, not drift: reshaping framework-level
+  validation errors would mean re-implementing `assertJsonValidationErrors()`
+  and every client-side validation-error helper for no real benefit. A client
+  distinguishes the two by shape: an `error` key means a business-rule
+  rejection; an `errors` key means fix the request body and resubmit.
 
 ## Auth — `/api/v1/auth`
 

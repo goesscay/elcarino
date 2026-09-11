@@ -112,6 +112,19 @@ table below becomes one Laravel migration. Conventions used throughout:
 | app_version | string, nullable | |
 | last_seen_at | timestamp | |
 
+### `otp_codes`
+| Column | Type | Notes |
+|---|---|---|
+| id | bigint PK | |
+| phone | string, indexed | not a FK — a phone can be verified before any `users` row exists (registration flow) |
+| code_hash | string | never store the plaintext code; hashed same as passwords |
+| attempts | unsigned tinyint, default 0 | bounded per `OTP_MAX_ATTEMPTS` (security doc §2.2) |
+| expires_at | timestamp | TTL from `OTP_TTL_SECONDS` |
+| consumed_at | timestamp, nullable | set on first successful verify — makes the code single-use |
+
+Added during the authentication feature (not in the original client-requirements
+table list) — supports phone/OTP login per spec §5.
+
 ## Discovery & matching
 
 ### `swipes`

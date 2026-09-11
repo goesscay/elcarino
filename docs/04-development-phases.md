@@ -60,7 +60,13 @@ fundamentals mid-build.
 Build order (each item: spec confirmed → implement → automated tests → self-review →
 fix → commit, before moving to the next):
 
-1. [ ] Authentication (email, phone+OTP, Google, Apple; logout, forgot password)
+1. [x] Authentication (email, phone+OTP, Google, Apple; logout, forgot password) —
+       `users`/`otp_codes` migrations, Sanctum bearer tokens, rate limiting per
+       security doc §7, provider-agnostic OTP sender (log locally, Twilio ready),
+       Google/Apple ID-token verification. 24 backend tests, Pint clean, audit
+       clean. **Deferred to a fast-follow, not silently dropped:** access+refresh
+       token rotation (single expiring access token for now, security doc §2.1),
+       account deletion, session/device management (`/users/me/devices`).
 2. [ ] Onboarding flow (account → profile basics → photos → prompts → preferences)
 3. [ ] Profile module (view/edit, photo upload + reorder + moderation queue)
 4. [ ] Profile prompts (library + answer + reorder)

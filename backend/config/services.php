@@ -35,4 +35,24 @@ return [
         ],
     ],
 
+    'google' => [
+        // ?: normalizes an unset/blank .env value to null — GoogleTokenVerifier
+        // treats null as "don't check the audience claim" (local dev without a
+        // configured client id), an empty string would otherwise never match.
+        'client_id' => env('GOOGLE_CLIENT_ID') ?: null,
+    ],
+
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID') ?: null,
+    ],
+
+    'sms' => [
+        'provider' => env('SMS_PROVIDER', 'log'),
+        'twilio' => [
+            'sid' => env('TWILIO_SID'),
+            'token' => env('TWILIO_TOKEN'),
+            'from' => env('TWILIO_FROM'),
+        ],
+    ],
+
 ];
