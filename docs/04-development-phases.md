@@ -98,8 +98,32 @@ fix → commit, before moving to the next):
        pieces (API error translation, the onboarding gate, app-boot routing);
        no per-screen form/widget tests were added given the size of this
        feature — flag if that coverage gap matters enough to close.
-3. [ ] Profile module (view/edit, photo upload + reorder + moderation queue)
-4. [ ] Profile prompts (library + answer + reorder)
+3. [x] Profile module (view/edit, photo upload + reorder + moderation queue).
+       **Backend:** `interests`/`user_interests` migrations, GET `/`, GET/PUT
+       `/me`; 61 backend tests. Photo upload/reorder reused unchanged from
+       Onboarding (item 2), not rebuilt. **Mobile:** My profile (preview,
+       completion meter, verification chip), Edit profile (menu ->
+       Photos/Prompts/Basics & bio/Interests — the last three combined bio +
+       basics + relationship-goal into one editor, a disclosed IA
+       simplification), Edit preferences as a peer screen per docs/07 §3.5's
+       table. Photos/Prompts/Preferences reuse the exact onboarding screens
+       via an `onDone`/`continueLabel` param added for this — same widget,
+       different exit behaviour, no duplicated grid/form code. 11 mobile
+       tests passing (was 9), flutter analyze clean, `flutter build apk
+       --debug` verified. **Moderation queue intentionally not built:**
+       docs/03's Admin section is explicit that admin/moderation is a
+       Filament resource, not a REST endpoint, and Filament isn't scaffolded
+       until item 11 — a bespoke moderation endpoint now would contradict
+       that. "Reorder answered prompts" (docs/07 §3.5 "Edit prompts") is item
+       4's job, not this one — full-replace `PUT /prompts/me` already
+       supports it mechanically (resubmit in the new order); the drag UI for
+       it is scoped to item 4 below, not duplicated here. Settings (gear icon
+       on My profile) shows "coming soon" — its children are scattered across
+       features that don't exist yet (push notifications/item 9,
+       safety/item 10).
+4. [ ] Profile prompts (library + answer + reorder) — library + answer already
+       built in Onboarding (item 2); **remaining scope is just the reorder UI**
+       (drag to reorder answered prompts, per docs/07 §3.5 "Edit prompts").
 5. [ ] Discovery feed (filters, radius, exclude swiped/blocked)
 6. [ ] Swipe → like/pass → match
 7. [ ] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score

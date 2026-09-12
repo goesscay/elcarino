@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +16,10 @@ import '../../onboarding/presentation/preferences_screen.dart';
 import '../../onboarding/presentation/profile_basics_screen.dart';
 import '../../onboarding/presentation/prompts_screen.dart';
 import '../../placeholder_home.dart';
+import '../../profile/presentation/edit_basics_screen.dart';
+import '../../profile/presentation/edit_interests_screen.dart';
+import '../../profile/presentation/edit_profile_screen.dart';
+import '../../profile/presentation/my_profile_screen.dart';
 import '../widgets/splash_screen.dart';
 
 /// App router, per the navigation map in `docs/07-ui-ux-design.md` §2.2:
@@ -66,6 +71,46 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding/complete',
         builder: (context, state) => const OnboardingCompleteScreen(),
+      ),
+
+      // Profile module (Phase 1 item 3). Photos/Prompts/Preferences are the
+      // same screens the onboarding wizard uses, reused here with a "Done"
+      // button that pops back instead of advancing the wizard, and no
+      // progress bar (step: null) since there's no wizard to show progress
+      // through outside onboarding.
+      GoRoute(path: '/profile', builder: (context, state) => const MyProfileScreen()),
+      GoRoute(path: '/profile/edit', builder: (context, state) => const EditProfileScreen()),
+      GoRoute(
+        path: '/profile/edit/basics',
+        builder: (context, state) => const EditBasicsScreen(),
+      ),
+      GoRoute(
+        path: '/profile/edit/interests',
+        builder: (context, state) => const EditInterestsScreen(),
+      ),
+      GoRoute(
+        path: '/profile/edit/photos',
+        builder: (context, state) => PhotosScreen(
+          step: null,
+          continueLabel: 'Done',
+          onDone: () => Navigator.of(context).pop(),
+        ),
+      ),
+      GoRoute(
+        path: '/profile/edit/prompts',
+        builder: (context, state) => PromptsScreen(
+          step: null,
+          continueLabel: 'Done',
+          onDone: () => Navigator.of(context).pop(),
+        ),
+      ),
+      GoRoute(
+        path: '/profile/preferences',
+        builder: (context, state) => PreferencesScreen(
+          step: null,
+          continueLabel: 'Done',
+          onDone: () => Navigator.of(context).pop(),
+        ),
       ),
     ],
   );

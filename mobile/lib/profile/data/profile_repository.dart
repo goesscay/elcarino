@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../domain/gender.dart';
+import '../domain/interest.dart';
 import '../domain/preferences.dart';
 import '../domain/profile.dart';
 import '../domain/prompt.dart';
@@ -122,6 +123,33 @@ class ProfileRepository {
       data: preferences.toJson(),
     );
     return Preferences.fromJson(response.data['preferences'] as Map<String, dynamic>);
+  }
+
+  Future<List<Interest>> getInterestCatalogue() async {
+    final response = await _client.request('/interests', method: 'GET');
+    return (response.data['interests'] as List<dynamic>)
+        .map((e) => Interest.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<Interest>> getMyInterests() async {
+    final response = await _client.request('/interests/me', method: 'GET');
+    return (response.data['interests'] as List<dynamic>)
+        .map((e) => Interest.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Full replace, matching the backend's `PUT /interests/me` contract
+  /// (`sync()` under the hood — a plain many-to-many, no pivot data).
+  Future<List<Interest>> updateInterests(List<int> interestIds) async {
+    final response = await _client.request(
+      '/interests/me',
+      method: 'PUT',
+      data: {'interest_ids': interestIds},
+    );
+    return (response.data['interests'] as List<dynamic>)
+        .map((e) => Interest.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }
 

@@ -12,14 +12,25 @@ import 'onboarding_scaffold.dart';
 /// docs/07-ui-ux-design.md §3.1 "Preferences": interested-in multi-select,
 /// age range, max distance, and collapsible advanced filters (religion,
 /// politics — free-form here; docs/03 notes no fixed value list exists yet).
+///
+/// Reused from the onboarding wizard (default: advances to Location; nothing
+/// to pre-fill, this is the first time preferences are set) and the
+/// standalone Edit preferences screen — a peer of Edit profile, not one of
+/// its sections, per docs/07 §3.5's table — which passes [onDone] to pop back
+/// and always has existing preferences to pre-fill.
 class PreferencesScreen extends ConsumerStatefulWidget {
-  const PreferencesScreen({super.key});
+  const PreferencesScreen({this.onDone, this.continueLabel = 'Continue', this.step = 4, super.key});
+
+  final VoidCallback? onDone;
+  final String continueLabel;
+  final int? step;
 
   @override
   ConsumerState<PreferencesScreen> createState() => _PreferencesScreenState();
 }
 
 class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
+  bool _loading = true;
   RangeValues _ageRange = const RangeValues(21, 40);
   double _maxDistanceKm = 50;
   final Set<Gender> _interestedIn = {};
@@ -27,6 +38,27 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
   final List<String> _politicsFilter = [];
   bool _submitting = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final existing = await ref.read(profileRepositoryProvider).getPreferences();
+    if (!mounted) return;
+    setState(() {
+      if (existing != null) {
+        _ageRange = RangeValues(existing.minAge.toDouble(), existing.maxAge.toDouble());
+        _maxDistanceKm = existing.maxDistanceKm.toDouble();
+        _interestedIn.addAll(existing.interestedInGenders);
+        _religionFilter.addAll(existing.religionFilter);
+        _politicsFilter.addAll(existing.politicsFilter);
+      }
+      _loading = false;
+    });
+  }
 
   Future<void> _submit() async {
     if (_interestedIn.isEmpty) {
@@ -53,7 +85,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
             ),
           );
       if (!mounted) return;
-      context.go('/onboarding/location');
+      (widget.onDone ?? () => context.go('/onboarding/location'))();
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -63,9 +95,17 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return OnboardingScaffold(
+        title: 'Preferences',
+        step: widget.step,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return OnboardingScaffold(
       title: 'Preferences',
-      step: 4,
+      step: widget.step,
       child: ListView(
         children: [
           Text('Interested in', style: Theme.of(context).textTheme.bodyMedium),
@@ -139,7 +179,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
             onPressed: _submitting ? null : _submit,
             child: _submitting
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Continue'),
+                : Text(widget.continueLabel),
           ),
         ],
       ),

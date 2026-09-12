@@ -14,8 +14,16 @@ import 'onboarding_scaffold.dart';
 /// Reorder here is left/right buttons rather than drag — functionally
 /// equivalent, simpler to implement correctly; real drag-and-drop is a hi-fi
 /// interaction-design concern like the rest of docs/07 §4.5 motion/haptics.
+///
+/// Reused from both the onboarding wizard (default: advances to Prompts) and
+/// the standalone Edit photos screen (docs/07 §3.5), which passes [onDone]
+/// and [continueLabel] to pop back instead.
 class PhotosScreen extends ConsumerStatefulWidget {
-  const PhotosScreen({super.key});
+  const PhotosScreen({this.onDone, this.continueLabel = 'Continue', this.step = 2, super.key});
+
+  final VoidCallback? onDone;
+  final String continueLabel;
+  final int? step;
 
   @override
   ConsumerState<PhotosScreen> createState() => _PhotosScreenState();
@@ -131,16 +139,16 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const OnboardingScaffold(
+      return OnboardingScaffold(
         title: 'Photos',
-        step: 2,
-        child: Center(child: CircularProgressIndicator()),
+        step: widget.step,
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return OnboardingScaffold(
       title: 'Photos',
-      step: 2,
+      step: widget.step,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -176,8 +184,10 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
             ),
           const SizedBox(height: AppSpacing.md),
           FilledButton(
-            onPressed: _photos.isEmpty ? null : () => context.go('/onboarding/prompts'),
-            child: const Text('Continue'),
+            onPressed: _photos.isEmpty
+                ? null
+                : (widget.onDone ?? () => context.go('/onboarding/prompts')),
+            child: Text(widget.continueLabel),
           ),
         ],
       ),

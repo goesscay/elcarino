@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'core/config/app_config.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_spacing.dart';
 
-/// Phase 0 placeholder. Confirms the app boots with theme, config, Riverpod and
-/// routing wired. Deleted when the onboarding / main-tab shell lands in Phase 1.
+/// Phase 0 placeholder, still standing in for the main-tab shell (Discover /
+/// Matches / Likes / Profile — Phase 1 items 5-7 haven't landed yet). Now
+/// links to the one real destination that exists post-onboarding: My profile
+/// (Phase 1 item 3). Deleted once Discovery gives the app a real first tab.
 class PlaceholderHome extends StatelessWidget {
   const PlaceholderHome({super.key});
 
@@ -35,6 +38,11 @@ class PlaceholderHome extends StatelessWidget {
               Text(
                 config.apiBaseUrl,
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
+                onPressed: () => context.push('/profile'),
+                child: const Text('My profile'),
               ),
             ],
           ),

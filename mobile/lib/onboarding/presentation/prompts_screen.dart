@@ -12,8 +12,17 @@ import 'onboarding_scaffold.dart';
 /// answer each (char limit). Skippable? [TBD — recommend: require 1]."
 /// Enforces the client-side "require at least 1" recommendation; the server
 /// enforces the max of 3 (config/media.php on the backend).
+///
+/// Reused from the onboarding wizard (default: advances to Preferences) and
+/// the standalone Edit prompts screen, which passes [onDone]/[continueLabel]
+/// to pop back instead. Drag-to-reorder answered prompts (docs/07 §3.5) is
+/// item 4's scope, not built here yet.
 class PromptsScreen extends ConsumerStatefulWidget {
-  const PromptsScreen({super.key});
+  const PromptsScreen({this.onDone, this.continueLabel = 'Continue', this.step = 3, super.key});
+
+  final VoidCallback? onDone;
+  final String continueLabel;
+  final int? step;
 
   @override
   ConsumerState<PromptsScreen> createState() => _PromptsScreenState();
@@ -98,7 +107,7 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
             for (final entry in _selected.entries) (entry.key, entry.value.text.trim()),
           ]);
       if (!mounted) return;
-      context.go('/onboarding/preferences');
+      (widget.onDone ?? () => context.go('/onboarding/preferences'))();
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -109,12 +118,16 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const OnboardingScaffold(title: 'Prompts', step: 3, child: Center(child: CircularProgressIndicator()));
+      return OnboardingScaffold(
+        title: 'Prompts',
+        step: widget.step,
+        child: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     return OnboardingScaffold(
       title: 'Prompts',
-      step: 3,
+      step: widget.step,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -164,7 +177,7 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
             onPressed: _submitting ? null : _submit,
             child: _submitting
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Continue'),
+                : Text(widget.continueLabel),
           ),
         ],
       ),
