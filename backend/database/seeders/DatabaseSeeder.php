@@ -22,5 +22,6 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(ProfilePromptSeeder::class);
+        $this->call(InterestSeeder::class);
     }
 }

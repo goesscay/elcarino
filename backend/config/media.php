@@ -16,4 +16,9 @@ return [
     // docs/07-ui-ux-design.md §3.1 — Prompts screen: "Pick 3 prompts".
     'max_prompts_per_profile' => 3,
 
+    // No count is specified anywhere in /docs for interests — a provisional
+    // cap (not one of the 30 tracked decisions) to bound the payload/UI, same
+    // spirit as the prompt/photo caps above. Safe to retune.
+    'max_interests_per_profile' => 15,
+
 ];

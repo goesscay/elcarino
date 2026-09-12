@@ -76,13 +76,18 @@ Photo uploads are re-encoded server-side and EXIF-stripped
 
 ## Interests — `/api/v1/interests`
 
-**Not yet implemented.** Onboarding's screen inventory (`docs/07-ui-ux-design.md` §3.1)
-doesn't include an interests step — it's part of "Edit profile" instead, so this group
-is deferred to Phase 1 item 3 (Profile module), not the Onboarding flow.
+**Implemented (Phase 1 feature 3 — Profile module).** `GET /me` was added to this
+group — not in the original table below — for the same reason prompts and
+preferences each have one: the Edit-interests screen needs to know what's already
+selected to pre-check it. `PUT /me` is a full replace (`sync()`, since this is a
+plain many-to-many with no extra pivot columns, unlike prompts). No count is
+specified anywhere in `/docs` for interests, so `media.max_interests_per_profile`
+(15) is a provisional cap, not a tracked decision.
 
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/` | full interest catalogue (public, cacheable) |
+| GET | `/me` | current user's selected interests *(added — see above)* |
 | PUT | `/me` | replace the current user's selected interests |
 
 ## Prompts — `/api/v1/prompts`

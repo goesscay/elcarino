@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Profile\InterestController;
 use App\Http\Controllers\Api\Profile\PreferenceController;
 use App\Http\Controllers\Api\Profile\ProfileController;
 use App\Http\Controllers\Api\Profile\ProfilePhotoController;
@@ -43,6 +44,12 @@ Route::prefix('v1')->group(function () {
         Route::prefix('preferences')->group(function () {
             Route::get('me', [PreferenceController::class, 'show']);
             Route::put('me', [PreferenceController::class, 'update']);
+        });
+
+        Route::prefix('interests')->group(function () {
+            Route::get('/', [InterestController::class, 'index']);
+            Route::get('me', [InterestController::class, 'mine']);
+            Route::put('me', [InterestController::class, 'update']);
         });
     });
 });
