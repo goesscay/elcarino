@@ -43,6 +43,13 @@ an emulator (`sdkmanager "emulator" "system-images;android-36;google_apis;x86_64
 `avdmanager create avd ...` — ~2 GB, needs hardware acceleration). `flutter build apk`
 working is sufficient proof the toolchain is correct.
 
+**Onboarding feature's new plugins** (`image_picker`, `permission_handler`,
+`flutter_secure_storage`, added in Phase 1 item 2) pulled in Android SDK Platform 34
+and 35 plus CMake 3.22.1 as extra Gradle-managed dependencies — `flutter build apk`
+auto-installed and licensed them the first time, no manual intervention needed on this
+machine. If `sdkmanager`'s own download of those stalls the way the initial SDK install
+did, the same curl workaround above applies.
+
 **Quick visual preview (web).** The `web` platform is enabled purely for fast previews
 during development — the product ships iOS/Android only. To eyeball the current UI
 without a device:

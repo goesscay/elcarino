@@ -1,16 +1,72 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../authentication/domain/auth_intent.dart';
+import '../../authentication/presentation/auth_method_screen.dart';
+import '../../authentication/presentation/email_entry_screen.dart';
+import '../../authentication/presentation/otp_screen.dart';
+import '../../authentication/presentation/phone_entry_screen.dart';
+import '../../authentication/presentation/welcome_screen.dart';
+import '../../onboarding/presentation/location_permission_screen.dart';
+import '../../onboarding/presentation/notification_permission_screen.dart';
+import '../../onboarding/presentation/onboarding_complete_screen.dart';
+import '../../onboarding/presentation/photos_screen.dart';
+import '../../onboarding/presentation/preferences_screen.dart';
+import '../../onboarding/presentation/profile_basics_screen.dart';
+import '../../onboarding/presentation/prompts_screen.dart';
 import '../../placeholder_home.dart';
+import '../widgets/splash_screen.dart';
 
-/// App router. Phase 0 has a single placeholder route. Real routes (onboarding,
-/// main tab shell, feature screens) land feature-by-feature in Phase 1, per the
-/// navigation map in `docs/07-ui-ux-design.md` §2.2.
+/// App router, per the navigation map in `docs/07-ui-ux-design.md` §2.2:
+/// Splash -> (not authed) Welcome -> Auth method -> Email/Phone -> OTP ->
+/// Onboarding wizard -> Main tabs. [SplashScreen] does the routing decision
+/// (auth state, then the onboarding step) rather than a `redirect` callback —
+/// simpler to reason about, and this app has no automatic session-loss event
+/// yet that would need a global redirect to react to.
+///
+/// Main tabs (Discover/Matches/Likes/Profile) don't exist yet — `/home` is
+/// still the Phase 0 placeholder until Discovery (Phase 1 item 5) lands.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const PlaceholderHome()),
+      GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+      GoRoute(path: '/home', builder: (context, state) => const PlaceholderHome()),
+
+      GoRoute(path: '/welcome', builder: (context, state) => const WelcomeScreen()),
+      GoRoute(
+        path: '/auth/method',
+        builder: (context, state) => AuthMethodScreen(intent: state.extra! as AuthIntent),
+      ),
+      GoRoute(path: '/auth/phone', builder: (context, state) => const PhoneEntryScreen()),
+      GoRoute(
+        path: '/auth/otp',
+        builder: (context, state) => OtpScreen(phone: state.extra! as String),
+      ),
+      GoRoute(
+        path: '/auth/email',
+        builder: (context, state) => EmailEntryScreen(intent: state.extra! as AuthIntent),
+      ),
+
+      GoRoute(path: '/onboarding/basics', builder: (context, state) => const ProfileBasicsScreen()),
+      GoRoute(path: '/onboarding/photos', builder: (context, state) => const PhotosScreen()),
+      GoRoute(path: '/onboarding/prompts', builder: (context, state) => const PromptsScreen()),
+      GoRoute(
+        path: '/onboarding/preferences',
+        builder: (context, state) => const PreferencesScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/location',
+        builder: (context, state) => const LocationPermissionScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/notifications',
+        builder: (context, state) => const NotificationPermissionScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/complete',
+        builder: (context, state) => const OnboardingCompleteScreen(),
+      ),
     ],
   );
 });

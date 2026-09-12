@@ -69,18 +69,35 @@ fix → commit, before moving to the next):
        clean. **Deferred to a fast-follow, not silently dropped:** access+refresh
        token rotation (single expiring access token for now, security doc §2.1),
        account deletion, session/device management (`/users/me/devices`).
-2. [ ] Onboarding flow (account → profile basics → photos → prompts → preferences) —
-       **backend done** (`profiles`/`profile_photos`/`profile_prompts`/
+2. [x] Onboarding flow (account → profile basics → photos → prompts → preferences).
+       **Backend:** `profiles`/`profile_photos`/`profile_prompts`/
        `user_profile_prompts`/`user_preferences` migrations; profile basics, photo
        upload with server-side EXIF-strip + signed URLs, prompts, preferences
-       endpoints; 53 backend tests, Pint + audit clean). **Mobile onboarding UI
-       (the account/basics/photos/prompts/preferences screens themselves) is next**
-       — not started. Deliberately deferred, not dropped: location capture (no
-       endpoint exists yet — belongs with Discovery, item 5) and push-device
-       registration (belongs with item 9); the onboarding screens for those steps
-       will request OS permission only, no backend call yet. Interests selection
-       is out of scope here too — it's an "Edit profile" (item 3) concern per the
-       screen inventory, not an onboarding step.
+       endpoints; 53 backend tests, Pint + audit clean. **Mobile:** all 12 screens
+       in docs/07-ui-ux-design.md §3.1 (Splash, Welcome, Auth method, Email/Phone
+       entry, OTP, Profile basics, Photos, Prompts, Preferences, Location
+       permission, Notification permission, Onboarding complete), a typed
+       `ApiClient` with bearer-token injection + the two documented error shapes
+       mapped to `ApiException`/`ValidationException`, secure token storage, and
+       an `OnboardingGate` that resolves a resumed session's next step from the
+       API itself rather than a client-side flag. `flutter analyze` clean,
+       9 mobile tests passing, `flutter build apk --debug` succeeds with the new
+       plugins (image_picker, permission_handler, flutter_secure_storage) wired
+       in. Deliberately deferred, not dropped: location capture (no endpoint
+       exists yet — belongs with Discovery, item 5) and push-device registration
+       (belongs with item 9) — those two onboarding screens request OS permission
+       only, no backend call. Interests selection is out of scope too — it's an
+       "Edit profile" (item 3) concern per the screen inventory, not an onboarding
+       step. Google/Apple sign-in buttons exist but show "coming soon" — real
+       OAuth needs GOOGLE_CLIENT_ID/APPLE_CLIENT_ID and native SDK setup that
+       isn't configured. Photo reorder is left/right buttons, not drag-and-drop;
+       the OTP input is one 6-digit field, not 6 separate boxes — both
+       functionally equivalent simplifications of the wireframe, real
+       drag/box-styling is a hi-fi-design-pass concern (docs/07 §4.5, still the
+       one open Phase 0 gate item). Widget/unit tests cover the logic-heavy
+       pieces (API error translation, the onboarding gate, app-boot routing);
+       no per-screen form/widget tests were added given the size of this
+       feature — flag if that coverage gap matters enough to close.
 3. [ ] Profile module (view/edit, photo upload + reorder + moderation queue)
 4. [ ] Profile prompts (library + answer + reorder)
 5. [ ] Discovery feed (filters, radius, exclude swiped/blocked)
