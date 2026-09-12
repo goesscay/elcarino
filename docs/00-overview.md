@@ -1,11 +1,12 @@
-# DatingApp — Development Documentation
+# Elcarino — Development Documentation
 
-> **Naming note:** "DatingApp" / `com.mgs.datingapp` is a placeholder used throughout this
-> documentation and codebase until branding (open decision #2, see
-> [`05-open-decisions.md`](05-open-decisions.md)) is finalized. When the real name lands,
-> rename via a single find-and-replace pass across `/docs`, `/mobile`, and `/backend`
-> before Phase 1 sign-off — don't let the placeholder leak into production config, app
-> store listings, or package identifiers.
+> **Naming note:** open decision #2 (brand name) is now confirmed — **Elcarino**,
+> package/bundle id `com.mgs.elcarino`, brand red `#DC2626`. See
+> [`05-open-decisions.md`](05-open-decisions.md) and the logo/brand asset in
+> [`/branding`](../branding). The rename has been applied across `/docs`, `/mobile`, and
+> `/backend`. Full hi-fi visual design (imagery, illustration style, a clickable
+> prototype, a brand typeface) is still outstanding — this only resolved the name and
+> primary colour, not the whole design system.
 
 This folder is the internal, engineering-facing counterpart to the client-facing
 proposal in [`/proposal`](../proposal). The proposal sells the vision; these documents

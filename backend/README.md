@@ -1,6 +1,6 @@
-# backend/ — DatingApp API (Laravel 13)
+# backend/ — Elcarino API (Laravel 13)
 
-REST API for the DatingApp mobile client, plus the Filament admin panel.
+REST API for the Elcarino mobile client, plus the Filament admin panel.
 
 - **How to work here:** [`CLAUDE.md`](CLAUDE.md) (Laravel specifics) + the repo root
   [`../CLAUDE.md`](../CLAUDE.md).

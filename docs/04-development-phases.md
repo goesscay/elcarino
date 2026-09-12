@@ -26,9 +26,11 @@ fundamentals mid-build.
 - [x] Resolve enough of [`05-open-decisions.md`](05-open-decisions.md) to unblock
       Phase 1: gender options (#6 → man/woman/non-binary), age policy (#4 → 18+),
       state management (Riverpod), local DB (SQLite local / Postgres staging+prod).
-      **Still open (do not block Phase 1):** app name/branding (#2, staying on
-      placeholder `DatingApp` / `com.mgs.datingapp`), SMS/OTP provider (Phase 1 builds
-      a provider-agnostic sender, default impl Twilio).
+      **#2 app name/branding is now confirmed:** **Elcarino** / `com.mgs.elcarino`,
+      brand red `#DC2626` — logo in [`/branding`](../branding); full hi-fi visual
+      design (imagery, illustration, clickable prototype) is still outstanding.
+      **Still open (do not block Phase 1):** SMS/OTP provider (Phase 1 builds a
+      provider-agnostic sender, default impl Twilio).
 - [x] Repo, CI skeleton, environment config — `.gitattributes`,
       `.github/workflows/{backend,mobile}.yml`, `backend/.env.example` (all integration
       keys documented), `mobile/config/{dev,staging,prod}.json` + `AppConfig`,
@@ -37,7 +39,7 @@ fundamentals mid-build.
       migrates, `php artisan test` + Pint green. Flutter scaffolded in `/mobile`
       (Flutter 3.47.2, Riverpod, go_router, feature-first folders, themed placeholder
       home) — `flutter analyze` + `flutter test` green, **and `flutter build apk
-      --debug` produces a valid `com.mgs.datingapp` APK** (JDK 17 + Android SDK 36
+      --debug` produces a valid `com.mgs.elcarino` APK** (JDK 17 + Android SDK 36
       installed, `flutter doctor` Android toolchain OK). Feature migrations/models land
       in Phase 1, one feature at a time.
 

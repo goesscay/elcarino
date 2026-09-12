@@ -60,9 +60,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: datingapp_test
-          POSTGRES_USER: datingapp
-          POSTGRES_PASSWORD: datingapp
+          POSTGRES_DB: elcarino_test
+          POSTGRES_USER: elcarino
+          POSTGRES_PASSWORD: elcarino
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 10s
@@ -80,7 +80,7 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
           DB_PORT: 5432
-          DB_DATABASE: datingapp_test
-          DB_USERNAME: datingapp
-          DB_PASSWORD: datingapp
+          DB_DATABASE: elcarino_test
+          DB_USERNAME: elcarino
+          DB_PASSWORD: elcarino
         run: php artisan test

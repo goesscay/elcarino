@@ -13,7 +13,7 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 | # | Decision | Working assumption | Status |
 |---|---|---|---|
 | 1 | Exact target niche / community | Not yet defined — building generic-but-safety-focused UX that a niche layer can sit on top of | 🔴 |
-| 2 | Brand name | Placeholder: "DatingApp" / `com.mgs.datingapp` | 🔴 |
+| 2 | Brand name | **Elcarino** / `com.mgs.elcarino`, brand red `#DC2626` — logo in [`/branding`](../branding) | 🟢 |
 | 3 | Countries for initial launch | Malaysia first, then Maldives and India | 🟢 |
 | 4 | Age restrictions | 18+ minimum (hard gate at signup via `birth_date`), no upper bound. Confirmed as the working policy — revisit only if a launch market's law requires stricter | 🟢 |
 | 5 | Relationship categories | Free-text `relationship_goal` for now; convert to enum once list is confirmed | 🔴 |
@@ -79,6 +79,7 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 |---|---|
 | Target market / launch sequencing | Malaysia → Maldives → India |
 | Vendor/company name for client-facing material | MGS |
+| #2 Brand name | Elcarino / `com.mgs.elcarino`, brand red `#DC2626` |
 | #4 Age restrictions | 18+ minimum, no upper bound |
 | #6 Gender options | Man / Woman / Non-binary |
 | Flutter state management (engineering, not a client decision) | Riverpod |

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/config/app_config.dart';
+import 'core/theme/app_colors.dart';
 import 'core/theme/app_spacing.dart';
 
 /// Phase 0 placeholder. Confirms the app boots with theme, config, Riverpod and
@@ -19,8 +20,11 @@ class PlaceholderHome extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'DatingApp',
-                style: Theme.of(context).textTheme.displaySmall,
+                'Elcarino',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(

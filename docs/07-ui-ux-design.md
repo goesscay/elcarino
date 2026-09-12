@@ -4,12 +4,13 @@ Phase 0 deliverable — the **wireframe + information-architecture layer**. It d
 every screen, how they connect, the components they're built from, and the states each
 must handle, so Phase 1 engineering can start without guessing.
 
-**What this document is not:** high-fidelity visual design. Final colours, imagery,
-illustration style, motion polish, and a clickable prototype are a separate track that
-needs (a) the brand direction from open decision #2 and (b) ideally a visual designer.
-Colour/type tokens below are a **neutral placeholder system** — structurally complete,
-visually provisional. Swap the token *values* once branding lands; the token *names*
-and component structure stay.
+**What this document is not:** high-fidelity visual design. Open decision #2 (brand
+name + primary colour) is now confirmed — **Elcarino**, brand red `#DC2626`, logo in
+[`/branding`](../branding) — and `color.primary` below reflects it. Final imagery,
+illustration style, a brand typeface, motion polish, and a clickable prototype are
+still a separate track that needs a visual designer. The rest of the colour/type
+tokens below remain a **neutral placeholder system** — structurally complete, visually
+provisional; the token *names* and component structure stay as branding fills in.
 
 ---
 
@@ -194,7 +195,7 @@ Values are provisional (neutral, brand-agnostic). Semantic names are stable.
 | `color.surface` | `#F5F5F7` / dark `#1E1F24` | cards, sheets |
 | `color.text.primary` | `#1B1B1F` / dark `#ECECEE` | body text |
 | `color.text.secondary` | `#6B6B72` | captions, metadata |
-| `color.primary` | `#E4405F` (placeholder) | primary actions, like |
+| `color.primary` | `#DC2626` (confirmed — Elcarino brand red, decision #2) | primary actions, like |
 | `color.on-primary` | `#FFFFFF` | text/icons on primary |
 | `color.pass` | `#8A8A8E` | pass action |
 | `color.success` | `#2E9C68` | verified, confirmations |
@@ -270,7 +271,8 @@ Every screen that loads or submits data must handle:
 Pulled from [`05-open-decisions.md`](05-open-decisions.md) — these directly shape
 screens above:
 
-- **#2 brand name** → app identity, splash, store assets, and the token *values* in §4.
+- **#2 brand name** — ✅ confirmed (Elcarino, `#DC2626`, logo in `/branding`); still
+  needed: splash artwork and store listing assets built from it.
 - **#6 gender options** → Profile basics, Preferences, "interested in".
 - **#4 age policy** → DOB picker constraints, onboarding gate.
 - **State management choice** (spec §4) → how every screen's presentation layer is wired.

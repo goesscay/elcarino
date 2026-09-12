@@ -32,7 +32,7 @@ The only remaining `flutter doctor` `[X]` is Visual Studio (Windows *desktop* ap
 irrelevant for a mobile app.
 
 **Verified:** `flutter build apk --debug` succeeds end to end — produces
-`build/app/outputs/flutter-apk/app-debug.apk` (`com.mgs.datingapp`, compileSdk 36).
+`build/app/outputs/flutter-apk/app-debug.apk` (`com.mgs.elcarino`, compileSdk 36).
 The first build takes ~15 min: Gradle 9.3.1 unpacks, the Android Gradle Plugin +
 Kotlin + `android-ndk-r28c` download (Gradle pulls the NDK automatically — no manual
 install needed), then compile + dex. Subsequent builds are minutes or less with the

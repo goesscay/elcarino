@@ -1,7 +1,8 @@
-# DatingApp (working name)
+# Elcarino
 
 A niche-focused dating application — Flutter mobile app + Laravel API backend.
 Built for MGS's client; launching in Malaysia first, then the Maldives and India.
+Brand logo and colour live in [`/branding`](branding).
 
 - **Planning to build here?** Start with [`CLAUDE.md`](CLAUDE.md) (how to work in this
   repo) and [`docs/00-overview.md`](docs/00-overview.md) (what's being built).

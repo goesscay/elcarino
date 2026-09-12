@@ -29,7 +29,7 @@ class OtpService
             'expires_at' => now()->addSeconds($this->ttlSeconds),
         ]);
 
-        $this->sms->send($phone, "Your DatingApp verification code is {$code}. It expires in ".intdiv($this->ttlSeconds, 60).' minutes.');
+        $this->sms->send($phone, "Your Elcarino verification code is {$code}. It expires in ".intdiv($this->ttlSeconds, 60).' minutes.');
     }
 
     /**

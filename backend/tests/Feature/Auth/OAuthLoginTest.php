@@ -74,7 +74,7 @@ class OAuthLoginTest extends TestCase
         [$idToken, $jwks] = $this->makeSignedAppleToken([
             'iss' => 'https://appleid.apple.com',
             'sub' => 'apple-uid-123',
-            'aud' => 'com.mgs.datingapp',
+            'aud' => 'com.mgs.elcarino',
             'email' => 'jane@icloud.com',
             'email_verified' => true,
             'exp' => now()->addMinutes(5)->timestamp,
@@ -96,7 +96,7 @@ class OAuthLoginTest extends TestCase
         [$idToken, $jwks] = $this->makeSignedAppleToken([
             'iss' => 'https://not-apple.example',
             'sub' => 'apple-uid-123',
-            'aud' => 'com.mgs.datingapp',
+            'aud' => 'com.mgs.elcarino',
             'exp' => now()->addMinutes(5)->timestamp,
             'iat' => now()->timestamp,
         ]);

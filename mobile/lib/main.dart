@@ -8,5 +8,5 @@ void main() {
   // Fail loud at startup if the env config file wasn't passed.
   AppConfig.current;
 
-  runApp(const ProviderScope(child: DatingApp()));
+  runApp(const ProviderScope(child: ElcarinoApp()));
 }

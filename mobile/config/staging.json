@@ -1,4 +1,4 @@
 {
   "APP_ENV": "staging",
-  "API_BASE_URL": "https://staging-api.datingapp.example/api/v1"
+  "API_BASE_URL": "https://staging-api.elcarino.example/api/v1"
 }

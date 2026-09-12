@@ -1,4 +1,4 @@
-package com.mgs.datingapp
+package com.mgs.elcarino
 
 import io.flutter.embedding.android.FlutterActivity
 

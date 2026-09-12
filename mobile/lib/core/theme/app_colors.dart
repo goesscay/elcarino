@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Placeholder colour tokens — values are provisional (neutral, brand-agnostic)
-/// per `docs/07-ui-ux-design.md` §4.1. Swap the *values* once branding lands
-/// (open decision #2); keep the token *names*.
+/// Colour tokens per `docs/07-ui-ux-design.md` §4.1. `primary` is the confirmed
+/// Elcarino brand red (open decision #2 — see `/branding`); the rest remain
+/// neutral placeholders pending full hi-fi visual design.
 ///
 /// Never hard-code a `Color` in a widget — reference a token here.
 abstract final class AppColors {
@@ -21,7 +21,7 @@ abstract final class AppColors {
   static const borderDark = Color(0xFF33343A);
 
   // Brand / semantic (shared across themes for now)
-  static const primary = Color(0xFFE4405F); // placeholder
+  static const primary = Color(0xFFDC2626); // Elcarino brand red — decision #2
   static const onPrimary = Color(0xFFFFFFFF);
   static const pass = Color(0xFF8A8A8E);
   static const success = Color(0xFF2E9C68);
