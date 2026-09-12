@@ -56,16 +56,29 @@ Every route below is subject to all of the following unless explicitly marked `p
 
 ## Profiles — `/api/v1/profiles`
 
+**Implemented (Phase 1 — Onboarding flow, backend slice).** `GET`/`PUT /me` return/accept
+`display_name`, `birth_date`, `gender`, `bio`, `relationship_goal`; the response also
+carries the derived `is_verified` and `completion_pct`, plus a nested `photos` array.
+Photo uploads are re-encoded server-side and EXIF-stripped
+(`docs/06-security-architecture.md` §6); each photo resource is
+`{id, url, sort_order, moderation_status}` — `url` is a short-lived **signed** URL
+(never the raw storage path), regenerated per request from
+`config('media.signed_url_ttl_minutes')`.
+
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/me` | own full profile |
-| PUT | `/me` | update bio, goals, gender, birth_date etc. |
-| POST | `/me/photos` | upload photo → object storage; queues moderation |
-| DELETE | `/me/photos/{id}` | |
-| PUT | `/me/photos/order` | reorder, body: ordered id array |
-| GET | `/{userId}` | another user's public profile (subject to block/report state) |
+| GET | `/me` | own full profile; 404 (`profile_not_found`) before it's been created |
+| PUT | `/me` | update bio, goals, gender, birth_date etc. — upsert, not create-only |
+| POST | `/me/photos` | upload photo → object storage; queues moderation. 422 if the profile doesn't exist yet, or the `media.max_photos_per_profile` cap (6) is hit |
+| DELETE | `/me/photos/{id}` | owner-only (`ProfilePhotoPolicy`) |
+| PUT | `/me/photos/order` | reorder, body: ordered id array; 422 (`invalid_photo_ids`) if the set isn't exactly the caller's own photos |
+| GET | `/{userId}` | **not yet implemented** — its authorization depends on match/block state that doesn't exist until Discovery/Matching (Phase 1 items 5–7) land |
 
 ## Interests — `/api/v1/interests`
+
+**Not yet implemented.** Onboarding's screen inventory (`docs/07-ui-ux-design.md` §3.1)
+doesn't include an interests step — it's part of "Edit profile" instead, so this group
+is deferred to Phase 1 item 3 (Profile module), not the Onboarding flow.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -74,18 +87,28 @@ Every route below is subject to all of the following unless explicitly marked `p
 
 ## Prompts — `/api/v1/prompts`
 
+**Implemented.** `PUT /me` is a full replace (deletes+recreates the caller's answers in
+one call) capped at `media.max_prompts_per_profile` (3, per the Prompts screen spec) —
+no server-side minimum; that's a soft client-side onboarding gate per
+`docs/07-ui-ux-design.md` §3.1.
+
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/` | active prompt library, by category |
 | GET | `/me` | current user's answered prompts, ordered |
-| PUT | `/me` | upsert answers + `sort_order` |
-| DELETE | `/me/{promptId}` | remove one answer |
+| PUT | `/me` | upsert answers + `sort_order` (full replace) |
+| DELETE | `/me/{promptId}` | remove one answer; 404 (`prompt_answer_not_found`) if there wasn't one |
 
 ## Preferences — `/api/v1/preferences`
 
+**Implemented.** `religion_filter`/`politics_filter`/`relationship_goal_filter` are
+free-form string arrays, not a fixed enum — decision #10 confirms the filters must
+exist, not their option taxonomy, and no value list is defined anywhere in `/docs`.
+Flag to the client if fixed lists are wanted.
+
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/me` | age/distance/gender/advanced filters |
+| GET | `/me` | age/distance/gender/advanced filters; 404 (`preferences_not_found`) before they're set |
 | PUT | `/me` | update `user_preferences`; advanced filters (religion, politics) included |
 
 ## Discovery — `/api/v1/discovery`

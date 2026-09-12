@@ -69,7 +69,18 @@ fix → commit, before moving to the next):
        clean. **Deferred to a fast-follow, not silently dropped:** access+refresh
        token rotation (single expiring access token for now, security doc §2.1),
        account deletion, session/device management (`/users/me/devices`).
-2. [ ] Onboarding flow (account → profile basics → photos → prompts → preferences)
+2. [ ] Onboarding flow (account → profile basics → photos → prompts → preferences) —
+       **backend done** (`profiles`/`profile_photos`/`profile_prompts`/
+       `user_profile_prompts`/`user_preferences` migrations; profile basics, photo
+       upload with server-side EXIF-strip + signed URLs, prompts, preferences
+       endpoints; 53 backend tests, Pint + audit clean). **Mobile onboarding UI
+       (the account/basics/photos/prompts/preferences screens themselves) is next**
+       — not started. Deliberately deferred, not dropped: location capture (no
+       endpoint exists yet — belongs with Discovery, item 5) and push-device
+       registration (belongs with item 9); the onboarding screens for those steps
+       will request OS permission only, no backend call yet. Interests selection
+       is out of scope here too — it's an "Edit profile" (item 3) concern per the
+       screen inventory, not an onboarding step.
 3. [ ] Profile module (view/edit, photo upload + reorder + moderation queue)
 4. [ ] Profile prompts (library + answer + reorder)
 5. [ ] Discovery feed (filters, radius, exclude swiped/blocked)
