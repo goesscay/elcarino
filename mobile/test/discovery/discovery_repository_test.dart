@@ -66,6 +66,8 @@ void main() {
               'relationship_goal': null,
               'is_verified': false,
               'distance_km': 0,
+              'shared_interests_count': 2,
+              'shared_interests': ['Hiking', 'Coffee'],
               'photos': [],
               'prompts': [],
             },
@@ -79,6 +81,7 @@ void main() {
       expect(page.candidates, hasLength(1));
       expect(page.candidates.single.displayName, 'Jane');
       expect(page.candidates.single.distanceLabel, 'less than 1 km away');
+      expect(page.candidates.single.sharedInterests, ['Hiking', 'Coffee']);
       expect(page.hasMore, isTrue);
     });
   });

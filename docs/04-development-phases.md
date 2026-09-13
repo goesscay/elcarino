@@ -201,8 +201,26 @@ fix → commit, before moving to the next):
        backend's stance that Super Like's extras are [TBD-11]. 19 mobile
        tests passing (was 15), flutter analyze clean, `flutter build apk
        --debug` verified.
-7. [ ] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score
-       yet** — spec §10 explicitly defers the formula)
+7. [x] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score
+       yet** — spec §10 explicitly defers the formula). Item 5's filters already
+       covered "preferences"; this adds "interests overlap" as a *ranking* layer on
+       top, in `DiscoveryFeedService`: candidates sort by `shared_interests_count`
+       descending first, then the existing bucketed-distance/id tiebreakers. Per spec
+       §10's explicit instruction ("do not hardcode a scoring algorithm in Phase 1;
+       stub the field and revisit in Phase 4"), this is deliberately a plain,
+       transparent count — never blended with other signals into one opaque
+       "compatibility score." `shared_interests_count`/`shared_interests` (the actual
+       names) are returned as-is in the feed response (docs/03), not hidden. "User
+       behaviour" (also named in spec §10 as a matching input) isn't implemented —
+       the spec never says what signal or algorithm that would mean, and guessing one
+       would be exactly the kind of unstated specific CLAUDE.md says to flag, not
+       invent. `compatibility_scores` (the Phase-4 AI table already reserved in
+       docs/02) is untouched, as intended. 114 backend tests (was 112), Pint + audit
+       clean. No mobile UI change needed — the ranking takes effect through the same
+       `GET /discovery/feed` call DiscoverFeedScreen already makes; its domain model
+       was updated to parse the two new fields for forward-compatibility, but nothing
+       in docs/07's Card-stack wireframe calls for surfacing them visually, so no new
+       UI was added.
 8. [ ] Real-time chat (text only), read receipts, typing indicator, online status
 9. [ ] Push notifications (match, message, like)
 10. [ ] Block / report / unmatch

@@ -128,14 +128,21 @@ Flag to the client if fixed lists are wanted.
 
 ## Discovery — `/api/v1/discovery`
 
-**Implemented (Phase 1 item 5).** Filters applied are the *viewer's own* preferences
-(gender, age range, distance, relationship goal) — one-directional. Mutual matching
-and interest-overlap scoring are item 7 (Matching engine v1), not this endpoint.
-422s: `location_required` / `preferences_required` if the viewer hasn't set either yet
-(`PUT /users/me/location`, `PUT /preferences/me`). Response shape:
+**Implemented (Phase 1 items 5 + 7).** Inclusion filters are the *viewer's own*
+preferences (gender, age range, distance, relationship goal) — one-directional; mutual
+matching stays out of scope (nothing here requires the target to want the viewer back,
+only that the viewer's stated preferences match the target). Ranking layers item 7
+(Matching engine v1) on top: candidates are ordered by `shared_interests_count`
+(descending) first, then by `distance_km` (ascending), then by id. Per
+`docs/01-technical-specification.md` §10, this is deliberately **not** a compatibility
+score — "do not hardcode a scoring algorithm in Phase 1" — so `shared_interests_count`/
+`shared_interests` are a plain, transparent count and name list, never blended into one
+opaque number. 422s: `location_required` / `preferences_required` if the viewer hasn't
+set either yet (`PUT /users/me/location`, `PUT /preferences/me`). Response shape:
 `{"candidates": [{id, display_name, age, bio, relationship_goal, is_verified,
-distance_km, photos, prompts}], "meta": {page, per_page, has_more}}`. `refresh=1` is
-accepted but currently a no-op — there's no feed cache yet for it to bust.
+distance_km, shared_interests_count, shared_interests, photos, prompts}], "meta":
+{page, per_page, has_more}}`. `refresh=1` is accepted but currently a no-op — there's
+no feed cache yet for it to bust.
 
 | Method | Path | Notes |
 |---|---|---|

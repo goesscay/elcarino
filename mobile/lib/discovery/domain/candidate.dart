@@ -12,6 +12,8 @@ class DiscoveryCandidate {
     required this.relationshipGoal,
     required this.isVerified,
     required this.distanceKm,
+    required this.sharedInterestsCount,
+    required this.sharedInterests,
     required this.photos,
   });
 
@@ -23,6 +25,13 @@ class DiscoveryCandidate {
     relationshipGoal: json['relationship_goal'] as String?,
     isVerified: json['is_verified'] as bool,
     distanceKm: json['distance_km'] as int,
+    // Phase 1 item 7 (Matching engine v1) — a plain, transparent count/name
+    // list the feed is now ranked by, never a hidden "compatibility score"
+    // (spec §10 explicitly forbids hardcoding one in Phase 1). Parsed here
+    // for forward-compatibility; docs/07's Card-stack wireframe doesn't call
+    // for surfacing it visually, so there's no UI for it yet.
+    sharedInterestsCount: json['shared_interests_count'] as int,
+    sharedInterests: List<String>.from(json['shared_interests'] as List<dynamic>),
     photos: (json['photos'] as List<dynamic>)
         .map((e) => ProfilePhoto.fromJson(e as Map<String, dynamic>))
         .toList(),
@@ -35,6 +44,8 @@ class DiscoveryCandidate {
   final String? relationshipGoal;
   final bool isVerified;
   final int distanceKm;
+  final int sharedInterestsCount;
+  final List<String> sharedInterests;
   final List<ProfilePhoto> photos;
 
   /// docs/06-security-architecture.md §4: `0` is the sentinel for "less than

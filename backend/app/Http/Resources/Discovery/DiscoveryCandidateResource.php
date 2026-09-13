@@ -12,9 +12,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * The "public profile projection" for a discovery candidate — deliberately
  * narrower than ProfileResource: no raw coordinates (docs/06 §4, never), no
- * `completion_pct` (only meaningful to the owner). `distance_km` is a
- * bucketed int set onto the model by DiscoveryFeedService before this
- * resource wraps it — see DistanceBucketer for the exact bucketing rule.
+ * `completion_pct` (only meaningful to the owner). `distance_km` and
+ * `shared_interests_count`/`shared_interests` are set onto the model by
+ * DiscoveryFeedService before this resource wraps it — see DistanceBucketer
+ * and that service's class doc (item 7 — a plain, transparent count, not a
+ * compatibility score) for what each one means.
  *
  * @mixin User
  */
@@ -33,6 +35,8 @@ class DiscoveryCandidateResource extends JsonResource
             'relationship_goal' => $profile->relationship_goal,
             'is_verified' => $profile->is_verified,
             'distance_km' => $this->distance_km,
+            'shared_interests_count' => $this->shared_interests_count,
+            'shared_interests' => $this->shared_interest_names,
             'photos' => ProfilePhotoResource::collection($profile->photos),
             'prompts' => UserProfilePromptResource::collection($this->profilePrompts),
         ];

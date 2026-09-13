@@ -3,6 +3,7 @@
 namespace Tests\Feature\Discovery;
 
 use App\Models\Block;
+use App\Models\Interest;
 use App\Models\Profile;
 use App\Models\Swipe;
 use App\Models\User;
@@ -99,7 +100,10 @@ class DiscoveryFeedTest extends TestCase
 
         $response->assertJsonCount(1, 'candidates');
         $response->assertJsonStructure([
-            'candidates' => [['id', 'display_name', 'age', 'bio', 'is_verified', 'distance_km', 'photos', 'prompts']],
+            'candidates' => [[
+                'id', 'display_name', 'age', 'bio', 'is_verified', 'distance_km',
+                'shared_interests_count', 'shared_interests', 'photos', 'prompts',
+            ]],
             'meta' => ['page', 'per_page', 'has_more'],
         ]);
     }
@@ -178,7 +182,7 @@ class DiscoveryFeedTest extends TestCase
         $response->assertJsonPath('candidates.0.relationship_goal', 'Long-term');
     }
 
-    public function test_results_are_sorted_by_distance_ascending(): void
+    public function test_results_are_sorted_by_distance_ascending_when_interest_overlap_is_tied(): void
     {
         $this->setViewer(maxDistanceKm: 200);
         $this->makeCandidate(latOffset: 0.3); // farther
@@ -207,5 +211,46 @@ class DiscoveryFeedTest extends TestCase
         $secondPage = $this->getJson('/api/v1/discovery/feed?per_page=2&page=2')->assertOk();
         $secondPage->assertJsonCount(1, 'candidates');
         $secondPage->assertJsonPath('meta.has_more', false);
+    }
+
+    public function test_it_reports_the_shared_interest_names(): void
+    {
+        $hiking = Interest::factory()->create(['name' => 'Hiking']);
+        $coffee = Interest::factory()->create(['name' => 'Coffee']);
+        Interest::factory()->create(['name' => 'Painting']); // not shared
+
+        $viewer = $this->setViewer();
+        $viewer->interests()->attach([$hiking->id, $coffee->id]);
+        $candidate = $this->makeCandidate();
+        $candidate->interests()->attach([$hiking->id]);
+
+        $response = $this->getJson('/api/v1/discovery/feed')->assertOk();
+
+        $response->assertJsonPath('candidates.0.shared_interests_count', 1);
+        $response->assertJsonPath('candidates.0.shared_interests', ['Hiking']);
+    }
+
+    public function test_item_7_more_shared_interests_ranks_first_even_if_farther_away(): void
+    {
+        $hiking = Interest::factory()->create();
+        $coffee = Interest::factory()->create();
+
+        $viewer = $this->setViewer(maxDistanceKm: 200);
+        $viewer->interests()->attach([$hiking->id, $coffee->id]);
+
+        // Nearer, but shares nothing with the viewer.
+        $nearNoOverlap = $this->makeCandidate(latOffset: 0.02);
+
+        // Farther, but shares both interests — should still rank first per
+        // item 7's rule (interest overlap before distance).
+        $farWithOverlap = $this->makeCandidate(latOffset: 0.5);
+        $farWithOverlap->interests()->attach([$hiking->id, $coffee->id]);
+
+        $response = $this->getJson('/api/v1/discovery/feed')->assertOk();
+
+        $response->assertJsonPath('candidates.0.id', $farWithOverlap->id);
+        $response->assertJsonPath('candidates.0.shared_interests_count', 2);
+        $response->assertJsonPath('candidates.1.id', $nearNoOverlap->id);
+        $response->assertJsonPath('candidates.1.shared_interests_count', 0);
     }
 }
