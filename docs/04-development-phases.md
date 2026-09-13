@@ -173,7 +173,7 @@ fix → commit, before moving to the next):
        screen instead of a raw error. 15 mobile tests passing (was 13),
        flutter analyze clean, `flutter build apk --debug` verified with
        `geolocator` linked in.
-6. [ ] Swipe → like/pass → match — **backend done.** `POST /swipes` +
+6. [x] Swipe → like/pass → match. **Backend:** `POST /swipes` +
        `GET/DELETE /matches`, `GET /matches/{id}` (all added to docs/03 in
        this commit). `likes`/`matches` tables added (the former written on
        every right/super swipe, matching docs/02's stated purpose, though
@@ -185,10 +185,22 @@ fix → commit, before moving to the next):
        keyword, confirmed by `php -l` before committing to the name — cannot
        be used as a class name), table name overridden back to `matches` to
        stay schema-compliant. 112 backend tests (was 92), Pint + audit clean.
-       **Mobile is next** — not started. That also unlocks replacing
-       DiscoverFeedScreen's plain paginated list (item 5) with the real
-       swipe-gesture card stack docs/07 §3.2 describes, and the match
-       celebration modal.
+       **Mobile:** DiscoverFeedScreen (item 5) now has the real
+       swipe-gesture card stack docs/07 §3.2 describes — drag left/pass,
+       right/like, fly-away past a threshold or spring back short of it,
+       Pass/Like buttons as the accessible non-gesture mirror (buttons skip
+       the fly-away flourish and swipe instantly — a disclosed
+       simplification, not a functional gap). A mutual like shows the match
+       celebration modal ("Send a message" -> coming-soon, since Chat is
+       item 8). New MatchesListScreen (`/matches`) covers just the matches
+       half of docs/07 §3.3's "Matches + inbox" — the conversation list
+       needs Chat too. The Discover app bar's filter icon reuses the
+       existing Edit preferences screen rather than a second, parallel
+       filters UI; no boost icon — Phase 2, nothing behind it yet.
+       Swipe-up-for-Super-Like isn't implemented, consistent with the
+       backend's stance that Super Like's extras are [TBD-11]. 19 mobile
+       tests passing (was 15), flutter analyze clean, `flutter build apk
+       --debug` verified.
 7. [ ] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score
        yet** — spec §10 explicitly defers the formula)
 8. [ ] Real-time chat (text only), read receipts, typing indicator, online status

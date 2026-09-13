@@ -9,6 +9,7 @@ import '../../authentication/presentation/otp_screen.dart';
 import '../../authentication/presentation/phone_entry_screen.dart';
 import '../../authentication/presentation/welcome_screen.dart';
 import '../../discovery/presentation/discover_feed_screen.dart';
+import '../../matching/presentation/matches_list_screen.dart';
 import '../../onboarding/presentation/location_permission_screen.dart';
 import '../../onboarding/presentation/notification_permission_screen.dart';
 import '../../onboarding/presentation/onboarding_complete_screen.dart';
@@ -42,6 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/home', builder: (context, state) => const PlaceholderHome()),
       GoRoute(path: '/discover', builder: (context, state) => const DiscoverFeedScreen()),
+      GoRoute(path: '/matches', builder: (context, state) => const MatchesListScreen()),
 
       GoRoute(path: '/welcome', builder: (context, state) => const WelcomeScreen()),
       GoRoute(
