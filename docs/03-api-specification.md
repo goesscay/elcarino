@@ -293,12 +293,27 @@ than failing as a duplicate or leaving a stale row nobody prunes.
 
 ## Safety — `/api/v1/safety`
 
+**Implemented (Phase 1 item 10).** Blocking and reporting both reject self-targeting
+with a 403 (`BlockPolicy`/`ReportPolicy`, same "can't act on yourself" shape as
+`SwipePolicy`). Both endpoints below are also idempotent — blocking someone already
+blocked, or unblocking someone not blocked, succeeds without erroring (`blocks`' own
+`unique(blocker_id, blocked_id)` would otherwise throw on a repeat). **Blocking also
+unmatches** (docs/07 §3.7's "Block confirm" dialog copy): the matching `UserMatch`, if
+one is currently active between the two users, gets soft-unmatched in the same call —
+enforced server-side, not left to the mobile UI, same discipline as every other
+server-side rule in this app (docs/06 §3.4).
+
 | Method | Path | Notes |
 |---|---|---|
+| GET | `/blocks` | *(added — see below)* the caller's own blocked users, `{ blocked_users: [{id, display_name, photo}] }` — null-safe for a target with no profile, since you can block/report any user id, not just a match |
 | POST | `/block` | body: `{ "user_id" }` |
 | DELETE | `/block/{userId}` | |
-| POST | `/report` | body: `{ "user_id", "category", "description" }` |
-| GET | `/report-categories` | public — enum list for the report form |
+| POST | `/report` | body: `{ "user_id", "category", "description"?, "also_block"? }` — `also_block` *(added)*, docs/07 §3.7 "Report — detail": "option to also block". Rate-limited 20/day/user (docs/06 §7) |
+| GET | `/report-categories` | public — enum list for the report form. Kept behind auth like every other route in this group for now, same reasoning as `GET /prompts`'s library endpoint |
+
+`GET /safety/blocks` wasn't in this doc's original table — docs/07 §3.7's "Blocked
+users (Settings child): List with unblock" needs a way to list them, added here in the
+same commit that builds the screen it feeds.
 
 ## Admin (Filament, not under `/api/v1`)
 

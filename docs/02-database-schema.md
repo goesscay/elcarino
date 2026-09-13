@@ -210,6 +210,7 @@ table list) — supports phone/OTP login per spec §5.
 | reported_id | FK → users | |
 | category | enum: harassment, fake_profile, spam, inappropriate_content, scam, other | |
 | description | text, nullable | |
+| created_at / updated_at | timestamp | not originally listed here — added when built (Phase 1 item 10). Unlike `messages`/`notifications`, a report's row is genuinely mutated later (`status`/`reviewed_by`/`reviewed_at`, by the admin queue — item 11), so full `timestamps()` fit here where a created-only column didn't there |
 | status | enum: pending, reviewing, actioned, dismissed | default `pending` |
 | reviewed_by | FK → users (admin), nullable | |
 | reviewed_at | timestamp, nullable | |

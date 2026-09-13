@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Profile\PreferenceController;
 use App\Http\Controllers\Api\Profile\ProfileController;
 use App\Http\Controllers\Api\Profile\ProfilePhotoController;
 use App\Http\Controllers\Api\Profile\PromptController;
+use App\Http\Controllers\Api\Safety\SafetyController;
 use App\Http\Controllers\Api\Swipe\SwipeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserDeviceController;
@@ -87,6 +88,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [NotificationController::class, 'index']);
             Route::put('read-all', [NotificationController::class, 'markAllRead']);
             Route::put('{notification}/read', [NotificationController::class, 'markRead']);
+        });
+
+        Route::prefix('safety')->group(function () {
+            Route::get('blocks', [SafetyController::class, 'blocks']);
+            Route::post('block', [SafetyController::class, 'block']);
+            Route::delete('block/{userId}', [SafetyController::class, 'unblock']);
+            Route::post('report', [SafetyController::class, 'report'])->middleware('throttle:safety-report');
+            Route::get('report-categories', [SafetyController::class, 'reportCategories']);
         });
     });
 });

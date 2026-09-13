@@ -328,7 +328,31 @@ fix → commit, before moving to the next):
        Firebase-absent no-op paths — see docs/08 for what's unverified),
        flutter analyze + dart format clean, `flutter build apk --debug`
        verified.
-10. [ ] Block / report / unmatch
+10. [ ] Block / report / unmatch — **Backend done.** Unmatch itself
+       (`DELETE /matches/{id}`) already existed since item 6 — this feature's
+       actual new work is Block and Report. `blocks`/`reports` had been
+       schema-only (`Block` had no `#[Fillable]` — every prior use went
+       through `Block::factory()`, which bypasses mass-assignment guarding
+       entirely, so the gap only mattered once a real write endpoint needed
+       it, now). New `Report` model/migration, `SafetyService`
+       (`block`/`unblock`/`report`, both block/unblock idempotent — a repeat
+       call succeeds rather than tripping `blocks`' own unique constraint).
+       **Blocking also unmatches** (docs/07 §3.7): reuses the same
+       soft-unmatch (`unmatched_at`/`unmatched_by`) `MatchController::destroy`
+       uses, found by looking up an active `UserMatch` between the pair.
+       `GET/POST /safety/block`, `DELETE /safety/block/{userId}`,
+       `POST /safety/report` (`also_block` — docs/03 addendum, matching
+       docs/07's "option to also block" — reuses `block()`),
+       `GET /safety/report-categories`. `GET /safety/blocks` is also new
+       (docs/03 addendum) — feeds docs/07 §3.7's "Blocked users" Settings
+       screen, returning a null-safe projection (`BlockedUserResource`, not
+       `MatchedUserResource` — you can block/report *any* user id, not just
+       someone with a completed profile). Rate-limited 20/day/user on report
+       (docs/06 §7). 169 backend tests (was 147), Pint + audit clean.
+       **Mobile is next** — not started. Report evidence attachment
+       ("attach which messages/photos", docs/07 §3.7) isn't built — the
+       `reports` schema has no column for it, and inventing one wasn't asked
+       for; flagged, not silently dropped.
 11. [ ] Admin panel v1 (Filament): user management, reports queue, basic dashboard
 
 **Gate:** two people can register, complete onboarding, discover and match each other,

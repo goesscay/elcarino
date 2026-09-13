@@ -3,15 +3,17 @@
 namespace App\Models;
 
 use Database\Factories\BlockFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Minimal for now — enough for the discovery feed (item 5) to exclude
- * blocked users in both directions by reading this table. The write path
- * (POST /safety/block) is Phase 1 item 10.
+ * The write path (`POST`/`DELETE /safety/block`) is Phase 1 item 10 —
+ * `#[Fillable]` was unneeded before that (every prior use went through
+ * `Block::factory()`, which bypasses mass-assignment guarding entirely).
  */
+#[Fillable(['blocker_id', 'blocked_id'])]
 class Block extends Model
 {
     /** @use HasFactory<BlockFactory> */

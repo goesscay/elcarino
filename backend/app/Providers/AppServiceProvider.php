@@ -127,5 +127,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(30)->by('conversation:'.$request->route('conversation')),
             Limit::perHour(300)->by($request->user()->id),
         ]);
+
+        // docs/06 §7 rate limit table: "safety/report | 20 / day / user (a
+        // user reporting dozens of people per hour is itself a signal)."
+        RateLimiter::for('safety-report', fn ($request) => Limit::perDay(20)->by($request->user()->id));
     }
 }
