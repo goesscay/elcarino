@@ -269,7 +269,31 @@ fix → commit, before moving to the next):
        return instead); only the open conversation screen holds a channel. 33 mobile
        tests passing (was 19), flutter analyze + `dart format` clean, `flutter build
        apk --debug` verified (first feature pulling in a real WebSocket dependency).
-9. [ ] Push notifications (match, message, like)
+9. [ ] Push notifications (match, message, like) — **backend done.**
+       `user_devices`/`notifications` migrations (docs/02 gained `fcm_token
+       unique` and `notifications.created_at`, both undocumented gaps closed in
+       this feature — see their table notes for why). `NotificationService`
+       (provider-agnostic `PushSender`, mirroring the OTP feature's `SmsSender`
+       — `LogPushSender` default locally, `FcmPushSender` for real delivery via
+       FCM's HTTP v1 API + a service-account OAuth2 JWT-bearer flow, using
+       `firebase/php-jwt` already installed for Apple Sign In). Always writes
+       the `Notification` row first, then best-effort pushes to every
+       registered device — a push failure never blocks or rolls back the
+       swipe/match/message that triggered it. Hooked into `SwipeService`
+       (new_match to both participants; like to the swiped-on user when it
+       *doesn't* reciprocate) and `ChatController::sendMessage` (new_message to
+       the other participant). The `like` notification deliberately carries no
+       identity of the liker — "who liked me" stays [PROPOSED]/premium (Phase
+       2); leaking it here would bypass that gate for free, same
+       no-derivative-signal principle docs/06 §4 uses for location.
+       `GET/POST /users/me/devices`, `DELETE /users/me/devices/{id}`
+       (upserts by `fcm_token`, reassigning `user_id` if the same installation
+       re-registers under a different account); `GET /notifications`,
+       `PUT /notifications/{id}/read`, `PUT /notifications/read-all`. 146
+       backend tests (was 127), Pint + audit clean. Not yet tested against a
+       real Firebase project on this machine (none configured) — same
+       "confirm before relying on this in production" status as
+       `TwilioSmsSender`. **Mobile is next** — not started.
 10. [ ] Block / report / unmatch
 11. [ ] Admin panel v1 (Filament): user management, reports queue, basic dashboard
 

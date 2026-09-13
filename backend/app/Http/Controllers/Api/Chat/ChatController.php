@@ -10,6 +10,7 @@ use App\Http\Requests\Chat\SendMessageRequest;
 use App\Http\Resources\Chat\ConversationResource;
 use App\Http\Resources\Chat\MessageResource;
 use App\Models\Conversation;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Gate;
 class ChatController extends Controller
 {
     use RespondsWithErrorEnvelope;
+
+    public function __construct(private readonly NotificationService $notifications) {}
 
     /**
      * GET /api/v1/chat/conversations — inbox, most-recently-active first.
@@ -94,6 +97,7 @@ class ChatController extends Controller
         $conversation->forceFill(['last_message_at' => $message->created_at])->save();
 
         broadcast(new NewMessageBroadcast($message));
+        $this->notifications->notifyNewMessage($message);
 
         return response()->json(['message' => new MessageResource($message)], 201);
     }

@@ -60,9 +60,9 @@ same doc).
 |---|---|---|
 | GET | `/me` | current user + profile summary |
 | PUT | `/me/location` | *(added — see above)* upserts `user_locations`; 422 shape validation on out-of-range lat/long |
-| GET | `/me/devices` | list registered push devices |
-| POST | `/me/devices` | register FCM token |
-| DELETE | `/me/devices/{id}` | on logout/uninstall |
+
+`/me/devices` (list/register/remove push devices) moved to its own "Devices" section
+below (Phase 1 item 9) once it actually had implementation notes to carry.
 
 ## Profiles — `/api/v1/profiles`
 
@@ -227,11 +227,38 @@ immediate reader. Revisit once #16/17/18 are confirmed.
 
 ## Notifications — `/api/v1/notifications`
 
+**Implemented (Phase 1 item 9), delivery via Firebase Cloud Messaging (spec §18,
+confirmed).** Every notification is first written to the `notifications` table
+(docs/02) — even for a recipient with no registered device — then best-effort pushed
+to each of the recipient's `user_devices`; a push failure never blocks or rolls back
+the swipe/match/message that triggered it, it just leaves `sent_via_push` false.
+`type` is one of `new_match`/`new_message`/`like` this feature — `subscription`/
+`verification`/`report_status`/`system` are schema-reserved for features that don't
+exist yet. **`like`'s `payload` deliberately carries no identity of the liker** — "who
+liked me" is a separate, premium-gated browsing feature ([PROPOSED],
+`GET /matches/who-liked-me` above) that reads the `likes` table directly; putting an
+id here would let a free user see it for free through the notification feed, the same
+"no derivative signal leaks precision" principle docs/06 §4 applies to location.
+
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/` | paginated, unread-first |
-| PUT | `/{id}/read` | |
-| PUT | `/read-all` | |
+| GET | `/` | paginated, unread-first (`read_at IS NULL` first, newest-first within each group), `{ notifications: [{id, type, payload, read_at, created_at}], meta }` |
+| PUT | `/{id}/read` | 403 if not the owner |
+| PUT | `/read-all` | marks every one of the caller's unread notifications read |
+
+## Devices — `/api/v1/users/me/devices`
+
+**Implemented (Phase 1 item 9).** `fcm_token` is unique across the whole table, not
+scoped to the caller — the same installation can log out and a different account can
+log back in on it and get handed the same token, so `POST` upserts by token
+(reassigning `user_id` + refreshing `platform`/`app_version`/`last_seen_at`) rather
+than failing as a duplicate or leaving a stale row nobody prunes.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/` | the caller's own devices only — `fcm_token` itself is never echoed back |
+| POST | `/` | body: `{ "fcm_token", "platform": "ios\|android", "app_version"? }`; upserts by `fcm_token` |
+| DELETE | `/{id}` | on logout/uninstall; 403 if not the owner |
 
 ## Subscriptions — `/api/v1/subscriptions`
 

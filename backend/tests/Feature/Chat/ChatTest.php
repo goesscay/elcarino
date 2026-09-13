@@ -112,6 +112,8 @@ class ChatTest extends TestCase
             fn (NewMessageBroadcast $event) => $event->message->conversation_id === $conversation->id
                 && $event->message->body === 'Hey there!',
         );
+        $this->assertDatabaseHas('notifications', ['user_id' => $userB->id, 'type' => 'new_message']);
+        $this->assertDatabaseMissing('notifications', ['user_id' => $userA->id]);
     }
 
     public function test_a_non_participant_cannot_send_a_message(): void

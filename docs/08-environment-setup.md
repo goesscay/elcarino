@@ -98,6 +98,17 @@ no connection/auth error — the full publish round-trip (HMAC-signed HTTP call 
 Laravel to Reverb) works, not just "the event class fires" per the automated
 `Event::fake()` tests.
 
+Push notifications (Phase 1 item 9) default to `PUSH_PROVIDER=log` — writes each
+notification to the log instead of calling Firebase, same role as `SMS_PROVIDER=log`
+for OTP. To exercise a real send: create a Firebase project, Project settings ->
+Service accounts -> Generate new private key, and fill in `FCM_PROJECT_ID` +
+`FCM_SERVICE_ACCOUNT_EMAIL` (the JSON's `client_email`) + `FCM_SERVICE_ACCOUNT_PRIVATE_KEY`
+(the JSON's `private_key`, keeping its literal `\n` escapes) plus `PUSH_PROVIDER=fcm`.
+**Not verified against a real Firebase project on this machine** — no project
+configured here — unlike Reverb above; treat `FcmPushSender` the same as
+`TwilioSmsSender`, a real implementation that still needs its first live check before
+production.
+
 ### Backend tests
 
 ```powershell

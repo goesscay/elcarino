@@ -55,4 +55,16 @@ return [
         ],
     ],
 
+    'push' => [
+        // Firebase Cloud Messaging is confirmed, not a TBD (spec §18) — this
+        // provider switch exists only so local dev doesn't need a real
+        // Firebase project configured, same as SMS_PROVIDER above.
+        'provider' => env('PUSH_PROVIDER', 'log'),
+        'fcm' => [
+            'project_id' => env('FCM_PROJECT_ID'),
+            'service_account_email' => env('FCM_SERVICE_ACCOUNT_EMAIL'),
+            'service_account_private_key' => env('FCM_SERVICE_ACCOUNT_PRIVATE_KEY'),
+        ],
+    ],
+
 ];

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Swipe;
 
 use App\Models\Block;
+use App\Models\Notification;
 use App\Models\Swipe;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -65,6 +66,38 @@ class SwipeTest extends TestCase
             'user_one_id' => min($userA->id, $userB->id),
             'user_two_id' => max($userA->id, $userB->id),
         ]);
+    }
+
+    public function test_a_right_swipe_with_no_reciprocal_notifies_the_target(): void
+    {
+        Sanctum::actingAs($actor = User::factory()->create());
+        $target = User::factory()->create();
+
+        $this->postJson('/api/v1/swipes', ['target_id' => $target->id, 'direction' => 'right'])->assertCreated();
+
+        $this->assertDatabaseHas('notifications', ['user_id' => $target->id, 'type' => 'like']);
+        $this->assertDatabaseMissing('notifications', ['user_id' => $actor->id]);
+        // The liker's identity must never leak through this notification —
+        // "who liked me" is a separate premium-gated feature (docs/02).
+        $payload = Notification::query()->where('user_id', $target->id)->first()->payload;
+        $this->assertSame([], $payload);
+    }
+
+    public function test_mutual_right_swipes_notify_both_participants_of_the_match_only(): void
+    {
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+        Swipe::factory()->create(['actor_id' => $userB->id, 'target_id' => $userA->id, 'direction' => 'right']);
+
+        Sanctum::actingAs($userA);
+        $this->postJson('/api/v1/swipes', ['target_id' => $userB->id, 'direction' => 'right'])->assertCreated();
+
+        $this->assertDatabaseHas('notifications', ['user_id' => $userA->id, 'type' => 'new_match']);
+        $this->assertDatabaseHas('notifications', ['user_id' => $userB->id, 'type' => 'new_match']);
+        // Reciprocating shouldn't also fire a separate "like" notification —
+        // it resolved straight into a match instead.
+        $this->assertDatabaseMissing('notifications', ['user_id' => $userB->id, 'type' => 'like']);
+        $this->assertDatabaseCount('notifications', 2);
     }
 
     public function test_a_super_swipe_can_also_trigger_a_match(): void

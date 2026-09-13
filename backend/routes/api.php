@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Chat\ChatController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
 use App\Http\Controllers\Api\Matches\MatchController;
+use App\Http\Controllers\Api\Notifications\NotificationController;
 use App\Http\Controllers\Api\Profile\InterestController;
 use App\Http\Controllers\Api\Profile\PreferenceController;
 use App\Http\Controllers\Api\Profile\ProfileController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\Profile\ProfilePhotoController;
 use App\Http\Controllers\Api\Profile\PromptController;
 use App\Http\Controllers\Api\Swipe\SwipeController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\UserDeviceController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -31,6 +33,9 @@ Route::prefix('v1')->group(function () {
         Route::get('users/me', [UserController::class, 'me']);
         Route::put('users/me/location', [UserController::class, 'updateLocation'])
             ->middleware('throttle:location-update');
+        Route::get('users/me/devices', [UserDeviceController::class, 'index']);
+        Route::post('users/me/devices', [UserDeviceController::class, 'store']);
+        Route::delete('users/me/devices/{device}', [UserDeviceController::class, 'destroy']);
 
         Route::prefix('profiles')->group(function () {
             Route::get('me', [ProfileController::class, 'show']);
@@ -76,6 +81,12 @@ Route::prefix('v1')->group(function () {
             Route::post('conversations/{conversation}/messages', [ChatController::class, 'sendMessage'])
                 ->middleware('throttle:chat-messages');
             Route::put('conversations/{conversation}/read', [ChatController::class, 'markRead']);
+        });
+
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [NotificationController::class, 'index']);
+            Route::put('read-all', [NotificationController::class, 'markAllRead']);
+            Route::put('{notification}/read', [NotificationController::class, 'markRead']);
         });
     });
 });

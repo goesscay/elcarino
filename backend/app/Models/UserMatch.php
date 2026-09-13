@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Maps to the `matches` table (docs/02-database-schema.md) — named UserMatch,
@@ -42,6 +43,16 @@ class UserMatch extends Model
     public function unmatchedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'unmatched_by');
+    }
+
+    /**
+     * Inverse of `Conversation::match()` — every match gets its Conversation
+     * created in the same transaction (`SwipeService::createMatch`), so this
+     * is always present, never nullable in practice.
+     */
+    public function conversation(): HasOne
+    {
+        return $this->hasOne(Conversation::class, 'match_id');
     }
 
     public function isParticipant(User $user): bool

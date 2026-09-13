@@ -101,4 +101,23 @@ class User extends Authenticatable
     {
         return $this->hasMany(Block::class, 'blocked_id');
     }
+
+    public function devices(): HasMany
+    {
+        return $this->hasMany(UserDevice::class);
+    }
+
+    /**
+     * Named `appNotifications`, not `notifications` — `Notifiable` (used
+     * above for password-reset mail) already defines a `notifications()`
+     * relation targeting Laravel's own default `notifications` table shape
+     * (`notifiable_type`/`notifiable_id`/`data`), which is never actually
+     * migrated in this app. Reusing that method name would silently shadow
+     * it with a differently-shaped query; a distinct name avoids the clash
+     * entirely rather than relying on nobody ever calling the built-in one.
+     */
+    public function appNotifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
 }

@@ -107,7 +107,7 @@ table below becomes one Laravel migration. Conventions used throughout:
 |---|---|---|
 | id | bigint PK | |
 | user_id | FK → users | |
-| fcm_token | string | for push notifications |
+| fcm_token | string, **unique** | for push notifications. Unique so re-registering the same installation (e.g. a different account logging in on the same device) reassigns `user_id` rather than duplicating the row |
 | platform | enum: ios, android | |
 | app_version | string, nullable | |
 | last_seen_at | timestamp | |
@@ -278,9 +278,10 @@ table list) — supports phone/OTP login per spec §5.
 | id | bigint PK | |
 | user_id | FK → users | recipient |
 | type | enum: new_match, new_message, like, subscription, verification, report_status, system | |
-| payload | jsonb | type-specific data for deep-linking |
+| payload | jsonb | type-specific data for deep-linking. **`like` carries no identity of the liker** — that's the "who liked me" premium browsing gate (this doc's `likes` table, [PROPOSED]); putting an id here would leak it through the notification feed for free |
 | read_at | timestamp, nullable | |
 | sent_via_push | boolean | default false |
+| created_at | timestamp | not originally listed here — added when built (Phase 1 item 9): "paginated, unread-first" (docs/03) still needs a recency ordering within each of those two groups. No `updated_at` — immutable creation data + one mutable `read_at`, same reasoning as `messages`' created_at-only |
 
 ## Future — AI tables (Phase 4, schema reserved from Phase 0)
 

@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Services\Auth\OAuth\AppleTokenVerifier;
 use App\Services\Auth\OAuth\GoogleTokenVerifier;
 use App\Services\Auth\OtpService;
+use App\Services\Push\FcmPushSender;
+use App\Services\Push\LogPushSender;
+use App\Services\Push\PushSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Sms\SmsSender;
 use App\Services\Sms\TwilioSmsSender;
@@ -28,6 +31,17 @@ class AppServiceProvider extends ServiceProvider
                     config('services.sms.twilio.from'),
                 ),
                 default => new LogSmsSender,
+            };
+        });
+
+        $this->app->bind(PushSender::class, function () {
+            return match (config('services.push.provider')) {
+                'fcm' => new FcmPushSender(
+                    config('services.push.fcm.project_id'),
+                    config('services.push.fcm.service_account_email'),
+                    config('services.push.fcm.service_account_private_key'),
+                ),
+                default => new LogPushSender,
             };
         });
 

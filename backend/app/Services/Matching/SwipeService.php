@@ -8,6 +8,7 @@ use App\Models\Like;
 use App\Models\Swipe;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,9 +21,15 @@ use Illuminate\Support\Facades\DB;
  * "new match, no messages yet" the moment two people match — docs/07 §3.3
  * shows that as part of the inbox, not something that only appears once a
  * first message exists.
+ *
+ * Also fires the item-9 "new_match"/"like" notifications — deliberately
+ * *outside* the DB transaction below (see `recordSwipe`), so a push-provider
+ * failure can never roll back an already-valid swipe/match.
  */
 class SwipeService
 {
+    public function __construct(private readonly NotificationService $notifications) {}
+
     /**
      * @return array{swipe: Swipe, match: ?UserMatch}
      *
@@ -30,7 +37,7 @@ class SwipeService
      */
     public function recordSwipe(User $actor, User $target, SwipeDirection $direction): array
     {
-        return DB::transaction(function () use ($actor, $target, $direction) {
+        $result = DB::transaction(function () use ($actor, $target, $direction) {
             $alreadySwiped = Swipe::query()
                 ->where('actor_id', $actor->id)
                 ->where('target_id', $target->id)
@@ -47,6 +54,7 @@ class SwipeService
             ]);
 
             $match = null;
+            $liked = false;
 
             if ($direction !== SwipeDirection::Left) {
                 Like::query()->create([
@@ -54,6 +62,7 @@ class SwipeService
                     'liked_user_id' => $target->id,
                     'is_super' => $direction === SwipeDirection::Super,
                 ]);
+                $liked = true;
 
                 $reciprocated = Swipe::query()
                     ->where('actor_id', $target->id)
@@ -66,8 +75,16 @@ class SwipeService
                 }
             }
 
-            return ['swipe' => $swipe, 'match' => $match];
+            return ['swipe' => $swipe, 'match' => $match, 'liked' => $liked];
         });
+
+        if ($result['match'] !== null) {
+            $this->notifications->notifyNewMatch($result['match'], $result['match']->conversation, $actor, $target);
+        } elseif ($result['liked']) {
+            $this->notifications->notifyLike($target);
+        }
+
+        return ['swipe' => $result['swipe'], 'match' => $result['match']];
     }
 
     private function createMatch(User $actor, User $target): UserMatch
