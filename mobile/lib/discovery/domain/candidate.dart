@@ -1,0 +1,44 @@
+import '../../profile/domain/profile.dart';
+
+/// The "public profile projection" returned by `GET /discovery/feed`
+/// (docs/03-api-specification.md). Narrower than [Profile] on purpose — no
+/// `completion_pct`, no raw location, nothing an owner-only view would show.
+class DiscoveryCandidate {
+  const DiscoveryCandidate({
+    required this.id,
+    required this.displayName,
+    required this.age,
+    required this.bio,
+    required this.relationshipGoal,
+    required this.isVerified,
+    required this.distanceKm,
+    required this.photos,
+  });
+
+  factory DiscoveryCandidate.fromJson(Map<String, dynamic> json) => DiscoveryCandidate(
+    id: json['id'] as int,
+    displayName: json['display_name'] as String,
+    age: json['age'] as int,
+    bio: json['bio'] as String?,
+    relationshipGoal: json['relationship_goal'] as String?,
+    isVerified: json['is_verified'] as bool,
+    distanceKm: json['distance_km'] as int,
+    photos: (json['photos'] as List<dynamic>)
+        .map((e) => ProfilePhoto.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+
+  final int id;
+  final String displayName;
+  final int age;
+  final String? bio;
+  final String? relationshipGoal;
+  final bool isVerified;
+  final int distanceKm;
+  final List<ProfilePhoto> photos;
+
+  /// docs/06-security-architecture.md §4: `0` is the sentinel for "less than
+  /// 1 km away" — the API never sends a raw float, this is the client-side
+  /// half of that same bucketing rule (see the backend's DistanceBucketer).
+  String get distanceLabel => distanceKm == 0 ? 'less than 1 km away' : '$distanceKm km away';
+}

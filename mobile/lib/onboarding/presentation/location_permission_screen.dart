@@ -1,32 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/theme/app_spacing.dart';
+import '../../discovery/data/discovery_repository.dart';
 import 'onboarding_scaffold.dart';
 
 /// docs/07-ui-ux-design.md §3.1 "Location permission": "Rationale screen ->
 /// OS prompt. Fallback: manual city/region picker if denied."
 ///
-/// No backend call here on purpose — there's no location-submitting endpoint
-/// yet (docs/04-development-phases.md item 2's deferred list: it belongs with
-/// Discovery, item 5, which is what actually reads `user_locations`). This
-/// screen only requests the OS permission; the manual city/region fallback
-/// for a denial isn't built either, for the same reason — nowhere to send it
-/// yet. Revisit both once Discovery lands.
-class LocationPermissionScreen extends StatefulWidget {
+/// Now that PUT /users/me/location exists (Phase 1 item 5), this screen
+/// actually captures and sends a position, not just the OS permission
+/// prompt. Per docs/06-security-architecture.md §4 ("the app must degrade
+/// gracefully, not block"), any failure here — permission denied, GPS
+/// unavailable, a network hiccup — is swallowed and onboarding continues
+/// regardless; Discovery will simply 422 with `location_required` later if
+/// it's ever reached without a location set. The manual city/region fallback
+/// for a denial still isn't built (no geocoding in scope) — flagged, not
+/// silently dropped.
+class LocationPermissionScreen extends ConsumerStatefulWidget {
   const LocationPermissionScreen({super.key});
 
   @override
-  State<LocationPermissionScreen> createState() => _LocationPermissionScreenState();
+  ConsumerState<LocationPermissionScreen> createState() => _LocationPermissionScreenState();
 }
 
-class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
+class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScreen> {
   bool _requesting = false;
 
   Future<void> _request() async {
     setState(() => _requesting = true);
-    await Permission.locationWhenInUse.request();
+
+    try {
+      final status = await Permission.locationWhenInUse.request();
+      if (status.isGranted) {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+        );
+        await ref
+            .read(discoveryRepositoryProvider)
+            .updateLocation(latitude: position.latitude, longitude: position.longitude);
+      }
+    } catch (_) {
+      // Swallowed on purpose — see class doc. Nothing to show the user; this
+      // step is soft by design, same as the notification-permission screen.
+    }
+
     if (!mounted) return;
     context.go('/onboarding/notifications');
   }
@@ -50,7 +71,9 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
           const Spacer(),
           FilledButton(
             onPressed: _requesting ? null : _request,
-            child: const Text('Allow location access'),
+            child: _requesting
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Allow location access'),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextButton(

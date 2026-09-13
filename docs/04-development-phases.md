@@ -133,7 +133,7 @@ fix → commit, before moving to the next):
        existing update/`DELETE /prompts/me/{id}` calls, the latter finally
        called from mobile for the first time. 13 mobile tests passing (was
        11), flutter analyze clean, `flutter build apk --debug` verified.
-5. [ ] Discovery feed (filters, radius, exclude swiped/blocked) — **backend done.**
+5. [x] Discovery feed (filters, radius, exclude swiped/blocked).
        `PUT /users/me/location` (new endpoint, added to docs/03 in this commit) +
        `GET /discovery/feed`. Filters are the *viewer's own* preferences
        (gender/age/distance/relationship-goal) — one-directional; mutual
@@ -158,9 +158,21 @@ fix → commit, before moving to the next):
        must-fix before real users, not silently shipped. Location updates
        rate-limited to 1/5min (docs/06 §4) via a real `Limit::perMinutes`
        throttle, not just a comment. 92 backend tests (was 61), Pint +
-       audit clean. **Mobile (location capture + feed screen) is next** —
-       not started; the onboarding Location-permission screen still only
-       requests OS permission, per its existing deferred note.
+       audit clean. **Mobile:** the onboarding Location-permission screen now
+       actually captures a position (`geolocator`) and calls
+       `PUT /users/me/location`, truncated to 3dp client-side too — it still
+       degrades gracefully on any failure (permission denied, no GPS,
+       network) rather than blocking onboarding, per docs/06 §4. New
+       DiscoverFeedScreen (`/discover`) is a plain paginated browse list, not
+       the swipe-gesture "Card stack" docs/07 §3.2 describes — the swipe
+       action itself (POST /swipes, like/pass/match) is item 6, and building
+       drag-gesture UI with nowhere for the gesture to persist to would mean
+       reworking it once item 6 lands; replace this with the real card stack
+       then. Handles both documented 422s (`location_required`,
+       `preferences_required`) with inline guidance back to the relevant
+       screen instead of a raw error. 15 mobile tests passing (was 13),
+       flutter analyze clean, `flutter build apk --debug` verified with
+       `geolocator` linked in.
 6. [ ] Swipe → like/pass → match
 7. [ ] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score
        yet** — spec §10 explicitly defers the formula)

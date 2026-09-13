@@ -8,6 +8,7 @@ import '../../authentication/presentation/email_entry_screen.dart';
 import '../../authentication/presentation/otp_screen.dart';
 import '../../authentication/presentation/phone_entry_screen.dart';
 import '../../authentication/presentation/welcome_screen.dart';
+import '../../discovery/presentation/discover_feed_screen.dart';
 import '../../onboarding/presentation/location_permission_screen.dart';
 import '../../onboarding/presentation/notification_permission_screen.dart';
 import '../../onboarding/presentation/onboarding_complete_screen.dart';
@@ -30,14 +31,17 @@ import '../widgets/splash_screen.dart';
 /// simpler to reason about, and this app has no automatic session-loss event
 /// yet that would need a global redirect to react to.
 ///
-/// Main tabs (Discover/Matches/Likes/Profile) don't exist yet — `/home` is
-/// still the Phase 0 placeholder until Discovery (Phase 1 item 5) lands.
+/// Main tabs (Discover/Matches/Likes/Profile) as a real bottom-nav shell
+/// don't exist yet — `/home` is still the Phase 0 placeholder, now linking to
+/// both `/discover` (item 5) and `/profile` (item 3) as separate pushed
+/// routes rather than tabs.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/home', builder: (context, state) => const PlaceholderHome()),
+      GoRoute(path: '/discover', builder: (context, state) => const DiscoverFeedScreen()),
 
       GoRoute(path: '/welcome', builder: (context, state) => const WelcomeScreen()),
       GoRoute(

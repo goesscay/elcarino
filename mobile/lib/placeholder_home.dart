@@ -6,9 +6,10 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_spacing.dart';
 
 /// Phase 0 placeholder, still standing in for the main-tab shell (Discover /
-/// Matches / Likes / Profile — Phase 1 items 5-7 haven't landed yet). Now
-/// links to the one real destination that exists post-onboarding: My profile
-/// (Phase 1 item 3). Deleted once Discovery gives the app a real first tab.
+/// Matches / Likes / Profile — a real bottom-nav shell isn't built yet).
+/// Links to the two real destinations that exist post-onboarding: Discover
+/// (Phase 1 item 5) and My profile (item 3). Deleted once there's a proper
+/// tab bar to replace it.
 class PlaceholderHome extends StatelessWidget {
   const PlaceholderHome({super.key});
 
@@ -41,6 +42,11 @@ class PlaceholderHome extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               FilledButton(
+                onPressed: () => context.push('/discover'),
+                child: const Text('Discover'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
                 onPressed: () => context.push('/profile'),
                 child: const Text('My profile'),
               ),
