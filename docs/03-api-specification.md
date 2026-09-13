@@ -190,13 +190,29 @@ being deleted.
 
 ## Chat — `/api/v1/chat`
 
+**Implemented (Phase 1 item 8), text only** — voice notes/GIFs/photo sharing stay
+[TBD-16/17/18], unconfirmed. A `Conversation` is created automatically alongside every
+`UserMatch` (`SwipeService`, item 6) — the inbox lists a fresh match with no messages
+yet, per docs/07 §3.3, rather than only showing up once someone sends a first message.
+`ConversationResource` includes `unread_count` and `requires_subscription_to_message`
+so the client can show the "subscribe to message" banner (docs/07's
+Unmatched-conversation banner) without a wasted 403 round-trip. Real-time delivery is
+`ShouldBroadcastNow` (not queued) — `QUEUE_CONNECTION` is `database` locally with no
+worker guaranteed running, and a message that silently never arrives because nobody
+ran `queue:work` would be a bad failure mode; broadcasting synchronously costs one
+extra HTTP round-trip to Reverb per message, the right trade here.
+
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/conversations` | inbox, ordered by `last_message_at` |
-| GET | `/conversations/{id}/messages` | paginated history |
-| POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched, reject with 403 unless `request.user->isSubscriber()` — this is the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI |
-| PUT | `/conversations/{id}/read` | marks messages read |
-| WS | `presence:conversation.{id}` | typing indicator + online/offline via Reverb channel |
+| GET | `/conversations` | inbox, ordered by `last_message_at` (a match with no messages yet sorts last, not dropped) |
+| GET | `/conversations/{id}/messages` | paginated history, newest first |
+| POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched (or there is none), reject with 403 `error.code = "subscription_required"` unless `request.user->isSubscriber()` — the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI. Rate-limited 30/min/conversation + 300/hour/user (docs/06 §7) |
+| PUT | `/conversations/{id}/read` | marks the *other* participant's unread messages read; broadcasts a read-receipt event so an open conversation screen updates live |
+| WS | `presence:conversation.{id}` | typing indicator + online/offline via Reverb channel — a presence channel's own member list *is* the online/offline signal, and typing indicators are peer-to-peer client (`whisper`) events over the same channel; neither needs a REST endpoint. `routes/channels.php`'s authorizer reuses `ConversationPolicy::view`, so the socket subscription is gated by the exact same participant-and-not-blocked rule as the REST endpoints |
+
+`message_attachments` (docs/02) isn't built this feature — no reader or writer for it
+in a text-only scope, unlike `swipes`/`blocks`/`likes` in earlier features which had an
+immediate reader. Revisit once #16/17/18 are confirmed.
 
 ## Calls — `/api/v1/calls` — **[PROPOSED]**, subscriber-only
 

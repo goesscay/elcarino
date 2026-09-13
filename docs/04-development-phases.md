@@ -221,7 +221,28 @@ fix → commit, before moving to the next):
        was updated to parse the two new fields for forward-compatibility, but nothing
        in docs/07's Card-stack wireframe calls for surfacing them visually, so no new
        UI was added.
-8. [ ] Real-time chat (text only), read receipts, typing indicator, online status
+8. [ ] Real-time chat (text only), read receipts, typing indicator, online status —
+       **backend done.** `laravel/reverb` installed (wasn't actually in composer.json
+       despite docs/08 already documenting `reverb:start` — a Phase 0 gap, closed now)
+       via `composer require laravel/reverb` + `php artisan install:broadcasting
+       --reverb`. `conversations`/`messages` migrations; `GET /chat/conversations`,
+       `GET/POST .../messages`, `PUT .../read` (all documented in docs/03, which only
+       had a bare table before). `ConversationPolicy` (participant + not blocked,
+       reused by both the REST endpoints and the `routes/channels.php` presence-channel
+       authorizer). `SwipeService` (item 6) now also creates the `Conversation`
+       alongside every `UserMatch`. Real-time delivery via `ShouldBroadcastNow` events
+       (`NewMessageBroadcast`, `MessagesReadBroadcast`) on `presence:conversation.{id}`
+       — typing indicator and online/offline are inherent to presence channels
+       (member list + peer-to-peer client events), no REST endpoint needed for either.
+       Unmatched-messaging gate (spec §12) enforced server-side, 403
+       `subscription_required`, tested. `message_attachments` not built — text-only
+       scope, no reader/writer for it yet (#16/17/18 unconfirmed). 126 backend tests
+       (was 114), Pint + audit clean. Verified beyond automated tests: booted a real
+       `reverb:start` server and dispatched a real broadcast against it from `tinker`
+       with no auth/connection error — the actual HMAC-signed publish round-trip
+       works, not just "the event class fires" per `Event::fake()`. **Mobile is
+       next** — not started; this is the first feature needing a real WebSocket
+       client in Flutter (Reverb speaks the Pusher protocol).
 9. [ ] Push notifications (match, message, like)
 10. [ ] Block / report / unmatch
 11. [ ] Admin panel v1 (Filament): user management, reports queue, basic dashboard

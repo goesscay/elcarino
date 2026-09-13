@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Chat\ChatController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
 use App\Http\Controllers\Api\Matches\MatchController;
 use App\Http\Controllers\Api\Profile\InterestController;
@@ -67,6 +68,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [MatchController::class, 'index']);
             Route::get('{match}', [MatchController::class, 'show']);
             Route::delete('{match}', [MatchController::class, 'destroy']);
+        });
+
+        Route::prefix('chat')->group(function () {
+            Route::get('conversations', [ChatController::class, 'index']);
+            Route::get('conversations/{conversation}/messages', [ChatController::class, 'messages']);
+            Route::post('conversations/{conversation}/messages', [ChatController::class, 'sendMessage'])
+                ->middleware('throttle:chat-messages');
+            Route::put('conversations/{conversation}/read', [ChatController::class, 'markRead']);
         });
     });
 });

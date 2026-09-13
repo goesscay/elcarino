@@ -102,5 +102,16 @@ class AppServiceProvider extends ServiceProvider
         // for now but ready — never hardcode the higher tier as the default.
         RateLimiter::for('swipes', fn ($request) => Limit::perHour($request->user()->isSubscriber() ? 300 : 100)
             ->by($request->user()->id));
+
+        // docs/06 §7 rate limit table: "chat/messages send | 30 / min /
+        // conversation, 300 / hour / user." Route middleware runs before
+        // SubstituteBindings resolves {conversation} to a model, so
+        // route('conversation') is still the raw id string here — that's
+        // fine, it's just as good a distinguishing key as the resolved
+        // model's id would be (confirmed by testing this, not assumed).
+        RateLimiter::for('chat-messages', fn ($request) => [
+            Limit::perMinute(30)->by('conversation:'.$request->route('conversation')),
+            Limit::perHour(300)->by($request->user()->id),
+        ]);
     }
 }

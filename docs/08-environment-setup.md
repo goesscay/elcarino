@@ -77,11 +77,26 @@ php artisan migrate
 php artisan serve                                          # http://127.0.0.1:8000
 ```
 
-Real-time (chat) uses Laravel Reverb — run it alongside `serve` when working on chat:
+Real-time (chat) uses Laravel Reverb (Phase 1 item 8; installed via `composer require
+laravel/reverb` + `php artisan install:broadcasting --reverb`, which publishes
+`config/broadcasting.php` and `routes/channels.php`). Unlike the other `.env`
+credentials, `REVERB_APP_ID`/`REVERB_APP_KEY`/`REVERB_APP_SECRET` aren't third-party
+API keys — Reverb is self-hosted, so these are arbitrary strings *you* choose; they
+just need to match between the server and whatever's connecting to it. Set
+`BROADCAST_CONNECTION=reverb` and fill in all three with any values to actually
+exercise broadcasting locally (the default `log` driver just logs events instead of
+sending them — fine for confirming an event fires, useless for testing real-time
+delivery). Run Reverb alongside `serve` when working on chat:
 
 ```powershell
 php artisan reverb:start
 ```
+
+Verified end-to-end on this machine: `reverb:start` boots and stays up, and a real
+`broadcast(new NewMessageBroadcast(...))` call against it from `tinker` completes with
+no connection/auth error — the full publish round-trip (HMAC-signed HTTP call from
+Laravel to Reverb) works, not just "the event class fires" per the automated
+`Event::fake()` tests.
 
 ### Backend tests
 

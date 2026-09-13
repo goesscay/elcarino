@@ -3,6 +3,7 @@
 namespace App\Services\Matching;
 
 use App\Enums\SwipeDirection;
+use App\Models\Conversation;
 use App\Models\Like;
 use App\Models\Swipe;
 use App\Models\User;
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\DB;
  * create the match. Rule-based scoring/ranking of *which* candidates to
  * show is item 7 (Matching engine v1) — this only detects a match once two
  * people have already both said yes.
+ *
+ * Also creates the match's Conversation (item 8), so the chat inbox can list
+ * "new match, no messages yet" the moment two people match — docs/07 §3.3
+ * shows that as part of the inbox, not something that only appears once a
+ * first message exists.
  */
 class SwipeService
 {
@@ -70,10 +76,21 @@ class SwipeService
         // here, not the database, so the unique(user_one_id, user_two_id)
         // constraint actually catches a duplicate regardless of which side
         // swiped second.
-        return UserMatch::query()->create([
-            'user_one_id' => min($actor->id, $target->id),
-            'user_two_id' => max($actor->id, $target->id),
+        $userOneId = min($actor->id, $target->id);
+        $userTwoId = max($actor->id, $target->id);
+
+        $match = UserMatch::query()->create([
+            'user_one_id' => $userOneId,
+            'user_two_id' => $userTwoId,
             'matched_at' => now(),
         ]);
+
+        Conversation::query()->create([
+            'match_id' => $match->id,
+            'user_one_id' => $userOneId,
+            'user_two_id' => $userTwoId,
+        ]);
+
+        return $match;
     }
 }
