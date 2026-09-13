@@ -328,7 +328,7 @@ fix → commit, before moving to the next):
        Firebase-absent no-op paths — see docs/08 for what's unverified),
        flutter analyze + dart format clean, `flutter build apk --debug`
        verified.
-10. [ ] Block / report / unmatch — **Backend done.** Unmatch itself
+10. [x] Block / report / unmatch — **Backend:** Unmatch itself
        (`DELETE /matches/{id}`) already existed since item 6 — this feature's
        actual new work is Block and Report. `blocks`/`reports` had been
        schema-only (`Block` had no `#[Fillable]` — every prior use went
@@ -348,11 +348,42 @@ fix → commit, before moving to the next):
        screen, returning a null-safe projection (`BlockedUserResource`, not
        `MatchedUserResource` — you can block/report *any* user id, not just
        someone with a completed profile). Rate-limited 20/day/user on report
-       (docs/06 §7). 169 backend tests (was 147), Pint + audit clean.
-       **Mobile is next** — not started. Report evidence attachment
-       ("attach which messages/photos", docs/07 §3.7) isn't built — the
-       `reports` schema has no column for it, and inventing one wasn't asked
-       for; flagged, not silently dropped.
+       (docs/06 §7). A follow-up fix caught while wiring mobile:
+       `ChatController::index` never excluded a blocked conversation from
+       the inbox listing itself (`ConversationPolicy::view` already 403'd
+       opening one directly, but the list didn't know about blocks at all) —
+       dormant until blocks could actually be written, so only surfaced now.
+       170 backend tests (was 147), Pint + audit clean. Report evidence
+       attachment ("attach which messages/photos", docs/07 §3.7) isn't
+       built — the `reports` schema has no column for it, and inventing one
+       wasn't asked for; flagged, not silently dropped.
+
+       **Mobile:** new `lib/safety/` feature — `SafetyRepository` (block/
+       unblock/report against the endpoints above) and a `ReportCategory`
+       enum hardcoded client-side (same `SwipeDirection`/`MessageType`
+       convention, not fetched from `GET /safety/report-categories`).
+       `ConversationScreen` gained the header overflow docs/07 §3.3 always
+       specified (Unmatch/Report/Block — "View profile" isn't built, no such
+       screen exists for viewing another user outside a match/discovery
+       card) — its own doc comment had claimed Unmatch was already wired
+       there since feature 8, which wasn't actually true; fixed while adding
+       the real menu. `ReportScreen` folds docs/07's "category" and "detail"
+       screens into one screen with two internal steps, and "confirmation"
+       into a `SnackBar` on the screen it pops back to — a disclosed
+       simplification, not a dropped screen. New minimal `SettingsScreen`
+       (only Privacy & Safety -> `BlockedUsersScreen`, and Log out, are
+       real; every other Settings child — Account, Notifications toggles,
+       Subscription, Help & Support, Legal, Delete account — is a
+       coming-soon placeholder, each blocked on a feature that doesn't exist
+       yet) replaces `MyProfileScreen`'s gear icon's old "Settings — coming
+       soon" snackbar. Log out itself was a real, silent gap closed here —
+       `AuthController.signedOut()` existed since Phase 0 but nothing in the
+       app ever called it outside an automatic session-loss redirect. The
+       Unmatch confirm dialog was extracted into a shared
+       `showUnmatchConfirmDialog` (`InboxScreen` already had its own inline
+       copy) so both call sites share one copy of the dialog text. 46
+       mobile tests passing (was 41), flutter analyze + dart format clean,
+       `flutter build apk --debug` verified.
 11. [ ] Admin panel v1 (Filament): user management, reports queue, basic dashboard
 
 **Gate:** two people can register, complete onboarding, discover and match each other,

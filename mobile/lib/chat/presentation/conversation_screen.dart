@@ -2,10 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../matching/data/matching_repository.dart';
+import '../../matching/presentation/unmatch_confirm_dialog.dart';
+import '../../safety/data/safety_repository.dart';
+import '../../safety/presentation/block_confirm_dialog.dart';
 import '../data/chat_repository.dart';
 import '../data/chat_socket_service.dart';
 import '../domain/conversation.dart';
@@ -16,9 +21,11 @@ import '../domain/read_receipt.dart';
 /// trailing), read receipt on the last own message, typing indicator,
 /// online/last-active in the header. No attachment button — voice
 /// note/photo/GIF are [TBD-16/17/18], out of this feature's text-only scope
-/// (docs/03-api-specification.md "Chat"); header overflow (View profile,
-/// Report, Block) is left for a later safety feature, this only wires
-/// Unmatch since that's the one action already implemented (feature 6).
+/// (docs/03-api-specification.md "Chat"). Header overflow: Unmatch, Report,
+/// Block (item 10) — "View profile" isn't built, no such screen exists yet
+/// for viewing another user's full profile outside a match/discovery card.
+enum _ConversationMenuAction { unmatch, report, block }
+
 class ConversationScreen extends ConsumerStatefulWidget {
   const ConversationScreen({required this.conversation, super.key});
 
@@ -202,6 +209,70 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     }
   }
 
+  Future<void> _handleMenuAction(_ConversationMenuAction action) async {
+    switch (action) {
+      case _ConversationMenuAction.unmatch:
+        await _unmatch();
+      case _ConversationMenuAction.report:
+        await _report();
+      case _ConversationMenuAction.block:
+        await _block();
+    }
+  }
+
+  Future<void> _unmatch() async {
+    final matchId = widget.conversation.matchId;
+    if (matchId == null) return;
+
+    final confirmed = await showUnmatchConfirmDialog(
+      context,
+      widget.conversation.otherUser.displayName,
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      await ref.read(matchingRepositoryProvider).unmatch(matchId);
+      if (!mounted) return;
+      context.pop();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  Future<void> _report() async {
+    await context.push(
+      '/safety/report',
+      extra: (
+        widget.conversation.otherUser.id,
+        widget.conversation.otherUser.displayName,
+      ),
+    );
+  }
+
+  Future<void> _block() async {
+    final confirmed = await showBlockConfirmDialog(
+      context,
+      widget.conversation.otherUser.displayName,
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      await ref
+          .read(safetyRepositoryProvider)
+          .block(widget.conversation.otherUser.id);
+      if (!mounted) return;
+      context.pop();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
   @override
   void dispose() {
     _scrollController.removeListener(_maybeLoadMore);
@@ -239,6 +310,26 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<_ConversationMenuAction>(
+            onSelected: _handleMenuAction,
+            itemBuilder: (context) => [
+              if (widget.conversation.matchId != null)
+                const PopupMenuItem(
+                  value: _ConversationMenuAction.unmatch,
+                  child: Text('Unmatch'),
+                ),
+              const PopupMenuItem(
+                value: _ConversationMenuAction.report,
+                child: Text('Report'),
+              ),
+              const PopupMenuItem(
+                value: _ConversationMenuAction.block,
+                child: Text('Block'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(

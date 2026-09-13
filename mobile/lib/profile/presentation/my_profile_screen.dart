@@ -68,13 +68,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            // Settings' children (account, notifications, privacy, etc.) are
-            // scattered across features that aren't built yet (Push
-            // notifications item 9, Safety item 10) — no single "Settings"
-            // phase item exists to hang a real screen off of yet.
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings — coming soon.')),
-            ),
+            onPressed: () => context.push('/settings'),
           ),
         ],
       ),

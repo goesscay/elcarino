@@ -26,6 +26,9 @@ import '../../profile/presentation/edit_interests_screen.dart';
 import '../../profile/presentation/edit_profile_screen.dart';
 import '../../profile/presentation/edit_prompts_screen.dart';
 import '../../profile/presentation/my_profile_screen.dart';
+import '../../safety/presentation/blocked_users_screen.dart';
+import '../../safety/presentation/report_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
 import '../widgets/splash_screen.dart';
 
 /// App router, per the navigation map in `docs/07-ui-ux-design.md` §2.2:
@@ -168,6 +171,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           continueLabel: 'Done',
           onDone: () => Navigator.of(context).pop(),
         ),
+      ),
+
+      // Settings (Phase 1 item 10) — only Privacy & Safety -> Blocked users
+      // and Log out are real, see SettingsScreen's own doc comment.
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/blocked-users',
+        builder: (context, state) => const BlockedUsersScreen(),
+      ),
+      // `extra` is a (userId, displayName) record — from ConversationScreen's
+      // header overflow, the only entry point into reporting someone today.
+      GoRoute(
+        path: '/safety/report',
+        builder: (context, state) {
+          final (userId, displayName) = state.extra! as (int, String);
+          return ReportScreen(userId: userId, displayName: displayName);
+        },
       ),
     ],
   );

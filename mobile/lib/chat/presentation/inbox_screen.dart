@@ -6,6 +6,7 @@ import '../../core/network/api_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../matching/data/matching_repository.dart';
+import '../../matching/presentation/unmatch_confirm_dialog.dart';
 import '../data/chat_repository.dart';
 import '../domain/conversation.dart';
 
@@ -73,24 +74,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     final matchId = conversation.matchId;
     if (matchId == null) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Unmatch ${conversation.otherUser.displayName}?'),
-        content: const Text("You won't see each other again in Discover."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Unmatch'),
-          ),
-        ],
-      ),
+    final confirmed = await showUnmatchConfirmDialog(
+      context,
+      conversation.otherUser.displayName,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     try {
       await ref.read(matchingRepositoryProvider).unmatch(matchId);
