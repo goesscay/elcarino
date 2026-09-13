@@ -169,6 +169,29 @@ their already-placeholder `.example` API URLs — real staging/prod Reverb hosti
 (a domain, a load balancer path, a real app key) isn't provisioned yet, same gap as
 the API URLs themselves.
 
+Push notifications (Phase 1 item 9) read `FIREBASE_API_KEY`/`FIREBASE_APP_ID`/
+`FIREBASE_MESSAGING_SENDER_ID`/`FIREBASE_PROJECT_ID` — all **absent** from every
+`config/*.json` on purpose, since no Firebase project exists on this machine
+(mirrors the backend's `FCM_*` `.env` keys — see above). `AppConfig
+.isFirebaseConfigured` is false with them unset, and every FCM call in
+`lib/notifications/` no-ops rather than throwing (same "denial is fine, app
+continues" tolerance docs/07 §3.1 already applies to the OS permission prompt
+itself). To exercise a real send end-to-end: create a Firebase project (the same
+one as the backend's service account, Project settings -> General -> Your apps ->
+Add app -> Android, using this app's applicationId `com.mgs.elcarino`), copy its Web
+API key/App id/Sender id/Project id into `config/dev.json`, and rebuild. Deliberately
+*not* wired via `google-services.json` + the `com.google.gms.google-services` Gradle
+plugin — that plugin fails the Gradle build outright without the file present, which
+would block `flutter build apk` for every contributor until a real project exists.
+`FirebaseOptions` built from these dart-defines gets the app the same result without
+that hard requirement.
+
+**Not verified against a real Firebase project on this machine** — none configured
+here. `flutter build apk --debug` was confirmed to still succeed with
+`firebase_core`/`firebase_messaging` added and no project configured, which was the
+actual risk (the Gradle plugin's json requirement, avoided as above) — the
+token-registration/receive path itself needs a real project to check.
+
 Full native flavors (distinct application IDs, icons, and names per environment so
 dev/staging/prod can be installed side by side) are a later refinement — add
 `flutter_flavorizr` or manual Gradle `productFlavors` + iOS schemes when the need

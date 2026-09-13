@@ -269,7 +269,7 @@ fix → commit, before moving to the next):
        return instead); only the open conversation screen holds a channel. 33 mobile
        tests passing (was 19), flutter analyze + `dart format` clean, `flutter build
        apk --debug` verified (first feature pulling in a real WebSocket dependency).
-9. [ ] Push notifications (match, message, like) — **backend done.**
+9. [x] Push notifications (match, message, like) — **Backend:**
        `user_devices`/`notifications` migrations (docs/02 gained `fcm_token
        unique` and `notifications.created_at`, both undocumented gaps closed in
        this feature — see their table notes for why). `NotificationService`
@@ -289,11 +289,45 @@ fix → commit, before moving to the next):
        `GET/POST /users/me/devices`, `DELETE /users/me/devices/{id}`
        (upserts by `fcm_token`, reassigning `user_id` if the same installation
        re-registers under a different account); `GET /notifications`,
-       `PUT /notifications/{id}/read`, `PUT /notifications/read-all`. 146
-       backend tests (was 127), Pint + audit clean. Not yet tested against a
-       real Firebase project on this machine (none configured) — same
-       "confirm before relying on this in production" status as
-       `TwilioSmsSender`. **Mobile is next** — not started.
+       `PUT /notifications/{id}/read`, `PUT /notifications/read-all`. A
+       follow-up fix caught while wiring mobile: the FCM `data` payload only
+       ever carried `type`/`notification_id`, never the `conversation_id`/
+       `match_id`/`other_user_id` the client actually needs to deep-link —
+       now merges the stored `payload` in, stringified. 147 backend tests
+       (was 127), Pint + audit clean. Not yet tested against a real Firebase
+       project on this machine (none configured) — same "confirm before
+       relying on this in production" status as `TwilioSmsSender`.
+
+       **Mobile:** `firebase_core`/`firebase_messaging` added — initialized via
+       `FirebaseOptions` built from `AppConfig`'s dart-defines, deliberately
+       *not* `google-services.json` + the Gradle plugin, which fails the Android
+       build outright without that file present; confirmed `flutter build apk
+       --debug` still succeeds with no Firebase project configured at all. New
+       `lib/notifications/` feature: `PushRepository` (registers/unregisters
+       the FCM token against `/users/me/devices`, handles token rotation) and
+       `NotificationTapGate` (wraps the app to show a SnackBar for a
+       foreground push — Android suppresses the system tray while foregrounded
+       — and deep-links a background/terminated tap: `new_match`/`new_message`
+       -> that conversation, `like` -> the inbox, anything else -> nowhere, no
+       screen exists for it). `/chat/:id` now also resolves a `Conversation`
+       from just an id (`ConversationLoaderScreen`) for entry points — a
+       tapped push, any future deep link — that don't already have the full
+       object the way in-app navigation does. `NotificationPermissionScreen`
+       (onboarding) now actually registers the device after the OS prompt,
+       closing the gap flagged since item 2; `AuthController.signedOut()`
+       unregisters it. No in-app "notification center" screen — docs/07's
+       wireframe inventory never lists one (only a Settings sub-item for
+       per-type toggles, itself not built), so `GET /notifications` has no
+       mobile consumer yet; the OS notification tray is the whole UI for now,
+       a disclosed scope choice, not a silent gap. Everything Firebase-facing
+       degrades to a no-op rather than throwing, matching docs/07 §3.1's
+       "denial is fine, app continues" for the permission prompt itself — no
+       Firebase project is configured on this machine (docs/08), so none of
+       it has been exercised against a real send; 41 mobile tests passing
+       (was 33, all of them either pure routing-decision logic or the
+       Firebase-absent no-op paths — see docs/08 for what's unverified),
+       flutter analyze + dart format clean, `flutter build apk --debug`
+       verified.
 10. [ ] Block / report / unmatch
 11. [ ] Admin panel v1 (Filament): user management, reports queue, basic dashboard
 

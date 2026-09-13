@@ -9,6 +9,7 @@ import '../../authentication/presentation/otp_screen.dart';
 import '../../authentication/presentation/phone_entry_screen.dart';
 import '../../authentication/presentation/welcome_screen.dart';
 import '../../chat/domain/conversation.dart';
+import '../../chat/presentation/conversation_loader_screen.dart';
 import '../../chat/presentation/conversation_screen.dart';
 import '../../chat/presentation/inbox_screen.dart';
 import '../../discovery/presentation/discover_feed_screen.dart';
@@ -57,8 +58,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/chat/:id',
-        builder: (context, state) =>
-            ConversationScreen(conversation: state.extra! as Conversation),
+        // `extra` carries the already-loaded Conversation for in-app
+        // navigation (InboxScreen, the match-celebration dialog). A tapped
+        // push notification (Phase 1 item 9) only has the id, so falls
+        // through to ConversationLoaderScreen, which fetches it.
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is Conversation) {
+            return ConversationScreen(conversation: extra);
+          }
+          return ConversationLoaderScreen(
+            conversationId: int.parse(state.pathParameters['id']!),
+          );
+        },
       ),
 
       GoRoute(

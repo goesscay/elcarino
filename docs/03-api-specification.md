@@ -246,6 +246,14 @@ id here would let a free user see it for free through the notification feed, the
 | PUT | `/{id}/read` | 403 if not the owner |
 | PUT | `/read-all` | marks every one of the caller's unread notifications read |
 
+`payload` (and the matching FCM `data` field, all values stringified there) by `type`:
+`new_match` → `{match_id, conversation_id, other_user_id}`; `new_message` →
+`{conversation_id, message_id}`; `like` → `{}` (see above). The mobile client's
+tap-to-open routing (`NotificationTapGate`) switches on `type` — `new_match`/
+`new_message` open `conversation_id`'s conversation, `like` opens the inbox
+(no "who liked me" screen exists yet), everything else opens nothing (no screen
+built for it yet either).
+
 ## Devices — `/api/v1/users/me/devices`
 
 **Implemented (Phase 1 item 9).** `fcm_token` is unique across the whole table, not

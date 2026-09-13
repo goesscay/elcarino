@@ -14,6 +14,10 @@ class AppConfig {
     required this.reverbPort,
     required this.reverbAppKey,
     required this.reverbUseTls,
+    required this.firebaseApiKey,
+    required this.firebaseAppId,
+    required this.firebaseMessagingSenderId,
+    required this.firebaseProjectId,
   });
 
   final AppEnvironment environment;
@@ -27,6 +31,25 @@ class AppConfig {
   final int reverbPort;
   final String reverbAppKey;
   final bool reverbUseTls;
+
+  /// Firebase project settings for push notifications (Phase 1 item 9).
+  /// `null` when unset — no Firebase project is configured on this machine
+  /// yet (see `docs/08-environment-setup.md`), so [isFirebaseConfigured]
+  /// gates every FCM call rather than crashing on a placeholder value. Fed
+  /// to `Firebase.initializeApp(options: FirebaseOptions(...))` directly
+  /// (not `google-services.json`/the Gradle plugin), which is what lets the
+  /// app build with no Firebase project configured at all — see
+  /// `notifications/data/push_repository.dart`.
+  final String? firebaseApiKey;
+  final String? firebaseAppId;
+  final String? firebaseMessagingSenderId;
+  final String? firebaseProjectId;
+
+  bool get isFirebaseConfigured =>
+      firebaseApiKey != null &&
+      firebaseAppId != null &&
+      firebaseMessagingSenderId != null &&
+      firebaseProjectId != null;
 
   bool get isProd => environment == AppEnvironment.prod;
 
@@ -51,6 +74,14 @@ class AppConfig {
   );
   static const _rawReverbAppKey = String.fromEnvironment('REVERB_APP_KEY');
   static const _rawReverbUseTls = bool.fromEnvironment('REVERB_USE_TLS');
+  static const _rawFirebaseApiKey = String.fromEnvironment('FIREBASE_API_KEY');
+  static const _rawFirebaseAppId = String.fromEnvironment('FIREBASE_APP_ID');
+  static const _rawFirebaseMessagingSenderId = String.fromEnvironment(
+    'FIREBASE_MESSAGING_SENDER_ID',
+  );
+  static const _rawFirebaseProjectId = String.fromEnvironment(
+    'FIREBASE_PROJECT_ID',
+  );
 
   /// Resolved once at startup. Throws early if the config file wasn't passed —
   /// better a loud failure at launch than a silent wrong-endpoint at runtime.
@@ -79,6 +110,14 @@ class AppConfig {
       reverbPort: _rawReverbPort,
       reverbAppKey: _rawReverbAppKey,
       reverbUseTls: _rawReverbUseTls,
+      firebaseApiKey: _rawFirebaseApiKey.isEmpty ? null : _rawFirebaseApiKey,
+      firebaseAppId: _rawFirebaseAppId.isEmpty ? null : _rawFirebaseAppId,
+      firebaseMessagingSenderId: _rawFirebaseMessagingSenderId.isEmpty
+          ? null
+          : _rawFirebaseMessagingSenderId,
+      firebaseProjectId: _rawFirebaseProjectId.isEmpty
+          ? null
+          : _rawFirebaseProjectId,
     );
   }
 }
