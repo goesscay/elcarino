@@ -4,7 +4,11 @@ library;
 
 /// A deliberate business-rule failure — `{"error": {"code", "message"}}`.
 class ApiException implements Exception {
-  ApiException({required this.code, required this.message, required this.statusCode});
+  ApiException({
+    required this.code,
+    required this.message,
+    required this.statusCode,
+  });
 
   final String code;
   final String message;

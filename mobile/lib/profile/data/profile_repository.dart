@@ -60,8 +60,14 @@ class ProfileRepository {
     // or the image/mimes shape-validation failure) comes back as the same
     // typed ApiException/ValidationException every other screen handles —
     // dio's request() accepts FormData for `data` just like any other body.
-    final response = await _client.request('/profiles/me/photos', method: 'POST', data: form);
-    return ProfilePhoto.fromJson(response.data['photo'] as Map<String, dynamic>);
+    final response = await _client.request(
+      '/profiles/me/photos',
+      method: 'POST',
+      data: form,
+    );
+    return ProfilePhoto.fromJson(
+      response.data['photo'] as Map<String, dynamic>,
+    );
   }
 
   Future<void> deletePhoto(int photoId) async {
@@ -94,13 +100,16 @@ class ProfileRepository {
   /// list's order becomes `sort_order` server-side — this is also how
   /// reordering answered prompts persists (docs/04 item 4): resubmit the same
   /// answers in the new order.
-  Future<List<AnsweredPrompt>> updatePrompts(List<(int promptId, String answer)> answers) async {
+  Future<List<AnsweredPrompt>> updatePrompts(
+    List<(int promptId, String answer)> answers,
+  ) async {
     final response = await _client.request(
       '/prompts/me',
       method: 'PUT',
       data: {
         'prompts': [
-          for (final (promptId, answer) in answers) {'prompt_id': promptId, 'answer': answer},
+          for (final (promptId, answer) in answers)
+            {'prompt_id': promptId, 'answer': answer},
         ],
       },
     );
@@ -116,7 +125,9 @@ class ProfileRepository {
   Future<Preferences?> getPreferences() async {
     try {
       final response = await _client.request('/preferences/me', method: 'GET');
-      return Preferences.fromJson(response.data['preferences'] as Map<String, dynamic>);
+      return Preferences.fromJson(
+        response.data['preferences'] as Map<String, dynamic>,
+      );
     } on ApiException catch (e) {
       if (e.code == 'preferences_not_found') return null;
       rethrow;
@@ -129,7 +140,9 @@ class ProfileRepository {
       method: 'PUT',
       data: preferences.toJson(),
     );
-    return Preferences.fromJson(response.data['preferences'] as Map<String, dynamic>);
+    return Preferences.fromJson(
+      response.data['preferences'] as Map<String, dynamic>,
+    );
   }
 
   Future<List<Interest>> getInterestCatalogue() async {

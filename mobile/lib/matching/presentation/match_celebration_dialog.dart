@@ -11,7 +11,10 @@ import '../../discovery/domain/candidate.dart';
 /// of "both photos", not the full spec. "Send a message" can't go anywhere
 /// yet — Chat is Phase 1 item 8 — so it shows a coming-soon notice instead of
 /// a dead navigation, same pattern as the Google/Apple sign-in buttons.
-Future<void> showMatchCelebration(BuildContext context, DiscoveryCandidate matchedWith) {
+Future<void> showMatchCelebration(
+  BuildContext context,
+  DiscoveryCandidate matchedWith,
+) {
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black87,
@@ -27,7 +30,11 @@ Future<void> showMatchCelebration(BuildContext context, DiscoveryCandidate match
               const SizedBox(height: AppSpacing.md),
               const Text(
                 "It's a match!",
-                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
@@ -52,7 +59,9 @@ Future<void> showMatchCelebration(BuildContext context, DiscoveryCandidate match
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chat isn\'t built yet — coming soon.')),
+                    const SnackBar(
+                      content: Text('Chat isn\'t built yet — coming soon.'),
+                    ),
                   );
                 },
                 child: const Text('Send a message'),
@@ -60,7 +69,10 @@ Future<void> showMatchCelebration(BuildContext context, DiscoveryCandidate match
               const SizedBox(height: AppSpacing.sm),
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Keep swiping', style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'Keep swiping',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),

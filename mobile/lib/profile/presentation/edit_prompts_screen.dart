@@ -65,11 +65,9 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
       _error = null;
     });
     try {
-      await ref
-          .read(profileRepositoryProvider)
-          .updatePrompts([
-            for (final prompt in _answered) (prompt.promptId, prompt.answer),
-          ]);
+      await ref.read(profileRepositoryProvider).updatePrompts([
+        for (final prompt in _answered) (prompt.promptId, prompt.answer),
+      ]);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -88,7 +86,10 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
     _persist();
   }
 
-  Future<String?> _promptForAnswer({required String title, String initialValue = ''}) {
+  Future<String?> _promptForAnswer({
+    required String title,
+    String initialValue = '',
+  }) {
     final controller = TextEditingController(text: initialValue);
     return showDialog<String>(
       context: context,
@@ -101,9 +102,13 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
             child: const Text('Save'),
           ),
         ],
@@ -112,7 +117,10 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
   }
 
   Future<void> _editAnswer(AnsweredPrompt prompt) async {
-    final answer = await _promptForAnswer(title: prompt.promptText, initialValue: prompt.answer);
+    final answer = await _promptForAnswer(
+      title: prompt.promptText,
+      initialValue: prompt.answer,
+    );
     if (answer == null || answer.isEmpty) return;
 
     setState(() {
@@ -129,7 +137,9 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
   Future<void> _remove(AnsweredPrompt prompt) async {
     setState(() => _answered.removeWhere((a) => a.promptId == prompt.promptId));
     try {
-      await ref.read(profileRepositoryProvider).deletePromptAnswer(prompt.promptId);
+      await ref
+          .read(profileRepositoryProvider)
+          .deletePromptAnswer(prompt.promptId);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     }
@@ -148,7 +158,10 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
           shrinkWrap: true,
           children: [
             for (final prompt in available)
-              ListTile(title: Text(prompt.prompt), onTap: () => Navigator.pop(sheetContext, prompt)),
+              ListTile(
+                title: Text(prompt.prompt),
+                onTap: () => Navigator.pop(sheetContext, prompt),
+              ),
           ],
         ),
       ),
@@ -160,7 +173,11 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
 
     setState(
       () => _answered.add(
-        AnsweredPrompt(promptId: chosen.id, promptText: chosen.prompt, answer: answer),
+        AnsweredPrompt(
+          promptId: chosen.id,
+          promptText: chosen.prompt,
+          answer: answer,
+        ),
       ),
     );
     await _persist();
@@ -179,18 +196,26 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
       appBar: AppBar(title: const Text('Prompts')),
       floatingActionButton: (_answered.length >= _maxPrompts || _busy)
           ? null
-          : FloatingActionButton(onPressed: _addPrompt, child: const Icon(Icons.add)),
+          : FloatingActionButton(
+              onPressed: _addPrompt,
+              child: const Icon(Icons.add),
+            ),
       body: SafeArea(
         child: Column(
           children: [
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             Expanded(
               child: _answered.isEmpty
-                  ? const Center(child: Text('No prompts answered yet. Tap + to add one.'))
+                  ? const Center(
+                      child: Text('No prompts answered yet. Tap + to add one.'),
+                    )
                   : ReorderableListView.builder(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: _answered.length,

@@ -67,7 +67,8 @@ class ApiClient {
     if (response == null) {
       return ApiException(
         code: 'network_error',
-        message: 'Could not reach the server. Check your connection and try again.',
+        message:
+            'Could not reach the server. Check your connection and try again.',
         statusCode: 0,
       );
     }
@@ -77,7 +78,9 @@ class ApiClient {
     if (response.statusCode == 422 && body is Map && body['errors'] is Map) {
       final rawErrors = (body['errors'] as Map).cast<String, dynamic>();
       return ValidationException(
-        rawErrors.map((key, value) => MapEntry(key, List<String>.from(value as List))),
+        rawErrors.map(
+          (key, value) => MapEntry(key, List<String>.from(value as List)),
+        ),
       );
     }
 
@@ -85,7 +88,9 @@ class ApiClient {
       final error = (body['error'] as Map).cast<String, dynamic>();
       return ApiException(
         code: error['code'] as String? ?? 'unknown_error',
-        message: error['message'] as String? ?? 'Something went wrong. Please try again.',
+        message:
+            error['message'] as String? ??
+            'Something went wrong. Please try again.',
         statusCode: response.statusCode ?? 500,
       );
     }

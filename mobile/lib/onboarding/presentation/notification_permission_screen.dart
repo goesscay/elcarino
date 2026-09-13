@@ -14,10 +14,12 @@ class NotificationPermissionScreen extends StatefulWidget {
   const NotificationPermissionScreen({super.key});
 
   @override
-  State<NotificationPermissionScreen> createState() => _NotificationPermissionScreenState();
+  State<NotificationPermissionScreen> createState() =>
+      _NotificationPermissionScreenState();
 }
 
-class _NotificationPermissionScreenState extends State<NotificationPermissionScreen> {
+class _NotificationPermissionScreenState
+    extends State<NotificationPermissionScreen> {
   bool _requesting = false;
 
   Future<void> _request() async {
@@ -48,7 +50,9 @@ class _NotificationPermissionScreenState extends State<NotificationPermissionScr
           ),
           const SizedBox(height: AppSpacing.sm),
           TextButton(
-            onPressed: _requesting ? null : () => context.go('/onboarding/complete'),
+            onPressed: _requesting
+                ? null
+                : () => context.go('/onboarding/complete'),
             child: const Text('Not now'),
           ),
         ],

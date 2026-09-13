@@ -19,7 +19,12 @@ import 'onboarding_scaffold.dart';
 /// its sections, per docs/07 §3.5's table — which passes [onDone] to pop back
 /// and always has existing preferences to pre-fill.
 class PreferencesScreen extends ConsumerStatefulWidget {
-  const PreferencesScreen({this.onDone, this.continueLabel = 'Continue', this.step = 4, super.key});
+  const PreferencesScreen({
+    this.onDone,
+    this.continueLabel = 'Continue',
+    this.step = 4,
+    super.key,
+  });
 
   final VoidCallback? onDone;
   final String continueLabel;
@@ -50,7 +55,10 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
     if (!mounted) return;
     setState(() {
       if (existing != null) {
-        _ageRange = RangeValues(existing.minAge.toDouble(), existing.maxAge.toDouble());
+        _ageRange = RangeValues(
+          existing.minAge.toDouble(),
+          existing.maxAge.toDouble(),
+        );
         _maxDistanceKm = existing.maxDistanceKm.toDouble();
         _interestedIn.addAll(existing.interestedInGenders);
         _religionFilter.addAll(existing.religionFilter);
@@ -118,7 +126,9 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
                   label: Text(gender.label),
                   selected: _interestedIn.contains(gender),
                   onSelected: (selected) => setState(
-                    () => selected ? _interestedIn.add(gender) : _interestedIn.remove(gender),
+                    () => selected
+                        ? _interestedIn.add(gender)
+                        : _interestedIn.remove(gender),
                   ),
                 ),
             ],
@@ -136,7 +146,10 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
             onChanged: (values) => setState(() => _ageRange = values),
           ),
           const SizedBox(height: AppSpacing.md),
-          Text('Max distance: ${_maxDistanceKm.round()} km', style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Max distance: ${_maxDistanceKm.round()} km',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           Slider(
             value: _maxDistanceKm,
             min: 1,
@@ -172,13 +185,20 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
           ),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ],
           const SizedBox(height: AppSpacing.xl),
           FilledButton(
             onPressed: _submitting ? null : _submit,
             child: _submitting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : Text(widget.continueLabel),
           ),
         ],
@@ -191,7 +211,11 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
 /// list exists anywhere in /docs (see docs/03-api-specification.md's note on
 /// this).
 class _ChipInput extends StatefulWidget {
-  const _ChipInput({required this.label, required this.values, required this.onChanged});
+  const _ChipInput({
+    required this.label,
+    required this.values,
+    required this.onChanged,
+  });
 
   final String label;
   final List<String> values;
@@ -240,7 +264,9 @@ class _ChipInputState extends State<_ChipInput> {
             for (final value in widget.values)
               Chip(
                 label: Text(value),
-                onDeleted: () => widget.onChanged(widget.values.where((v) => v != value).toList()),
+                onDeleted: () => widget.onChanged(
+                  widget.values.where((v) => v != value).toList(),
+                ),
               ),
           ],
         ),

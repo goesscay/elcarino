@@ -20,9 +20,16 @@ class OnboardingCompleteScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(flex: 2),
-              const Icon(Icons.check_circle, color: AppColors.primary, size: 72),
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.primary,
+                size: 72,
+              ),
               const SizedBox(height: AppSpacing.lg),
-              Text("You're all set!", style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                "You're all set!",
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: AppSpacing.sm),
               const Text('Your profile is ready.', textAlign: TextAlign.center),
               const Spacer(flex: 3),

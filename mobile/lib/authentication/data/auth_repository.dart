@@ -43,7 +43,11 @@ class AuthRepository {
   }
 
   Future<void> requestOtp({required String phone}) async {
-    await _client.request('/auth/otp/request', method: 'POST', data: {'phone': phone});
+    await _client.request(
+      '/auth/otp/request',
+      method: 'POST',
+      data: {'phone': phone},
+    );
   }
 
   /// Passwordless — verifying the first code for a phone number both signs

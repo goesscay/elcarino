@@ -17,7 +17,10 @@ class MatchingRepository {
 
   final ApiClient _client;
 
-  Future<SwipeResult> swipe({required int targetId, required SwipeDirection direction}) async {
+  Future<SwipeResult> swipe({
+    required int targetId,
+    required SwipeDirection direction,
+  }) async {
     final response = await _client.request(
       '/swipes',
       method: 'POST',

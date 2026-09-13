@@ -121,12 +121,16 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 style: const TextStyle(fontSize: 24, letterSpacing: 12),
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(counterText: ''),
-                validator: (value) =>
-                    (value == null || value.length != 6) ? 'Enter the 6-digit code' : null,
+                validator: (value) => (value == null || value.length != 6)
+                    ? 'Enter the 6-digit code'
+                    : null,
               ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ],
               const SizedBox(height: AppSpacing.lg),
               FilledButton(
@@ -141,8 +145,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               TextButton(
-                onPressed: (_secondsRemaining == 0 && !_resending) ? _resend : null,
-                child: Text(_secondsRemaining > 0 ? 'Resend code in ${_secondsRemaining}s' : 'Resend code'),
+                onPressed: (_secondsRemaining == 0 && !_resending)
+                    ? _resend
+                    : null,
+                child: Text(
+                  _secondsRemaining > 0
+                      ? 'Resend code in ${_secondsRemaining}s'
+                      : 'Resend code',
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

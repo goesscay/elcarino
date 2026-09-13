@@ -23,7 +23,9 @@ class AuthMethodScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                intent == AuthIntent.register ? 'Create your account' : 'Welcome back',
+                intent == AuthIntent.register
+                    ? 'Create your account'
+                    : 'Welcome back',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -70,7 +72,11 @@ class AuthMethodScreen extends StatelessWidget {
   // "not yet" beats a fake success or silently hiding the button.
   void _showNotConfigured(BuildContext context, String provider) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider sign-in needs a configured client ID — coming soon.')),
+      SnackBar(
+        content: Text(
+          '$provider sign-in needs a configured client ID — coming soon.',
+        ),
+      ),
     );
   }
 }

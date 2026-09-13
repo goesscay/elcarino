@@ -40,7 +40,10 @@ class _FakeAdapter implements HttpClientAdapter {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
   final adapter = _FakeAdapter(responses);
   dio.httpClientAdapter = adapter;
-  return (DiscoveryRepository(ApiClient(tokenStorage: FakeTokenStorage(), dio: dio)), adapter);
+  return (
+    DiscoveryRepository(ApiClient(tokenStorage: FakeTokenStorage(), dio: dio)),
+    adapter,
+  );
 }
 
 void main() {
@@ -48,10 +51,16 @@ void main() {
     test('updateLocation truncates to 3 decimal places client-side', () async {
       final (repository, adapter) = _repositoryReturning({});
 
-      await repository.updateLocation(latitude: 3.1390123, longitude: 101.6870456);
+      await repository.updateLocation(
+        latitude: 3.1390123,
+        longitude: 101.6870456,
+      );
 
       expect(adapter.lastRequest!.path, '/users/me/location');
-      expect(adapter.lastRequest!.data, {'latitude': 3.139, 'longitude': 101.687});
+      expect(adapter.lastRequest!.data, {
+        'latitude': 3.139,
+        'longitude': 101.687,
+      });
     });
 
     test('getFeed maps candidates and meta', () async {

@@ -34,7 +34,10 @@ class OnboardingScaffold extends StatelessWidget {
               ),
       ),
       body: SafeArea(
-        child: Padding(padding: const EdgeInsets.all(AppSpacing.xl), child: child),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: child,
+        ),
       ),
     );
   }

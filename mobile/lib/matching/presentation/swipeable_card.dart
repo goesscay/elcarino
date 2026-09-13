@@ -12,7 +12,11 @@ import '../domain/swipe_direction.dart';
 /// (DiscoverFeedScreen) once [onSwiped] fires, so this widget has no
 /// networking of its own.
 class SwipeableCard extends StatefulWidget {
-  const SwipeableCard({required this.candidate, required this.onSwiped, super.key});
+  const SwipeableCard({
+    required this.candidate,
+    required this.onSwiped,
+    super.key,
+  });
 
   final DiscoveryCandidate candidate;
   final ValueChanged<SwipeDirection> onSwiped;
@@ -21,7 +25,8 @@ class SwipeableCard extends StatefulWidget {
   State<SwipeableCard> createState() => SwipeableCardState();
 }
 
-class SwipeableCardState extends State<SwipeableCard> with SingleTickerProviderStateMixin {
+class SwipeableCardState extends State<SwipeableCard>
+    with SingleTickerProviderStateMixin {
   static const _swipeThreshold = 110.0;
 
   late final AnimationController _controller;
@@ -31,11 +36,14 @@ class SwipeableCardState extends State<SwipeableCard> with SingleTickerProviderS
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 250))
-      ..addListener(() {
-        final animation = _animation;
-        if (animation != null) setState(() => _dragOffset = animation.value);
-      });
+    _controller =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 250),
+        )..addListener(() {
+          final animation = _animation;
+          if (animation != null) setState(() => _dragOffset = animation.value);
+        });
   }
 
   @override
@@ -44,7 +52,8 @@ class SwipeableCardState extends State<SwipeableCard> with SingleTickerProviderS
     super.dispose();
   }
 
-  void _onPanUpdate(DragUpdateDetails details) => setState(() => _dragOffset += details.delta);
+  void _onPanUpdate(DragUpdateDetails details) =>
+      setState(() => _dragOffset += details.delta);
 
   void _onPanEnd(DragEndDetails details) {
     if (_dragOffset.dx.abs() > _swipeThreshold) {
@@ -56,8 +65,13 @@ class SwipeableCardState extends State<SwipeableCard> with SingleTickerProviderS
 
   void _flyAway(SwipeDirection direction) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final endX = direction == SwipeDirection.right ? screenWidth * 1.5 : -screenWidth * 1.5;
-    _animateTo(Offset(endX, _dragOffset.dy), Curves.easeIn).whenComplete(() => widget.onSwiped(direction));
+    final endX = direction == SwipeDirection.right
+        ? screenWidth * 1.5
+        : -screenWidth * 1.5;
+    _animateTo(
+      Offset(endX, _dragOffset.dy),
+      Curves.easeIn,
+    ).whenComplete(() => widget.onSwiped(direction));
   }
 
   TickerFuture _animateTo(Offset end, Curve curve) {
@@ -83,9 +97,17 @@ class SwipeableCardState extends State<SwipeableCard> with SingleTickerProviderS
             children: [
               _CardFace(candidate: widget.candidate),
               if (_dragOffset.dx > 20)
-                const Positioned(top: 24, left: 24, child: _Stamp(label: 'LIKE', color: Colors.green)),
+                const Positioned(
+                  top: 24,
+                  left: 24,
+                  child: _Stamp(label: 'LIKE', color: Colors.green),
+                ),
               if (_dragOffset.dx < -20)
-                const Positioned(top: 24, right: 24, child: _Stamp(label: 'PASS', color: Colors.red)),
+                const Positioned(
+                  top: 24,
+                  right: 24,
+                  child: _Stamp(label: 'PASS', color: Colors.red),
+                ),
             ],
           ),
         ),
@@ -110,7 +132,9 @@ class _CardFace extends StatelessWidget {
           children: [
             candidate.photos.isEmpty
                 ? Container(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
                     child: const Icon(Icons.person, size: 96),
                   )
                 : Image.network(candidate.photos.first.url, fit: BoxFit.cover),
@@ -143,11 +167,18 @@ class _CardFace extends StatelessWidget {
                         ),
                         if (candidate.isVerified) ...[
                           const SizedBox(width: AppSpacing.xs),
-                          const Icon(Icons.verified, color: Colors.white, size: 18),
+                          const Icon(
+                            Icons.verified,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ],
                       ],
                     ),
-                    Text(candidate.distanceLabel, style: const TextStyle(color: Colors.white70)),
+                    Text(
+                      candidate.distanceLabel,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
                     if (candidate.bio != null && candidate.bio!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -178,14 +209,21 @@ class _Stamp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         border: Border.all(color: color, width: 3),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.w900),
+        style: TextStyle(
+          color: color,
+          fontSize: 28,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }

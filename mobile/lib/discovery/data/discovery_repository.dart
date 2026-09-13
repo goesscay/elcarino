@@ -21,7 +21,10 @@ class DiscoveryRepository {
   /// fixes." Truncated here, client-side, in addition to the server's own
   /// rounding — belt and suspenders on a stated privacy invariant, never
   /// relying on just one side enforcing it.
-  Future<void> updateLocation({required double latitude, required double longitude}) async {
+  Future<void> updateLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
     await _client.request(
       '/users/me/location',
       method: 'PUT',

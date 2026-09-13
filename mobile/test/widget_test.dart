@@ -10,7 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/fake_token_storage.dart';
 
 void main() {
-  testWidgets('an unauthenticated user boots to the Welcome screen', (tester) async {
+  testWidgets('an unauthenticated user boots to the Welcome screen', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [tokenStorageProvider.overrideWithValue(FakeTokenStorage())],

@@ -41,7 +41,10 @@ class _FakeAdapter implements HttpClientAdapter {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
   final adapter = _FakeAdapter(responses);
   dio.httpClientAdapter = adapter;
-  return (MatchingRepository(ApiClient(tokenStorage: FakeTokenStorage(), dio: dio)), adapter);
+  return (
+    MatchingRepository(ApiClient(tokenStorage: FakeTokenStorage(), dio: dio)),
+    adapter,
+  );
 }
 
 void main() {
@@ -51,7 +54,10 @@ void main() {
         '/swipes': {'matched': true, 'match_id': 42},
       });
 
-      final result = await repository.swipe(targetId: 7, direction: SwipeDirection.right);
+      final result = await repository.swipe(
+        targetId: 7,
+        direction: SwipeDirection.right,
+      );
 
       expect(adapter.lastRequest!.data, {'target_id': 7, 'direction': 'right'});
       expect(result.matched, isTrue);
@@ -63,7 +69,10 @@ void main() {
         '/swipes': {'matched': false, 'match_id': null},
       });
 
-      final result = await repository.swipe(targetId: 7, direction: SwipeDirection.left);
+      final result = await repository.swipe(
+        targetId: 7,
+        direction: SwipeDirection.left,
+      );
 
       expect(result.matched, isFalse);
       expect(result.matchId, isNull);

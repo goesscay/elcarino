@@ -17,7 +17,9 @@ class DiscoveryCandidate {
     required this.photos,
   });
 
-  factory DiscoveryCandidate.fromJson(Map<String, dynamic> json) => DiscoveryCandidate(
+  factory DiscoveryCandidate.fromJson(
+    Map<String, dynamic> json,
+  ) => DiscoveryCandidate(
     id: json['id'] as int,
     displayName: json['display_name'] as String,
     age: json['age'] as int,
@@ -31,7 +33,9 @@ class DiscoveryCandidate {
     // for forward-compatibility; docs/07's Card-stack wireframe doesn't call
     // for surfacing it visually, so there's no UI for it yet.
     sharedInterestsCount: json['shared_interests_count'] as int,
-    sharedInterests: List<String>.from(json['shared_interests'] as List<dynamic>),
+    sharedInterests: List<String>.from(
+      json['shared_interests'] as List<dynamic>,
+    ),
     photos: (json['photos'] as List<dynamic>)
         .map((e) => ProfilePhoto.fromJson(e as Map<String, dynamic>))
         .toList(),
@@ -51,5 +55,6 @@ class DiscoveryCandidate {
   /// docs/06-security-architecture.md §4: `0` is the sentinel for "less than
   /// 1 km away" — the API never sends a raw float, this is the client-side
   /// half of that same bucketing rule (see the backend's DistanceBucketer).
-  String get distanceLabel => distanceKm == 0 ? 'less than 1 km away' : '$distanceKm km away';
+  String get distanceLabel =>
+      distanceKm == 0 ? 'less than 1 km away' : '$distanceKm km away';
 }

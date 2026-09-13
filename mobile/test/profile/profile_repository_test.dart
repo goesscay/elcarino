@@ -42,7 +42,10 @@ class _FakeAdapter implements HttpClientAdapter {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
   final adapter = _FakeAdapter(responses);
   dio.httpClientAdapter = adapter;
-  return (ProfileRepository(ApiClient(tokenStorage: FakeTokenStorage(), dio: dio)), adapter);
+  return (
+    ProfileRepository(ApiClient(tokenStorage: FakeTokenStorage(), dio: dio)),
+    adapter,
+  );
 }
 
 void main() {
@@ -65,20 +68,23 @@ void main() {
       expect(result[1].category, isNull);
     });
 
-    test('updateInterests posts to /interests/me and returns the new set', () async {
-      final (repository, _) = _repositoryReturning({
-        '/interests/me': {
-          'interests': [
-            {'id': 1, 'name': 'Hiking', 'category': 'Sports'},
-          ],
-        },
-      });
+    test(
+      'updateInterests posts to /interests/me and returns the new set',
+      () async {
+        final (repository, _) = _repositoryReturning({
+          '/interests/me': {
+            'interests': [
+              {'id': 1, 'name': 'Hiking', 'category': 'Sports'},
+            ],
+          },
+        });
 
-      final result = await repository.updateInterests([1]);
+        final result = await repository.updateInterests([1]);
 
-      expect(result, hasLength(1));
-      expect(result.single.id, 1);
-    });
+        expect(result, hasLength(1));
+        expect(result.single.id, 1);
+      },
+    );
   });
 
   group('ProfileRepository prompts reorder (docs/04 item 4)', () {
@@ -90,20 +96,23 @@ void main() {
       expect(adapter.calls, contains('DELETE /prompts/me/7'));
     });
 
-    test('updatePrompts resubmits in the given order (how reorder persists)', () async {
-      final (repository, adapter) = _repositoryReturning({
-        '/prompts/me': {
-          'prompts': [
-            {'prompt_id': 2, 'prompt': 'B', 'answer': 'y'},
-            {'prompt_id': 1, 'prompt': 'A', 'answer': 'x'},
-          ],
-        },
-      });
+    test(
+      'updatePrompts resubmits in the given order (how reorder persists)',
+      () async {
+        final (repository, adapter) = _repositoryReturning({
+          '/prompts/me': {
+            'prompts': [
+              {'prompt_id': 2, 'prompt': 'B', 'answer': 'y'},
+              {'prompt_id': 1, 'prompt': 'A', 'answer': 'x'},
+            ],
+          },
+        });
 
-      final result = await repository.updatePrompts([(2, 'y'), (1, 'x')]);
+        final result = await repository.updatePrompts([(2, 'y'), (1, 'x')]);
 
-      expect(adapter.calls, contains('PUT /prompts/me'));
-      expect(result.map((p) => p.promptId), [2, 1]);
-    });
+        expect(adapter.calls, contains('PUT /prompts/me'));
+        expect(result.map((p) => p.promptId), [2, 1]);
+      },
+    );
   });
 }

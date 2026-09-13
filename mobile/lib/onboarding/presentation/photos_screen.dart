@@ -19,7 +19,12 @@ import 'onboarding_scaffold.dart';
 /// the standalone Edit photos screen (docs/07 §3.5), which passes [onDone]
 /// and [continueLabel] to pop back instead.
 class PhotosScreen extends ConsumerStatefulWidget {
-  const PhotosScreen({this.onDone, this.continueLabel = 'Continue', this.step = 2, super.key});
+  const PhotosScreen({
+    this.onDone,
+    this.continueLabel = 'Continue',
+    this.step = 2,
+    super.key,
+  });
 
   final VoidCallback? onDone;
   final String continueLabel;
@@ -89,7 +94,9 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
       _error = null;
     });
     try {
-      final photo = await ref.read(profileRepositoryProvider).uploadPhoto(file.path);
+      final photo = await ref
+          .read(profileRepositoryProvider)
+          .uploadPhoto(file.path);
       setState(() => _photos = [..._photos, photo]);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -104,8 +111,14 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Remove this photo?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Remove')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );
@@ -130,7 +143,9 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
     setState(() => _photos = reordered);
 
     try {
-      await ref.read(profileRepositoryProvider).reorderPhotos(reordered.map((p) => p.id).toList());
+      await ref
+          .read(profileRepositoryProvider)
+          .reorderPhotos(reordered.map((p) => p.id).toList());
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     }
@@ -152,7 +167,9 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Add at least one photo. The first is your primary photo.'),
+          const Text(
+            'Add at least one photo. The first is your primary photo.',
+          ),
           const SizedBox(height: AppSpacing.md),
           Expanded(
             child: GridView.builder(
@@ -169,8 +186,12 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
                     photo: photo,
                     isPrimary: index == 0,
                     onDelete: _busy ? null : () => _removePhoto(photo),
-                    onMoveLeft: (!_busy && index > 0) ? () => _move(index, -1) : null,
-                    onMoveRight: (!_busy && index < _photos.length - 1) ? () => _move(index, 1) : null,
+                    onMoveLeft: (!_busy && index > 0)
+                        ? () => _move(index, -1)
+                        : null,
+                    onMoveRight: (!_busy && index < _photos.length - 1)
+                        ? () => _move(index, 1)
+                        : null,
                   );
                 }
                 return _AddTile(onTap: _busy ? null : _addPhoto);
@@ -180,7 +201,10 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.sm),
-              child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
           const SizedBox(height: AppSpacing.md),
           FilledButton(
@@ -219,11 +243,7 @@ class _PhotoTile extends StatelessWidget {
         children: [
           Image.network(photo.url, fit: BoxFit.cover),
           if (isPrimary)
-            const Positioned(
-              left: 4,
-              top: 4,
-              child: _Badge(label: 'Primary'),
-            ),
+            const Positioned(left: 4, top: 4, child: _Badge(label: 'Primary')),
           if (photo.moderationStatus == 'pending')
             const Positioned(
               left: 4,
@@ -247,12 +267,20 @@ class _PhotoTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 18),
+                  icon: const Icon(
+                    Icons.chevron_left,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                   onPressed: onMoveLeft,
                   style: IconButton.styleFrom(backgroundColor: Colors.black45),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chevron_right, color: Colors.white, size: 18),
+                  icon: const Icon(
+                    Icons.chevron_right,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                   onPressed: onMoveRight,
                   style: IconButton.styleFrom(backgroundColor: Colors.black45),
                 ),
@@ -274,8 +302,14 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(AppRadius.sm)),
-      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10)),
+      decoration: BoxDecoration(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 10),
+      ),
     );
   }
 }

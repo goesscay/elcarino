@@ -56,8 +56,14 @@ class _MatchesListScreenState extends ConsumerState<MatchesListScreen> {
         title: Text('Unmatch ${match.otherUser.displayName}?'),
         content: const Text("You won't see each other again in Discover."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Unmatch')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Unmatch'),
+          ),
         ],
       ),
     );
@@ -66,9 +72,14 @@ class _MatchesListScreenState extends ConsumerState<MatchesListScreen> {
     try {
       await ref.read(matchingRepositoryProvider).unmatch(match.id);
       if (!mounted) return;
-      setState(() => _matches = _matches.where((m) => m.id != match.id).toList());
+      setState(
+        () => _matches = _matches.where((m) => m.id != match.id).toList(),
+      );
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 
@@ -111,13 +122,17 @@ class _MatchesListScreenState extends ConsumerState<MatchesListScreen> {
         itemCount: _matches.length,
         itemBuilder: (context, index) {
           final match = _matches[index];
-          final photo = match.otherUser.photos.isEmpty ? null : match.otherUser.photos.first;
+          final photo = match.otherUser.photos.isEmpty
+              ? null
+              : match.otherUser.photos.first;
           return ListTile(
             leading: CircleAvatar(
               backgroundImage: photo == null ? null : NetworkImage(photo.url),
               child: photo == null ? const Icon(Icons.person) : null,
             ),
-            title: Text('${match.otherUser.displayName}, ${match.otherUser.age}'),
+            title: Text(
+              '${match.otherUser.displayName}, ${match.otherUser.age}',
+            ),
             subtitle: const Text('Say hi! (chat is coming soon)'),
             trailing: IconButton(
               icon: const Icon(Icons.person_remove_outlined),

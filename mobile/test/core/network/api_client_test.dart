@@ -33,7 +33,10 @@ class _FakeAdapter implements HttpClientAdapter {
   }
 }
 
-ApiClient _clientReturning({required int statusCode, Map<String, dynamic>? body}) {
+ApiClient _clientReturning({
+  required int statusCode,
+  Map<String, dynamic>? body,
+}) {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
   dio.httpClientAdapter = _FakeAdapter(statusCode: statusCode, body: body);
   return ApiClient(tokenStorage: FakeTokenStorage(), dio: dio);
@@ -68,7 +71,10 @@ void main() {
       final client = _clientReturning(
         statusCode: 422,
         body: {
-          'error': {'code': 'invalid_otp', 'message': 'That code is invalid or has expired.'},
+          'error': {
+            'code': 'invalid_otp',
+            'message': 'That code is invalid or has expired.',
+          },
         },
       );
 
@@ -77,7 +83,11 @@ void main() {
         throwsA(
           isA<ApiException>()
               .having((e) => e.code, 'code', 'invalid_otp')
-              .having((e) => e.message, 'message', 'That code is invalid or has expired.'),
+              .having(
+                (e) => e.message,
+                'message',
+                'That code is invalid or has expired.',
+              ),
         ),
       );
     });
@@ -86,13 +96,22 @@ void main() {
       final client = _clientReturning(
         statusCode: 404,
         body: {
-          'error': {'code': 'profile_not_found', 'message': 'Profile has not been created yet.'},
+          'error': {
+            'code': 'profile_not_found',
+            'message': 'Profile has not been created yet.',
+          },
         },
       );
 
       await expectLater(
         client.request('/profiles/me', method: 'GET'),
-        throwsA(isA<ApiException>().having((e) => e.code, 'code', 'profile_not_found')),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.code,
+            'code',
+            'profile_not_found',
+          ),
+        ),
       );
     });
   });

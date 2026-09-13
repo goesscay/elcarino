@@ -58,7 +58,9 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
       if (!mounted) return;
       unawaited(context.push('/auth/otp', extra: phone));
     } on ValidationException catch (e) {
-      setState(() => _error = e.firstError('phone') ?? 'Enter a valid phone number.');
+      setState(
+        () => _error = e.firstError('phone') ?? 'Enter a valid phone number.',
+      );
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -84,7 +86,10 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
                     value: _countryCode,
                     items: [
                       for (final (code, label) in _countryCodes)
-                        DropdownMenuItem(value: code, child: Text('$code  $label')),
+                        DropdownMenuItem(
+                          value: code,
+                          child: Text('$code  $label'),
+                        ),
                     ],
                     onChanged: (value) => setState(() => _countryCode = value!),
                   ),
@@ -94,16 +99,23 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(labelText: 'Phone number'),
+                      decoration: const InputDecoration(
+                        labelText: 'Phone number',
+                      ),
                       validator: (value) =>
-                          (value == null || value.trim().length < 6) ? 'Enter a valid number' : null,
+                          (value == null || value.trim().length < 6)
+                          ? 'Enter a valid number'
+                          : null,
                     ),
                   ),
                 ],
               ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ],
               const SizedBox(height: AppSpacing.xl),
               FilledButton(

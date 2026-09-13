@@ -15,7 +15,8 @@ class EditInterestsScreen extends ConsumerStatefulWidget {
   const EditInterestsScreen({super.key});
 
   @override
-  ConsumerState<EditInterestsScreen> createState() => _EditInterestsScreenState();
+  ConsumerState<EditInterestsScreen> createState() =>
+      _EditInterestsScreenState();
 }
 
 class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
@@ -57,11 +58,15 @@ class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
       _error = null;
     });
     try {
-      await ref.read(profileRepositoryProvider).updateInterests(_selectedIds.toList());
+      await ref
+          .read(profileRepositoryProvider)
+          .updateInterests(_selectedIds.toList());
       if (!mounted) return;
       Navigator.of(context).pop();
     } on ValidationException catch (e) {
-      setState(() => _error = e.firstError('interest_ids') ?? 'Check your selection.');
+      setState(
+        () => _error = e.firstError('interest_ids') ?? 'Check your selection.',
+      );
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -73,7 +78,9 @@ class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
   Widget build(BuildContext context) {
     final byCategory = <String, List<Interest>>{};
     for (final interest in _catalogue) {
-      byCategory.putIfAbsent(interest.category ?? 'Other', () => []).add(interest);
+      byCategory
+          .putIfAbsent(interest.category ?? 'Other', () => [])
+          .add(interest);
     }
 
     return Scaffold(
@@ -90,7 +97,10 @@ class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
                       child: ListView(
                         children: [
                           for (final category in byCategory.keys) ...[
-                            Text(category, style: Theme.of(context).textTheme.bodyMedium),
+                            Text(
+                              category,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                             const SizedBox(height: AppSpacing.sm),
                             Wrap(
                               spacing: AppSpacing.sm,
@@ -99,7 +109,9 @@ class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
                                 for (final interest in byCategory[category]!)
                                   FilterChip(
                                     label: Text(interest.name),
-                                    selected: _selectedIds.contains(interest.id),
+                                    selected: _selectedIds.contains(
+                                      interest.id,
+                                    ),
                                     onSelected: (selected) => setState(
                                       () => selected
                                           ? _selectedIds.add(interest.id)
@@ -116,7 +128,12 @@ class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
                       ),
                     FilledButton(
                       onPressed: _submitting ? null : _submit,

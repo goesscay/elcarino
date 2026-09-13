@@ -70,7 +70,9 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     if (_loadingMore || !_hasMore || _candidates.length > 2) return;
     setState(() => _loadingMore = true);
     try {
-      final result = await ref.read(discoveryRepositoryProvider).getFeed(page: _page + 1);
+      final result = await ref
+          .read(discoveryRepositoryProvider)
+          .getFeed(page: _page + 1);
       if (!mounted) return;
       setState(() {
         _page += 1;
@@ -103,7 +105,8 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
       if (mounted) setState(() => _swiping = false);
@@ -121,7 +124,8 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
           IconButton(
             icon: const Icon(Icons.tune),
             tooltip: 'Filters',
-            onPressed: () => context.push('/profile/preferences').then((_) => _load()),
+            onPressed: () =>
+                context.push('/profile/preferences').then((_) => _load()),
           ),
         ],
       ),
@@ -139,7 +143,8 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
         icon: Icons.location_off_outlined,
         message: 'Turn on location to see people nearby.',
         actionLabel: 'Set location',
-        onAction: () => context.push('/onboarding/location').then((_) => _load()),
+        onAction: () =>
+            context.push('/onboarding/location').then((_) => _load()),
       );
     }
 
@@ -148,7 +153,8 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
         icon: Icons.tune,
         message: 'Set your discovery preferences to get started.',
         actionLabel: 'Set preferences',
-        onAction: () => context.push('/profile/preferences').then((_) => _load()),
+        onAction: () =>
+            context.push('/profile/preferences').then((_) => _load()),
       );
     }
 
@@ -182,7 +188,10 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
                 if (_candidates.length > 1)
                   Positioned.fill(
                     top: 8,
-                    child: Transform.scale(scale: 0.96, child: IgnorePointer(child: _peek(_candidates[1]))),
+                    child: Transform.scale(
+                      scale: 0.96,
+                      child: IgnorePointer(child: _peek(_candidates[1])),
+                    ),
                   ),
                 Positioned.fill(
                   child: SwipeableCard(
@@ -203,12 +212,16 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
               _ActionButton(
                 icon: Icons.close,
                 color: Colors.red,
-                onPressed: _swiping ? null : () => _performSwipe(SwipeDirection.left),
+                onPressed: _swiping
+                    ? null
+                    : () => _performSwipe(SwipeDirection.left),
               ),
               _ActionButton(
                 icon: Icons.favorite,
                 color: Colors.green,
-                onPressed: _swiping ? null : () => _performSwipe(SwipeDirection.right),
+                onPressed: _swiping
+                    ? null
+                    : () => _performSwipe(SwipeDirection.right),
               ),
             ],
           ),
@@ -222,14 +235,24 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
       child: candidate.photos.isEmpty
-          ? Container(color: Theme.of(context).colorScheme.surfaceContainerHighest)
-          : Image.network(candidate.photos.first.url, fit: BoxFit.cover, width: double.infinity),
+          ? Container(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            )
+          : Image.network(
+              candidate.photos.first.url,
+              fit: BoxFit.cover,
+              width: double.infinity,
+            ),
     );
   }
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.icon, required this.color, required this.onPressed});
+  const _ActionButton({
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
 
   final IconData icon;
   final Color color;

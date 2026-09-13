@@ -1,5 +1,9 @@
 class Interest {
-  const Interest({required this.id, required this.name, required this.category});
+  const Interest({
+    required this.id,
+    required this.name,
+    required this.category,
+  });
 
   factory Interest.fromJson(Map<String, dynamic> json) => Interest(
     id: json['id'] as int,

@@ -57,7 +57,9 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
   }
 
   Future<void> _pickBirthDate() async {
-    final eighteenYearsAgo = DateTime.now().subtract(const Duration(days: 365 * 18));
+    final eighteenYearsAgo = DateTime.now().subtract(
+      const Duration(days: 365 * 18),
+    );
     final picked = await showDatePicker(
       context: context,
       initialDate: _birthDate ?? eighteenYearsAgo,
@@ -68,8 +70,13 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _birthDate == null || _gender == null) {
-      setState(() => _error = 'Fill in your name, date of birth, and gender to continue.');
+    if (!_formKey.currentState!.validate() ||
+        _birthDate == null ||
+        _gender == null) {
+      setState(
+        () => _error =
+            'Fill in your name, date of birth, and gender to continue.',
+      );
       return;
     }
 
@@ -85,7 +92,9 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
             displayName: _nameController.text.trim(),
             birthDate: _birthDate!,
             gender: _gender!,
-            bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+            bio: _bioController.text.trim().isEmpty
+                ? null
+                : _bioController.text.trim(),
             relationshipGoal: _relationshipGoalController.text.trim().isEmpty
                 ? null
                 : _relationshipGoalController.text.trim(),
@@ -94,7 +103,10 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
       Navigator.of(context).pop();
     } on ValidationException catch (e) {
       setState(
-        () => _error = e.firstError('birth_date') ?? e.firstError('display_name') ?? 'Check your details.',
+        () => _error =
+            e.firstError('birth_date') ??
+            e.firstError('display_name') ??
+            'Check your details.',
       );
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -118,9 +130,13 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
                     children: [
                       TextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'First name'),
+                        decoration: const InputDecoration(
+                          labelText: 'First name',
+                        ),
                         validator: (value) =>
-                            (value == null || value.trim().isEmpty) ? 'Enter your name' : null,
+                            (value == null || value.trim().isEmpty)
+                            ? 'Enter your name'
+                            : null,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       ListTile(
@@ -159,11 +175,18 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
                       TextFormField(
                         controller: _relationshipGoalController,
                         maxLength: 100,
-                        decoration: const InputDecoration(labelText: 'Relationship goal'),
+                        decoration: const InputDecoration(
+                          labelText: 'Relationship goal',
+                        ),
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: AppSpacing.sm),
-                        Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                        Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
                       ],
                       const SizedBox(height: AppSpacing.xl),
                       FilledButton(
@@ -172,7 +195,9 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Save'),
                       ),

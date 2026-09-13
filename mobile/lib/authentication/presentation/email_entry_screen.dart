@@ -54,8 +54,16 @@ class _EmailEntryScreenState extends ConsumerState<EmailEntryScreen> {
     try {
       final repository = ref.read(authRepositoryProvider);
       final result = widget.intent == AuthIntent.register
-          ? await repository.register(email: email, password: password, deviceName: currentDeviceName())
-          : await repository.loginWithEmail(email: email, password: password, deviceName: currentDeviceName());
+          ? await repository.register(
+              email: email,
+              password: password,
+              deviceName: currentDeviceName(),
+            )
+          : await repository.loginWithEmail(
+              email: email,
+              password: password,
+              deviceName: currentDeviceName(),
+            );
 
       await ref.read(authControllerProvider.notifier).signedIn(result.token);
       if (!mounted) return;
@@ -75,7 +83,13 @@ class _EmailEntryScreenState extends ConsumerState<EmailEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.intent == AuthIntent.register ? 'Create your account' : 'Sign in')),
+      appBar: AppBar(
+        title: Text(
+          widget.intent == AuthIntent.register
+              ? 'Create your account'
+              : 'Sign in',
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Form(
@@ -87,22 +101,33 @@ class _EmailEntryScreenState extends ConsumerState<EmailEntryScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
-                decoration: InputDecoration(labelText: 'Email', errorText: _emailError),
-                validator: (value) =>
-                    (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  errorText: _emailError,
+                ),
+                validator: (value) => (value == null || !value.contains('@'))
+                    ? 'Enter a valid email'
+                    : null,
               ),
               const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 autofillHints: const [AutofillHints.password],
-                decoration: InputDecoration(labelText: 'Password', errorText: _passwordError),
-                validator: (value) =>
-                    (value == null || value.length < 8) ? 'At least 8 characters' : null,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  errorText: _passwordError,
+                ),
+                validator: (value) => (value == null || value.length < 8)
+                    ? 'At least 8 characters'
+                    : null,
               ),
               if (_formError != null) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text(_formError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                Text(
+                  _formError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ],
               const SizedBox(height: AppSpacing.xl),
               FilledButton(
@@ -113,7 +138,11 @@ class _EmailEntryScreenState extends ConsumerState<EmailEntryScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(widget.intent == AuthIntent.register ? 'Create account' : 'Sign in'),
+                    : Text(
+                        widget.intent == AuthIntent.register
+                            ? 'Create account'
+                            : 'Sign in',
+                      ),
               ),
             ],
           ),

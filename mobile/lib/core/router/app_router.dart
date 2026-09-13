@@ -41,28 +41,54 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
-      GoRoute(path: '/home', builder: (context, state) => const PlaceholderHome()),
-      GoRoute(path: '/discover', builder: (context, state) => const DiscoverFeedScreen()),
-      GoRoute(path: '/matches', builder: (context, state) => const MatchesListScreen()),
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const PlaceholderHome(),
+      ),
+      GoRoute(
+        path: '/discover',
+        builder: (context, state) => const DiscoverFeedScreen(),
+      ),
+      GoRoute(
+        path: '/matches',
+        builder: (context, state) => const MatchesListScreen(),
+      ),
 
-      GoRoute(path: '/welcome', builder: (context, state) => const WelcomeScreen()),
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
       GoRoute(
         path: '/auth/method',
-        builder: (context, state) => AuthMethodScreen(intent: state.extra! as AuthIntent),
+        builder: (context, state) =>
+            AuthMethodScreen(intent: state.extra! as AuthIntent),
       ),
-      GoRoute(path: '/auth/phone', builder: (context, state) => const PhoneEntryScreen()),
+      GoRoute(
+        path: '/auth/phone',
+        builder: (context, state) => const PhoneEntryScreen(),
+      ),
       GoRoute(
         path: '/auth/otp',
         builder: (context, state) => OtpScreen(phone: state.extra! as String),
       ),
       GoRoute(
         path: '/auth/email',
-        builder: (context, state) => EmailEntryScreen(intent: state.extra! as AuthIntent),
+        builder: (context, state) =>
+            EmailEntryScreen(intent: state.extra! as AuthIntent),
       ),
 
-      GoRoute(path: '/onboarding/basics', builder: (context, state) => const ProfileBasicsScreen()),
-      GoRoute(path: '/onboarding/photos', builder: (context, state) => const PhotosScreen()),
-      GoRoute(path: '/onboarding/prompts', builder: (context, state) => const PromptsScreen()),
+      GoRoute(
+        path: '/onboarding/basics',
+        builder: (context, state) => const ProfileBasicsScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/photos',
+        builder: (context, state) => const PhotosScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/prompts',
+        builder: (context, state) => const PromptsScreen(),
+      ),
       GoRoute(
         path: '/onboarding/preferences',
         builder: (context, state) => const PreferencesScreen(),
@@ -88,8 +114,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       // docs/07 §3.5 describes it differently from onboarding's picker
       // (reorder/swap/edit an already-answered set, not "pick 3 from
       // scratch") — see edit_prompts_screen.dart.
-      GoRoute(path: '/profile', builder: (context, state) => const MyProfileScreen()),
-      GoRoute(path: '/profile/edit', builder: (context, state) => const EditProfileScreen()),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const MyProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
       GoRoute(
         path: '/profile/edit/basics',
         builder: (context, state) => const EditBasicsScreen(),

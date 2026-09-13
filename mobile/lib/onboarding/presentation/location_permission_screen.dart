@@ -24,10 +24,12 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
   const LocationPermissionScreen({super.key});
 
   @override
-  ConsumerState<LocationPermissionScreen> createState() => _LocationPermissionScreenState();
+  ConsumerState<LocationPermissionScreen> createState() =>
+      _LocationPermissionScreenState();
 }
 
-class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScreen> {
+class _LocationPermissionScreenState
+    extends ConsumerState<LocationPermissionScreen> {
   bool _requesting = false;
 
   Future<void> _request() async {
@@ -37,11 +39,16 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
       final status = await Permission.locationWhenInUse.request();
       if (status.isGranted) {
         final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+          ),
         );
         await ref
             .read(discoveryRepositoryProvider)
-            .updateLocation(latitude: position.latitude, longitude: position.longitude);
+            .updateLocation(
+              latitude: position.latitude,
+              longitude: position.longitude,
+            );
       }
     } catch (_) {
       // Swallowed on purpose — see class doc. Nothing to show the user; this
@@ -72,12 +79,18 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
           FilledButton(
             onPressed: _requesting ? null : _request,
             child: _requesting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Allow location access'),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextButton(
-            onPressed: _requesting ? null : () => context.go('/onboarding/notifications'),
+            onPressed: _requesting
+                ? null
+                : () => context.go('/onboarding/notifications'),
             child: const Text('Not now'),
           ),
         ],

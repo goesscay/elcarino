@@ -18,7 +18,12 @@ import 'onboarding_scaffold.dart';
 /// to pop back instead. Drag-to-reorder answered prompts (docs/07 §3.5) is
 /// item 4's scope, not built here yet.
 class PromptsScreen extends ConsumerStatefulWidget {
-  const PromptsScreen({this.onDone, this.continueLabel = 'Continue', this.step = 3, super.key});
+  const PromptsScreen({
+    this.onDone,
+    this.continueLabel = 'Continue',
+    this.step = 3,
+    super.key,
+  });
 
   final VoidCallback? onDone;
   final String continueLabel;
@@ -61,7 +66,9 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
       setState(() {
         _library = library;
         for (final answered in mine) {
-          _selected[answered.promptId] = TextEditingController(text: answered.answer);
+          _selected[answered.promptId] = TextEditingController(
+            text: answered.answer,
+          );
         }
         _loading = false;
       });
@@ -101,11 +108,10 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
     });
 
     try {
-      await ref
-          .read(profileRepositoryProvider)
-          .updatePrompts([
-            for (final entry in _selected.entries) (entry.key, entry.value.text.trim()),
-          ]);
+      await ref.read(profileRepositoryProvider).updatePrompts([
+        for (final entry in _selected.entries)
+          (entry.key, entry.value.text.trim()),
+      ]);
       if (!mounted) return;
       (widget.onDone ?? () => context.go('/onboarding/preferences'))();
     } on ApiException catch (e) {
@@ -131,7 +137,9 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Pick up to $_maxPrompts prompts and answer them (${_selected.length}/$_maxPrompts selected).'),
+          Text(
+            'Pick up to $_maxPrompts prompts and answer them (${_selected.length}/$_maxPrompts selected).',
+          ),
           const SizedBox(height: AppSpacing.md),
           Expanded(
             child: ListView.builder(
@@ -150,7 +158,8 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
                           contentPadding: EdgeInsets.zero,
                           title: Text(prompt.prompt),
                           value: isSelected,
-                          onChanged: (_selected.length >= _maxPrompts && !isSelected)
+                          onChanged:
+                              (_selected.length >= _maxPrompts && !isSelected)
                               ? null
                               : (value) => _toggle(prompt, value ?? false),
                         ),
@@ -159,7 +168,9 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
                             controller: _selected[prompt.id],
                             maxLength: _answerMaxLength,
                             maxLines: 3,
-                            decoration: const InputDecoration(hintText: 'Your answer'),
+                            decoration: const InputDecoration(
+                              hintText: 'Your answer',
+                            ),
                           ),
                       ],
                     ),
@@ -171,12 +182,19 @@ class _PromptsScreenState extends ConsumerState<PromptsScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
           FilledButton(
             onPressed: _submitting ? null : _submit,
             child: _submitting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : Text(widget.continueLabel),
           ),
         ],

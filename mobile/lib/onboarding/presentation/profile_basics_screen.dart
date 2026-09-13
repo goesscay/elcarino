@@ -14,7 +14,8 @@ class ProfileBasicsScreen extends ConsumerStatefulWidget {
   const ProfileBasicsScreen({super.key});
 
   @override
-  ConsumerState<ProfileBasicsScreen> createState() => _ProfileBasicsScreenState();
+  ConsumerState<ProfileBasicsScreen> createState() =>
+      _ProfileBasicsScreenState();
 }
 
 class _ProfileBasicsScreenState extends ConsumerState<ProfileBasicsScreen> {
@@ -36,14 +37,17 @@ class _ProfileBasicsScreenState extends ConsumerState<ProfileBasicsScreen> {
     if (date == null) return false;
     final now = DateTime.now();
     var age = now.year - date.year;
-    if (now.month < date.month || (now.month == date.month && now.day < date.day)) {
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
       age -= 1;
     }
     return age >= 18;
   }
 
   Future<void> _pickBirthDate() async {
-    final eighteenYearsAgo = DateTime.now().subtract(const Duration(days: 365 * 18));
+    final eighteenYearsAgo = DateTime.now().subtract(
+      const Duration(days: 365 * 18),
+    );
     final picked = await showDatePicker(
       context: context,
       initialDate: eighteenYearsAgo,
@@ -54,8 +58,13 @@ class _ProfileBasicsScreenState extends ConsumerState<ProfileBasicsScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _birthDate == null || _gender == null) {
-      setState(() => _error = 'Fill in your name, date of birth, and gender to continue.');
+    if (!_formKey.currentState!.validate() ||
+        _birthDate == null ||
+        _gender == null) {
+      setState(
+        () => _error =
+            'Fill in your name, date of birth, and gender to continue.',
+      );
       return;
     }
 
@@ -75,7 +84,12 @@ class _ProfileBasicsScreenState extends ConsumerState<ProfileBasicsScreen> {
       if (!mounted) return;
       context.go('/onboarding/photos');
     } on ValidationException catch (e) {
-      setState(() => _error = e.firstError('birth_date') ?? e.firstError('display_name') ?? 'Check your details.');
+      setState(
+        () => _error =
+            e.firstError('birth_date') ??
+            e.firstError('display_name') ??
+            'Check your details.',
+      );
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -95,12 +109,18 @@ class _ProfileBasicsScreenState extends ConsumerState<ProfileBasicsScreen> {
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'First name'),
-              validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter your name' : null,
+              validator: (value) => (value == null || value.trim().isEmpty)
+                  ? 'Enter your name'
+                  : null,
             ),
             const SizedBox(height: AppSpacing.md),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(_birthDate == null ? 'Date of birth' : '${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}'),
+              title: Text(
+                _birthDate == null
+                    ? 'Date of birth'
+                    : '${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
+              ),
               trailing: const Icon(Icons.calendar_today_outlined),
               onTap: _pickBirthDate,
             ),
@@ -130,13 +150,22 @@ class _ProfileBasicsScreenState extends ConsumerState<ProfileBasicsScreen> {
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ],
             const SizedBox(height: AppSpacing.xl),
             FilledButton(
-              onPressed: (_submitting || (_birthDate != null && !_isAtLeast18)) ? null : _submit,
+              onPressed: (_submitting || (_birthDate != null && !_isAtLeast18))
+                  ? null
+                  : _submit,
               child: _submitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Continue'),
             ),
           ],

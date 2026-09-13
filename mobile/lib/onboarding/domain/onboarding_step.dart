@@ -1,1 +1,9 @@
-enum OnboardingStep { basics, photos, prompts, preferences, location, notifications, complete }
+enum OnboardingStep {
+  basics,
+  photos,
+  prompts,
+  preferences,
+  location,
+  notifications,
+  complete,
+}

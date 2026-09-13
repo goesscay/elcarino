@@ -37,13 +37,21 @@ class SplashScreen extends ConsumerWidget {
       body: Center(
         child: Text(
           'Elcarino',
-          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 32),
+          style: TextStyle(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w800,
+            fontSize: 32,
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _resolveAndGo(BuildContext context, WidgetRef ref, AuthState authState) async {
+  Future<void> _resolveAndGo(
+    BuildContext context,
+    WidgetRef ref,
+    AuthState authState,
+  ) async {
     if (authState.status == AuthStatus.unauthenticated) {
       context.go('/welcome');
       return;

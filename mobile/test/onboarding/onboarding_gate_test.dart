@@ -11,8 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/fake_token_storage.dart';
 
 class _FakeProfileRepository extends ProfileRepository {
-  _FakeProfileRepository({this.profile, this.prompts = const [], this.preferences})
-    : super(ApiClient(tokenStorage: FakeTokenStorage()));
+  _FakeProfileRepository({
+    this.profile,
+    this.prompts = const [],
+    this.preferences,
+  }) : super(ApiClient(tokenStorage: FakeTokenStorage()));
 
   final Profile? profile;
   final List<AnsweredPrompt> prompts;
@@ -40,9 +43,19 @@ Profile _profileWithPhotos(List<ProfilePhoto> photos) => Profile(
   photos: photos,
 );
 
-const _somePhoto = ProfilePhoto(id: 1, url: 'https://x.test/1.jpg', sortOrder: 0, moderationStatus: 'pending');
+const _somePhoto = ProfilePhoto(
+  id: 1,
+  url: 'https://x.test/1.jpg',
+  sortOrder: 0,
+  moderationStatus: 'pending',
+);
 
-const _somePreferences = Preferences(minAge: 18, maxAge: 40, maxDistanceKm: 50, interestedInGenders: [Gender.woman]);
+const _somePreferences = Preferences(
+  minAge: 18,
+  maxAge: 40,
+  maxDistanceKm: 50,
+  interestedInGenders: [Gender.woman],
+);
 
 void main() {
   group('OnboardingGate.resolveNextStep (docs/07 §3.1 wizard order)', () {
@@ -52,7 +65,9 @@ void main() {
     });
 
     test('profile but no photos -> photos', () async {
-      final gate = OnboardingGate(_FakeProfileRepository(profile: _profileWithPhotos([])));
+      final gate = OnboardingGate(
+        _FakeProfileRepository(profile: _profileWithPhotos([])),
+      );
       expect(await gate.resolveNextStep(), OnboardingStep.photos);
     });
 
@@ -67,7 +82,9 @@ void main() {
       final gate = OnboardingGate(
         _FakeProfileRepository(
           profile: _profileWithPhotos([_somePhoto]),
-          prompts: const [AnsweredPrompt(promptId: 1, promptText: 'x', answer: 'y')],
+          prompts: const [
+            AnsweredPrompt(promptId: 1, promptText: 'x', answer: 'y'),
+          ],
         ),
       );
       expect(await gate.resolveNextStep(), OnboardingStep.preferences);
@@ -77,7 +94,9 @@ void main() {
       final gate = OnboardingGate(
         _FakeProfileRepository(
           profile: _profileWithPhotos([_somePhoto]),
-          prompts: const [AnsweredPrompt(promptId: 1, promptText: 'x', answer: 'y')],
+          prompts: const [
+            AnsweredPrompt(promptId: 1, promptText: 'x', answer: 'y'),
+          ],
           preferences: _somePreferences,
         ),
       );

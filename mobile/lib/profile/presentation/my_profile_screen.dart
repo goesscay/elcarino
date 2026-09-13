@@ -72,9 +72,9 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
             // scattered across features that aren't built yet (Push
             // notifications item 9, Safety item 10) — no single "Settings"
             // phase item exists to hang a real screen off of yet.
-            onPressed: () => ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Settings — coming soon.'))),
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Settings — coming soon.')),
+            ),
           ),
         ],
       ),
@@ -85,7 +85,10 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
             ? Center(child: Text(_error!))
             : _profile == null
             ? const Center(child: Text('No profile yet.'))
-            : RefreshIndicator(onRefresh: _load, child: _buildProfile(_profile!)),
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: _buildProfile(_profile!),
+              ),
       ),
     );
   }
@@ -101,7 +104,9 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                 ? Container(
                     width: 160,
                     height: 160,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
                     child: const Icon(Icons.person, size: 64),
                   )
                 : Image.network(
