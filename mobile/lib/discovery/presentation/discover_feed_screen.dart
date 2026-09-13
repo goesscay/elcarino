@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../chat/data/chat_repository.dart';
+import '../../chat/domain/conversation.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../matching/data/matching_repository.dart';
@@ -101,7 +103,13 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
           .read(matchingRepositoryProvider)
           .swipe(targetId: candidate.id, direction: direction);
       if (result.matched && mounted) {
-        await showMatchCelebration(context, candidate);
+        final conversation = await _findConversation(result.matchId);
+        if (!mounted) return;
+        await showMatchCelebration(
+          context,
+          candidate,
+          conversation: conversation,
+        );
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -113,6 +121,26 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     }
 
     unawaited(_maybeLoadMore());
+  }
+
+  /// `SwipeService` (item 6) creates a `Conversation` alongside every
+  /// `UserMatch` in the same request, so it's already there to look up by
+  /// the time the swipe response comes back — no extra wait, just an extra
+  /// `GET /chat/conversations` round-trip so the celebration dialog's "Send
+  /// a message" button has somewhere real to go.
+  Future<Conversation?> _findConversation(int? matchId) async {
+    if (matchId == null) return null;
+    try {
+      final conversations = await ref
+          .read(chatRepositoryProvider)
+          .getConversations();
+      for (final conversation in conversations) {
+        if (conversation.matchId == matchId) return conversation;
+      }
+      return null;
+    } on ApiException {
+      return null;
+    }
   }
 
   @override

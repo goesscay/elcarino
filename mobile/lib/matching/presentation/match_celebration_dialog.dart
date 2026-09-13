@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../chat/domain/conversation.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../discovery/domain/candidate.dart';
@@ -8,13 +10,20 @@ import '../../discovery/domain/candidate.dart';
 /// mutual like: both photos, 'It's a match!', Send a message / Keep
 /// swiping." Only shows the *other* person's photo (the viewer's own isn't
 /// available on this screen without an extra fetch) — a scoped-down version
-/// of "both photos", not the full spec. "Send a message" can't go anywhere
-/// yet — Chat is Phase 1 item 8 — so it shows a coming-soon notice instead of
-/// a dead navigation, same pattern as the Google/Apple sign-in buttons.
+/// of "both photos", not the full spec.
+///
+/// [conversation] is the `Conversation` the caller already resolved for this
+/// match (Chat, item 8) — passed in rather than looked up here so this
+/// dialog stays pure UI with no repository dependency of its own. `null` is
+/// a defensive fallback (`SwipeService` always creates a `Conversation`
+/// alongside every `UserMatch`, so this shouldn't normally happen) that
+/// falls back to a coming-soon notice instead of a dead navigation, same
+/// pattern as the Google/Apple sign-in buttons.
 Future<void> showMatchCelebration(
   BuildContext context,
-  DiscoveryCandidate matchedWith,
-) {
+  DiscoveryCandidate matchedWith, {
+  Conversation? conversation,
+}) {
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black87,
@@ -58,11 +67,20 @@ Future<void> showMatchCelebration(
               FilledButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Chat isn\'t built yet — coming soon.'),
-                    ),
-                  );
+                  if (conversation != null) {
+                    context.push(
+                      '/chat/${conversation.id}',
+                      extra: conversation,
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Couldn't open the chat — try it from Matches.",
+                        ),
+                      ),
+                    );
+                  }
                 },
                 child: const Text('Send a message'),
               ),

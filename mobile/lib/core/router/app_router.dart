@@ -8,8 +8,10 @@ import '../../authentication/presentation/email_entry_screen.dart';
 import '../../authentication/presentation/otp_screen.dart';
 import '../../authentication/presentation/phone_entry_screen.dart';
 import '../../authentication/presentation/welcome_screen.dart';
+import '../../chat/domain/conversation.dart';
+import '../../chat/presentation/conversation_screen.dart';
+import '../../chat/presentation/inbox_screen.dart';
 import '../../discovery/presentation/discover_feed_screen.dart';
-import '../../matching/presentation/matches_list_screen.dart';
 import '../../onboarding/presentation/location_permission_screen.dart';
 import '../../onboarding/presentation/notification_permission_screen.dart';
 import '../../onboarding/presentation/onboarding_complete_screen.dart';
@@ -51,7 +53,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/matches',
-        builder: (context, state) => const MatchesListScreen(),
+        builder: (context, state) => const InboxScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:id',
+        builder: (context, state) =>
+            ConversationScreen(conversation: state.extra! as Conversation),
       ),
 
       GoRoute(

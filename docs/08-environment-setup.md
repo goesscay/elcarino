@@ -147,6 +147,17 @@ flutter run   --dart-define-from-file=config/dev.json
 flutter build apk --dart-define-from-file=config/prod.json
 ```
 
+Each file also carries `REVERB_HOST`/`REVERB_PORT`/`REVERB_APP_KEY`/`REVERB_USE_TLS`
+(Phase 1 item 8, chat) — same self-hosted-arbitrary-value framing as the backend's
+`REVERB_*` `.env` keys above, not a third-party secret. `config/dev.json` uses
+`10.0.2.2`/`8080`/`local-dev-key`/`false`, matching this machine's backend `.env`
+exactly — both sides of a local Reverb connection have to agree on the app key or the
+WebSocket handshake is rejected. `config/staging.json` / `config/prod.json`'s Reverb
+values are still placeholders (`REPLACE_WITH_{STAGING,PROD}_REVERB_APP_KEY`) alongside
+their already-placeholder `.example` API URLs — real staging/prod Reverb hosting
+(a domain, a load balancer path, a real app key) isn't provisioned yet, same gap as
+the API URLs themselves.
+
 Full native flavors (distinct application IDs, icons, and names per environment so
 dev/staging/prod can be installed side by side) are a later refinement — add
 `flutter_flavorizr` or manual Gradle `productFlavors` + iOS schemes when the need

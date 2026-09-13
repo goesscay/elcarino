@@ -1,4 +1,8 @@
 {
   "APP_ENV": "prod",
-  "API_BASE_URL": "https://api.elcarino.example/api/v1"
+  "API_BASE_URL": "https://api.elcarino.example/api/v1",
+  "REVERB_HOST": "api.elcarino.example",
+  "REVERB_PORT": "443",
+  "REVERB_APP_KEY": "REPLACE_WITH_PROD_REVERB_APP_KEY",
+  "REVERB_USE_TLS": "true"
 }

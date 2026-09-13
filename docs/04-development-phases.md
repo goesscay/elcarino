@@ -191,10 +191,12 @@ fix → commit, before moving to the next):
        Pass/Like buttons as the accessible non-gesture mirror (buttons skip
        the fly-away flourish and swipe instantly — a disclosed
        simplification, not a functional gap). A mutual like shows the match
-       celebration modal ("Send a message" -> coming-soon, since Chat is
-       item 8). New MatchesListScreen (`/matches`) covers just the matches
+       celebration modal ("Send a message" -> coming-soon at the time, since
+       Chat was item 8 — wired to the real conversation once item 8 landed).
+       New MatchesListScreen (`/matches`) covers just the matches
        half of docs/07 §3.3's "Matches + inbox" — the conversation list
-       needs Chat too. The Discover app bar's filter icon reuses the
+       needed Chat too (superseded by `InboxScreen` in item 8). The Discover
+       app bar's filter icon reuses the
        existing Edit preferences screen rather than a second, parallel
        filters UI; no boost icon — Phase 2, nothing behind it yet.
        Swipe-up-for-Super-Like isn't implemented, consistent with the
@@ -221,8 +223,8 @@ fix → commit, before moving to the next):
        was updated to parse the two new fields for forward-compatibility, but nothing
        in docs/07's Card-stack wireframe calls for surfacing them visually, so no new
        UI was added.
-8. [ ] Real-time chat (text only), read receipts, typing indicator, online status —
-       **backend done.** `laravel/reverb` installed (wasn't actually in composer.json
+8. [x] Real-time chat (text only), read receipts, typing indicator, online status —
+       **Backend:** `laravel/reverb` installed (wasn't actually in composer.json
        despite docs/08 already documenting `reverb:start` — a Phase 0 gap, closed now)
        via `composer require laravel/reverb` + `php artisan install:broadcasting
        --reverb`. `conversations`/`messages` migrations; `GET /chat/conversations`,
@@ -231,18 +233,42 @@ fix → commit, before moving to the next):
        reused by both the REST endpoints and the `routes/channels.php` presence-channel
        authorizer). `SwipeService` (item 6) now also creates the `Conversation`
        alongside every `UserMatch`. Real-time delivery via `ShouldBroadcastNow` events
-       (`NewMessageBroadcast`, `MessagesReadBroadcast`) on `presence:conversation.{id}`
+       (`NewMessageBroadcast`, `MessagesReadBroadcast`) on `presence-conversation.{id}`
        — typing indicator and online/offline are inherent to presence channels
        (member list + peer-to-peer client events), no REST endpoint needed for either.
        Unmatched-messaging gate (spec §12) enforced server-side, 403
        `subscription_required`, tested. `message_attachments` not built — text-only
-       scope, no reader/writer for it yet (#16/17/18 unconfirmed). 126 backend tests
-       (was 114), Pint + audit clean. Verified beyond automated tests: booted a real
+       scope, no reader/writer for it yet (#16/17/18 unconfirmed). `ConversationResource`
+       later gained `last_message_preview` for the inbox row. 127 backend tests (was
+       114), Pint + audit clean. Verified beyond automated tests: booted a real
        `reverb:start` server and dispatched a real broadcast against it from `tinker`
        with no auth/connection error — the actual HMAC-signed publish round-trip
-       works, not just "the event class fires" per `Event::fake()`. **Mobile is
-       next** — not started; this is the first feature needing a real WebSocket
-       client in Flutter (Reverb speaks the Pusher protocol).
+       works, not just "the event class fires" per `Event::fake()`.
+       **Mobile:** `pusher_channels_flutter` was tried first and rejected — reading its
+       native Android plugin showed it only ever calls `PusherOptions.setCluster(...)`,
+       with no path to a custom host/port, so it's structurally incompatible with a
+       self-hosted Reverb server. Switched to `pusher_reverb_flutter` (pure Dart, no
+       native platform code) after reading its actual source to confirm the real API,
+       not just its docs. New `lib/chat/` feature: `ChatRepository` (REST — inbox,
+       history, send, read) and `ChatSocketService` (wraps the singleton
+       `ReverbClient`, injects the Sanctum bearer token into the `POST
+       /api/broadcasting/auth` handshake via a custom authorizer, exposes one
+       `ConversationChannel` per open conversation with typed `onNewMessage`/
+       `onMessagesRead`/`onTyping` streams and a `sendTyping()` whisper). `AppConfig`
+       gained `reverbHost`/`reverbPort`/`reverbAppKey`/`reverbUseTls` +
+       `reverbAuthEndpoint` (derived from `apiBaseUrl`, since the auth route lives
+       outside the `/api/v1` prefix — see `backend/bootstrap/app.php`). `MatchesListScreen`
+       was replaced by `InboxScreen` (docs/07 §3.3 "Matches + inbox": new-matches row +
+       conversation list, sourced from `GET /chat/conversations` instead of `GET
+       /matches`) and a new `ConversationScreen` (message bubbles, read receipt on the
+       last own message, typing indicator, online header, composer — disabled with a
+       banner when `requires_subscription_to_message` is true, since Phase 2's
+       subscription purchase flow doesn't exist yet). No attachment button — voice
+       note/photo/GIF stay [TBD-16/17/18]. The inbox deliberately doesn't hold a live
+       socket per conversation just to sit in the list (pull-to-refresh + refresh on
+       return instead); only the open conversation screen holds a channel. 33 mobile
+       tests passing (was 19), flutter analyze + `dart format` clean, `flutter build
+       apk --debug` verified (first feature pulling in a real WebSocket dependency).
 9. [ ] Push notifications (match, message, like)
 10. [ ] Block / report / unmatch
 11. [ ] Admin panel v1 (Filament): user management, reports queue, basic dashboard
