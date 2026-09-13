@@ -173,7 +173,22 @@ fix → commit, before moving to the next):
        screen instead of a raw error. 15 mobile tests passing (was 13),
        flutter analyze clean, `flutter build apk --debug` verified with
        `geolocator` linked in.
-6. [ ] Swipe → like/pass → match
+6. [ ] Swipe → like/pass → match — **backend done.** `POST /swipes` +
+       `GET/DELETE /matches`, `GET /matches/{id}` (all added to docs/03 in
+       this commit). `likes`/`matches` tables added (the former written on
+       every right/super swipe, matching docs/02's stated purpose, though
+       nothing reads it yet — "who liked me" stays [PROPOSED]/Phase-2-gated).
+       `SwipePolicy`/`UserMatchPolicy` — both explicitly named in
+       docs/06 §3.1 — cover self-swipe, block-either-direction,
+       non-participant match access, and double-unmatch. `matches` uses
+       `UserMatch` as the model class name (`match` is a PHP 8 reserved
+       keyword, confirmed by `php -l` before committing to the name — cannot
+       be used as a class name), table name overridden back to `matches` to
+       stay schema-compliant. 112 backend tests (was 92), Pint + audit clean.
+       **Mobile is next** — not started. That also unlocks replacing
+       DiscoverFeedScreen's plain paginated list (item 5) with the real
+       swipe-gesture card stack docs/07 §3.2 describes, and the match
+       celebration modal.
 7. [ ] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score
        yet** — spec §10 explicitly defers the formula)
 8. [ ] Real-time chat (text only), read receipts, typing indicator, online status

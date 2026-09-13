@@ -4,15 +4,16 @@ namespace App\Models;
 
 use App\Enums\SwipeDirection;
 use Database\Factories\SwipeFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Minimal for now — enough for the discovery feed (item 5) to exclude
- * already-swiped candidates by reading this table. The write path
- * (POST /swipes, match detection) is Phase 1 item 6.
+ * The discovery feed (item 5) reads this table to exclude already-swiped
+ * candidates; SwipeService (item 6) is what actually writes to it.
  */
+#[Fillable(['actor_id', 'target_id', 'direction'])]
 class Swipe extends Model
 {
     /** @use HasFactory<SwipeFactory> */

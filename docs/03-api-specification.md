@@ -152,6 +152,14 @@ moving their own location.
 
 ## Swipes — `/api/v1/swipes`
 
+**Implemented (Phase 1 item 6).** `SwipePolicy::create` rejects self-swipes and either
+direction of block (403); a repeat swipe on the same target is a 422
+(`already_swiped`) — `swipes` has a unique `(actor_id, target_id)` per docs/02, so this
+is permanent per pair, not just "until you unmatch." `super` is accepted (matches the
+schema enum) and can trigger a match exactly like `right`, but none of Super Like's
+proposed extras (limits, premium gating, a distinct match celebration) are built —
+those are [TBD-11], pending open decision #11.
+
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/` | body: `{ "target_id", "direction": "left|right|super" }`; returns `{ "matched": bool, "match_id": ... }` on mutual like |
@@ -159,12 +167,19 @@ moving their own location.
 
 ## Matches — `/api/v1/matches`
 
+**Implemented.** `other_user` in each match's response is the same "public profile
+projection" shape as the discovery feed's candidates, minus `distance_km` (matches
+aren't distance-scoped) — see `MatchedUserResource`. Unmatch is soft (`unmatched_at`/
+`unmatched_by`, per docs/02), so a match can't be unmatched twice (`UserMatchPolicy`
+denies it — 403) and unmatched matches simply drop out of `GET /`'s list rather than
+being deleted.
+
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/` | list active matches, ordered by most recent activity |
 | GET | `/{id}` | match detail |
 | DELETE | `/{id}` | unmatch |
-| GET | `/who-liked-me` | **[PROPOSED]** premium-gated list from `likes` |
+| GET | `/who-liked-me` | **[PROPOSED]** premium-gated list from `likes` — not built; Phase 2 (subscriptions) doesn't exist yet for the gate to check against |
 
 ## Chat — `/api/v1/chat`
 

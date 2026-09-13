@@ -95,5 +95,12 @@ class AppServiceProvider extends ServiceProvider
 
         // docs/06 §7 rate limit table: "discovery/feed | 60 / hour / user".
         RateLimiter::for('discovery-feed', fn ($request) => Limit::perHour(60)->by($request->user()->id));
+
+        // docs/06 §7: "swipes | 100 / hour / user (free), higher for
+        // subscribers; hard ceiling regardless of tier." isSubscriber() is
+        // stubbed to false until Phase 2, so the 300/hour branch is unreached
+        // for now but ready — never hardcode the higher tier as the default.
+        RateLimiter::for('swipes', fn ($request) => Limit::perHour($request->user()->isSubscriber() ? 300 : 100)
+            ->by($request->user()->id));
     }
 }

@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
+use App\Http\Controllers\Api\Matches\MatchController;
 use App\Http\Controllers\Api\Profile\InterestController;
 use App\Http\Controllers\Api\Profile\PreferenceController;
 use App\Http\Controllers\Api\Profile\ProfileController;
 use App\Http\Controllers\Api\Profile\ProfilePhotoController;
 use App\Http\Controllers\Api\Profile\PromptController;
+use App\Http\Controllers\Api\Swipe\SwipeController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -57,6 +59,14 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('discovery')->group(function () {
             Route::get('feed', [DiscoveryController::class, 'feed'])->middleware('throttle:discovery-feed');
+        });
+
+        Route::post('swipes', [SwipeController::class, 'store'])->middleware('throttle:swipes');
+
+        Route::prefix('matches')->group(function () {
+            Route::get('/', [MatchController::class, 'index']);
+            Route::get('{match}', [MatchController::class, 'show']);
+            Route::delete('{match}', [MatchController::class, 'destroy']);
         });
     });
 });
