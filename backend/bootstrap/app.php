@@ -10,8 +10,16 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+    )
+    // Not passed as withRouting()'s `channels:` param on purpose: that always
+    // registers `broadcasting/auth` under the default *web* (session)
+    // middleware, which a Sanctum-bearer-token mobile client can never
+    // authenticate against. This registers it at `/api/broadcasting/auth`
+    // under `auth:sanctum` instead, matching every other endpoint's auth.
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['auth:sanctum'], 'prefix' => 'api'],
     )
     ->withMiddleware(function (Middleware $middleware): void {
         //
