@@ -66,13 +66,16 @@ class ChatTest extends TestCase
 
     public function test_a_participant_sees_the_conversation_in_their_inbox(): void
     {
-        [$userA, , $conversation] = $this->matchedPair();
+        [$userA, , $conversation, $match] = $this->matchedPair();
 
         Sanctum::actingAs($userA);
         $response = $this->getJson('/api/v1/chat/conversations')->assertOk();
 
         $response->assertJsonCount(1, 'conversations');
         $response->assertJsonPath('conversations.0.id', $conversation->id);
+        // So the client can unmatch (DELETE /matches/{id}) from the inbox
+        // without a second round-trip to look the match id up.
+        $response->assertJsonPath('conversations.0.match_id', $match->id);
     }
 
     public function test_a_non_participant_does_not_see_the_conversation(): void

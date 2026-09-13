@@ -29,6 +29,10 @@ class ConversationResource extends JsonResource
 
         return [
             'id' => $this->id,
+            // So the mobile inbox (one GET /chat/conversations call) can
+            // also call DELETE /matches/{match_id} to unmatch, without a
+            // second round-trip to GET /matches just to find this id.
+            'match_id' => $this->match_id,
             'other_user' => new MatchedUserResource($other),
             'last_message_at' => $this->last_message_at,
             'unread_count' => $unreadCount,

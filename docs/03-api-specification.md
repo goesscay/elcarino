@@ -194,7 +194,9 @@ being deleted.
 [TBD-16/17/18], unconfirmed. A `Conversation` is created automatically alongside every
 `UserMatch` (`SwipeService`, item 6) — the inbox lists a fresh match with no messages
 yet, per docs/07 §3.3, rather than only showing up once someone sends a first message.
-`ConversationResource` includes `unread_count` and `requires_subscription_to_message`
+`ConversationResource` includes `match_id` (so the client can call
+`DELETE /matches/{id}` to unmatch straight from the inbox, no second round-trip to
+`GET /matches`), `unread_count`, and `requires_subscription_to_message`
 so the client can show the "subscribe to message" banner (docs/07's
 Unmatched-conversation banner) without a wasted 403 round-trip. Real-time delivery is
 `ShouldBroadcastNow` (not queued) — `QUEUE_CONNECTION` is `database` locally with no
