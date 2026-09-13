@@ -20,6 +20,14 @@ import 'onboarding_scaffold.dart';
 /// it's ever reached without a location set. The manual city/region fallback
 /// for a denial still isn't built (no geocoding in scope) — flagged, not
 /// silently dropped.
+///
+/// `getCurrentPosition` is bounded with a client-side `.timeout(...)` —
+/// confirmed live (emulator with location services enabled but no fused/
+/// network fix ever resolving) that without one this hangs indefinitely,
+/// and worse, since the "Not now" button is also disabled while a request
+/// is in flight, that stranded the user on this step with no way forward.
+/// A bounded timeout is swallowed by the same catch below, same as any
+/// other failure here.
 class LocationPermissionScreen extends ConsumerStatefulWidget {
   const LocationPermissionScreen({super.key});
 
@@ -42,7 +50,7 @@ class _LocationPermissionScreenState
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.low,
           ),
-        );
+        ).timeout(const Duration(seconds: 8));
         await ref
             .read(discoveryRepositoryProvider)
             .updateLocation(

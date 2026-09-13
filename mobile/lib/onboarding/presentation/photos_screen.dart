@@ -263,6 +263,12 @@ class _PhotoTile extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
+            // Two IconButtons at Material's default 48x48 min tap target
+            // don't fit side by side in a 3-column tile on a narrow screen
+            // (confirmed live: overflows by ~11px — plain `constraints:` on
+            // IconButton doesn't shrink it below the platform's mandatory
+            // tap-target padding; `tapTargetSize: shrinkWrap` is what
+            // actually removes that floor).
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -273,7 +279,12 @@ class _PhotoTile extends StatelessWidget {
                     size: 18,
                   ),
                   onPressed: onMoveLeft,
-                  style: IconButton.styleFrom(backgroundColor: Colors.black45),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black45,
+                    minimumSize: const Size(32, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(
@@ -282,7 +293,12 @@ class _PhotoTile extends StatelessWidget {
                     size: 18,
                   ),
                   onPressed: onMoveRight,
-                  style: IconButton.styleFrom(backgroundColor: Colors.black45),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black45,
+                    minimumSize: const Size(32, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
               ],
             ),
