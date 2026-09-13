@@ -87,13 +87,21 @@ class NotificationService
             'sent_via_push' => false,
         ]);
 
+        // FCM's `data` payload only accepts string values, and the mobile
+        // client's tap-to-open deep linking (docs/03) needs the same
+        // conversation_id/match_id/other_user_id the stored `payload` above
+        // carries — merge it in, stringified, rather than only sending
+        // `type`/`notification_id` and leaving the client with nowhere to
+        // navigate.
+        $fcmData = ['type' => $type->value, 'notification_id' => (string) $notification->id];
+        foreach ($payload as $key => $value) {
+            $fcmData[$key] = (string) $value;
+        }
+
         $sentToAny = false;
         foreach ($recipient->devices as $device) {
             try {
-                $this->push->send($device->fcm_token, $title, $body, [
-                    'type' => $type->value,
-                    'notification_id' => (string) $notification->id,
-                ]);
+                $this->push->send($device->fcm_token, $title, $body, $fcmData);
                 $sentToAny = true;
             } catch (PushSendException $e) {
                 Log::warning('Push notification send failed.', [
