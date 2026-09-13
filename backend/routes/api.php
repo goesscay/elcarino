@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Discovery\DiscoveryController;
 use App\Http\Controllers\Api\Profile\InterestController;
 use App\Http\Controllers\Api\Profile\PreferenceController;
 use App\Http\Controllers\Api\Profile\ProfileController;
@@ -25,6 +26,8 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('users/me', [UserController::class, 'me']);
+        Route::put('users/me/location', [UserController::class, 'updateLocation'])
+            ->middleware('throttle:location-update');
 
         Route::prefix('profiles')->group(function () {
             Route::get('me', [ProfileController::class, 'show']);
@@ -50,6 +53,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [InterestController::class, 'index']);
             Route::get('me', [InterestController::class, 'mine']);
             Route::put('me', [InterestController::class, 'update']);
+        });
+
+        Route::prefix('discovery')->group(function () {
+            Route::get('feed', [DiscoveryController::class, 'feed'])->middleware('throttle:discovery-feed');
         });
     });
 });

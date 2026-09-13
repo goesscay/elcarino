@@ -47,9 +47,19 @@ Every route below is subject to all of the following unless explicitly marked `p
 
 ## Users — `/api/v1/users`
 
+`PUT /me/location` was added to this group in Phase 1 item 5 (Discovery feed) — not
+in the original table below. It's what actually populates `user_locations`, which the
+discovery feed reads; there was previously no endpoint for it anywhere in this doc.
+Body: `{latitude, longitude}`. Never returns coordinates back (docs/06 §4/§5 — exact
+coordinates are "Critical" data); rounds to 3 decimal places server-side
+(defense-in-depth — the client is also expected to send coarse coordinates, docs/06
+§4) and rate-limited to 1 stored update / 5 min / user (`throttle:location-update`,
+same doc).
+
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/me` | current user + profile summary |
+| PUT | `/me/location` | *(added — see above)* upserts `user_locations`; 422 shape validation on out-of-range lat/long |
 | GET | `/me/devices` | list registered push devices |
 | POST | `/me/devices` | register FCM token |
 | DELETE | `/me/devices/{id}` | on logout/uninstall |
@@ -118,13 +128,27 @@ Flag to the client if fixed lists are wanted.
 
 ## Discovery — `/api/v1/discovery`
 
+**Implemented (Phase 1 item 5).** Filters applied are the *viewer's own* preferences
+(gender, age range, distance, relationship goal) — one-directional. Mutual matching
+and interest-overlap scoring are item 7 (Matching engine v1), not this endpoint.
+422s: `location_required` / `preferences_required` if the viewer hasn't set either yet
+(`PUT /users/me/location`, `PUT /preferences/me`). Response shape:
+`{"candidates": [{id, display_name, age, bio, relationship_goal, is_verified,
+distance_km, photos, prompts}], "meta": {page, per_page, has_more}}`. `refresh=1` is
+accepted but currently a no-op — there's no feed cache yet for it to bust.
+
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/feed` | paginated candidate profiles — applies preferences, radius, and excludes already-swiped/blocked users |
-| GET | `/feed?refresh=1` | force a fresh batch (e.g. after boost activation) |
+| GET | `/feed?refresh=1` | force a fresh batch (e.g. after boost activation) — currently a no-op, see above |
 
-Response includes only the rounded distance (e.g. `"distance_km": 4`) — **never raw
-coordinates** (spec §9).
+Response includes only the rounded/bucketed distance (`distance_km`) — **never raw
+coordinates** (spec §9). Per docs/06-security-architecture.md §4, `distance_km: 0` is
+the sentinel for "less than 1 km away" (the client renders that copy); otherwise it's
+rounded to the nearest km, or nearest 5 km beyond 30 km. Candidates are sorted by this
+*bucketed* value, never the raw distance — docs/06 §4 explicitly forbids sorting by
+exact distance, since that leaks precision an attacker could triangulate by repeatedly
+moving their own location.
 
 ## Swipes — `/api/v1/swipes`
 

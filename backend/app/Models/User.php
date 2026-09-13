@@ -81,4 +81,24 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Interest::class, 'user_interests')->withTimestamps();
     }
+
+    public function location(): HasOne
+    {
+        return $this->hasOne(UserLocation::class);
+    }
+
+    public function swipesMade(): HasMany
+    {
+        return $this->hasMany(Swipe::class, 'actor_id');
+    }
+
+    public function blocksMade(): HasMany
+    {
+        return $this->hasMany(Block::class, 'blocker_id');
+    }
+
+    public function blockedBy(): HasMany
+    {
+        return $this->hasMany(Block::class, 'blocked_id');
+    }
 }

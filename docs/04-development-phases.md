@@ -133,7 +133,34 @@ fix → commit, before moving to the next):
        existing update/`DELETE /prompts/me/{id}` calls, the latter finally
        called from mobile for the first time. 13 mobile tests passing (was
        11), flutter analyze clean, `flutter build apk --debug` verified.
-5. [ ] Discovery feed (filters, radius, exclude swiped/blocked)
+5. [ ] Discovery feed (filters, radius, exclude swiped/blocked) — **backend done.**
+       `PUT /users/me/location` (new endpoint, added to docs/03 in this commit) +
+       `GET /discovery/feed`. Filters are the *viewer's own* preferences
+       (gender/age/distance/relationship-goal) — one-directional; mutual
+       matching + interest-overlap scoring stay item 7's job. `swipes` and
+       `blocks` tables added now, schema-only — their write endpoints are
+       items 6 and 10, but the feed needs to exclude against them today, and
+       adding the tables later would mean a mid-flight schema change instead
+       of an empty table now. Distance: PHP-side Haversine over a
+       SQL-prefiltered, scan-capped candidate set (config/discovery.php),
+       *not* a SQL geo query — docs/02's own indexing note says geohash
+       bucketing is "the Phase-1 proximity approach... revisit only if it
+       becomes a bottleneck"; this is even simpler than that, deferring
+       geohash-based filtering too until the plain-Haversine approach
+       actually struggles. The geohash column is still computed and stored
+       (Geohash service, verified against the standard Wikipedia worked
+       example) so that optimization is a query change later, not a
+       backfill. Sorting is by *bucketed* distance only, per docs/06 §4's
+       explicit anti-triangulation rule (never sort by the raw float).
+       Candidates require ≥1 photo (any moderation status) — gating on
+       *approved* photos would make the feed permanently empty pre-Filament
+       (item 11), since nothing can ever be approved yet; flagged here as a
+       must-fix before real users, not silently shipped. Location updates
+       rate-limited to 1/5min (docs/06 §4) via a real `Limit::perMinutes`
+       throttle, not just a comment. 92 backend tests (was 61), Pint +
+       audit clean. **Mobile (location capture + feed screen) is next** —
+       not started; the onboarding Location-permission screen still only
+       requests OS permission, per its existing deferred note.
 6. [ ] Swipe → like/pass → match
 7. [ ] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score
        yet** — spec §10 explicitly defers the formula)

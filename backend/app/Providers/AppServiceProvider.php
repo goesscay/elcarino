@@ -88,5 +88,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('otp-verify', fn ($request) => Limit::perMinute(10)->by($request->input('phone')));
 
         RateLimiter::for('auth-write', fn ($request) => Limit::perMinute(10)->by($request->ip()));
+
+        // docs/06 §4: "Location updates are rate-limited (max 1 stored
+        // update / 5 min / user)."
+        RateLimiter::for('location-update', fn ($request) => Limit::perMinutes(5, 1)->by($request->user()->id));
+
+        // docs/06 §7 rate limit table: "discovery/feed | 60 / hour / user".
+        RateLimiter::for('discovery-feed', fn ($request) => Limit::perHour(60)->by($request->user()->id));
     }
 }
