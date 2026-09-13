@@ -27,6 +27,13 @@ class ConversationResource extends JsonResource
             ->whereNull('read_at')
             ->count();
 
+        // docs/07 §3.3's inbox row needs a preview snippet next to the
+        // timestamp. reorder() is required here for the same reason as
+        // ChatController::messages() — the messages() relation's own
+        // ascending orderBy('created_at') would otherwise silently combine
+        // with a second orderByDesc instead of being replaced by it.
+        $lastMessage = $this->messages()->reorder('created_at', 'desc')->first();
+
         return [
             'id' => $this->id,
             // So the mobile inbox (one GET /chat/conversations call) can
@@ -35,6 +42,9 @@ class ConversationResource extends JsonResource
             'match_id' => $this->match_id,
             'other_user' => new MatchedUserResource($other),
             'last_message_at' => $this->last_message_at,
+            // Null for a fresh match with no messages yet — the mobile inbox
+            // falls back to "You matched — say hi!" in that case.
+            'last_message_preview' => $lastMessage?->body,
             'unread_count' => $unreadCount,
             // Whether sending a message here needs an active subscription
             // (docs/06 §3.4) — lets the client show the "subscribe to

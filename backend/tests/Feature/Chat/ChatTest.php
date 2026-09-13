@@ -195,6 +195,22 @@ class ChatTest extends TestCase
         );
     }
 
+    public function test_inbox_includes_a_last_message_preview(): void
+    {
+        [$userA, $userB, $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $noMessagesYet = $this->getJson('/api/v1/chat/conversations')->assertOk();
+        $noMessagesYet->assertJsonPath('conversations.0.last_message_preview', null);
+
+        Message::factory()->for($conversation)->create(['sender_id' => $userB->id, 'body' => 'first']);
+        $latest = Message::factory()->for($conversation)->create(['sender_id' => $userA->id, 'body' => 'latest one']);
+        DB::table('messages')->where('id', $latest->id)->update(['created_at' => now()->addMinute()]);
+
+        $withMessages = $this->getJson('/api/v1/chat/conversations')->assertOk();
+        $withMessages->assertJsonPath('conversations.0.last_message_preview', 'latest one');
+    }
+
     public function test_unread_count_reflects_only_the_other_participants_unread_messages(): void
     {
         [$userA, $userB, $conversation] = $this->matchedPair();

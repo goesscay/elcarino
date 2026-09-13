@@ -196,7 +196,9 @@ being deleted.
 yet, per docs/07 §3.3, rather than only showing up once someone sends a first message.
 `ConversationResource` includes `match_id` (so the client can call
 `DELETE /matches/{id}` to unmatch straight from the inbox, no second round-trip to
-`GET /matches`), `unread_count`, and `requires_subscription_to_message`
+`GET /matches`), `last_message_preview` (the latest message's `body`, `null` for a
+fresh match with no messages yet — docs/07 §3.3's inbox row preview text),
+`unread_count`, and `requires_subscription_to_message`
 so the client can show the "subscribe to message" banner (docs/07's
 Unmatched-conversation banner) without a wasted 403 round-trip. Real-time delivery is
 `ShouldBroadcastNow` (not queued) — `QUEUE_CONNECTION` is `database` locally with no
@@ -210,7 +212,7 @@ extra HTTP round-trip to Reverb per message, the right trade here.
 | GET | `/conversations/{id}/messages` | paginated history, newest first |
 | POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched (or there is none), reject with 403 `error.code = "subscription_required"` unless `request.user->isSubscriber()` — the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI. Rate-limited 30/min/conversation + 300/hour/user (docs/06 §7) |
 | PUT | `/conversations/{id}/read` | marks the *other* participant's unread messages read; broadcasts a read-receipt event so an open conversation screen updates live |
-| WS | `presence:conversation.{id}` | typing indicator + online/offline via Reverb channel — a presence channel's own member list *is* the online/offline signal, and typing indicators are peer-to-peer client (`whisper`) events over the same channel; neither needs a REST endpoint. `routes/channels.php`'s authorizer reuses `ConversationPolicy::view`, so the socket subscription is gated by the exact same participant-and-not-blocked rule as the REST endpoints |
+| WS | `presence-conversation.{id}` | typing indicator + online/offline via Reverb channel — a presence channel's own member list *is* the online/offline signal, and typing indicators are peer-to-peer client (`whisper`) events over the same channel; neither needs a REST endpoint. `routes/channels.php`'s authorizer reuses `ConversationPolicy::view`, so the socket subscription is gated by the exact same participant-and-not-blocked rule as the REST endpoints. Auth for the socket handshake goes through `POST /api/broadcasting/auth` (registered outside the `/api/v1` prefix — see `bootstrap/app.php`), Sanctum-bearer-token-guarded like every other endpoint. Server → client events: `message.new` (`{ "message": MessageResource }`), `messages.read` (`{ "read_by_user_id", "read_at" }`). Client → client (`whisper`) event: `client-typing` |
 
 `message_attachments` (docs/02) isn't built this feature — no reader or writer for it
 in a text-only scope, unlike `swipes`/`blocks`/`likes` in earlier features which had an
