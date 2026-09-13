@@ -87,6 +87,21 @@ class ChatTest extends TestCase
         $this->getJson('/api/v1/chat/conversations')->assertOk()->assertJsonCount(0, 'conversations');
     }
 
+    public function test_a_blocked_conversation_is_excluded_from_the_inbox_in_either_direction(): void
+    {
+        [$userA, $userB] = $this->matchedPair();
+        Block::factory()->create(['blocker_id' => $userA->id, 'blocked_id' => $userB->id]);
+
+        Sanctum::actingAs($userA);
+        $this->getJson('/api/v1/chat/conversations')->assertOk()->assertJsonCount(0, 'conversations');
+
+        // Not just from the blocker's side — the blocked party shouldn't
+        // see it either, same as ConversationPolicy::view already enforces
+        // for opening it directly.
+        Sanctum::actingAs($userB);
+        $this->getJson('/api/v1/chat/conversations')->assertOk()->assertJsonCount(0, 'conversations');
+    }
+
     public function test_a_participant_can_send_a_text_message(): void
     {
         Event::fake([NewMessageBroadcast::class]);
