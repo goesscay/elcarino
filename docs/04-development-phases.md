@@ -121,9 +121,18 @@ fix → commit, before moving to the next):
        on My profile) shows "coming soon" — its children are scattered across
        features that don't exist yet (push notifications/item 9,
        safety/item 10).
-4. [ ] Profile prompts (library + answer + reorder) — library + answer already
-       built in Onboarding (item 2); **remaining scope is just the reorder UI**
-       (drag to reorder answered prompts, per docs/07 §3.5 "Edit prompts").
+4. [x] Profile prompts (library + answer + reorder). Library + answer already
+       built in Onboarding (item 2). Added: `EditPromptsScreen`
+       (`/profile/edit/prompts`) — a dedicated screen for docs/07 §3.5's "Edit
+       prompts" (reorder/swap/edit an already-answered set), separate from
+       onboarding's "pick 3 from scratch" picker since the doc describes them
+       differently. Drag-to-reorder uses `ReorderableListView` and persists
+       via the same full-replace `PUT /prompts/me` (resubmit in the new
+       order sets `sort_order`) — no new backend endpoint. Swap/add uses the
+       library picker + `PUT /prompts/me`; edit-in-place and remove use the
+       existing update/`DELETE /prompts/me/{id}` calls, the latter finally
+       called from mobile for the first time. 13 mobile tests passing (was
+       11), flutter analyze clean, `flutter build apk --debug` verified.
 5. [ ] Discovery feed (filters, radius, exclude swiped/blocked)
 6. [ ] Swipe → like/pass → match
 7. [ ] Matching engine v1 (rule-based: preferences + interests overlap; **no AI score

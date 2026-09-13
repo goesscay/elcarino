@@ -90,7 +90,10 @@ class ProfileRepository {
         .toList();
   }
 
-  /// Full replace, matching the backend's `PUT /prompts/me` contract.
+  /// Full replace, matching the backend's `PUT /prompts/me` contract. The
+  /// list's order becomes `sort_order` server-side — this is also how
+  /// reordering answered prompts persists (docs/04 item 4): resubmit the same
+  /// answers in the new order.
   Future<List<AnsweredPrompt>> updatePrompts(List<(int promptId, String answer)> answers) async {
     final response = await _client.request(
       '/prompts/me',
@@ -104,6 +107,10 @@ class ProfileRepository {
     return (response.data['prompts'] as List<dynamic>)
         .map((e) => AnsweredPrompt.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> deletePromptAnswer(int promptId) async {
+    await _client.request('/prompts/me/$promptId', method: 'DELETE');
   }
 
   Future<Preferences?> getPreferences() async {

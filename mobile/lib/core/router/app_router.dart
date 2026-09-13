@@ -19,6 +19,7 @@ import '../../placeholder_home.dart';
 import '../../profile/presentation/edit_basics_screen.dart';
 import '../../profile/presentation/edit_interests_screen.dart';
 import '../../profile/presentation/edit_profile_screen.dart';
+import '../../profile/presentation/edit_prompts_screen.dart';
 import '../../profile/presentation/my_profile_screen.dart';
 import '../widgets/splash_screen.dart';
 
@@ -73,11 +74,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OnboardingCompleteScreen(),
       ),
 
-      // Profile module (Phase 1 item 3). Photos/Prompts/Preferences are the
-      // same screens the onboarding wizard uses, reused here with a "Done"
-      // button that pops back instead of advancing the wizard, and no
-      // progress bar (step: null) since there's no wizard to show progress
-      // through outside onboarding.
+      // Profile module (Phase 1 item 3). Photos/Preferences are the same
+      // screens the onboarding wizard uses, reused here with a "Done" button
+      // that pops back instead of advancing the wizard, and no progress bar
+      // (step: null) since there's no wizard to show progress through
+      // outside onboarding. Edit prompts (item 4) is its own screen —
+      // docs/07 §3.5 describes it differently from onboarding's picker
+      // (reorder/swap/edit an already-answered set, not "pick 3 from
+      // scratch") — see edit_prompts_screen.dart.
       GoRoute(path: '/profile', builder: (context, state) => const MyProfileScreen()),
       GoRoute(path: '/profile/edit', builder: (context, state) => const EditProfileScreen()),
       GoRoute(
@@ -98,11 +102,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile/edit/prompts',
-        builder: (context, state) => PromptsScreen(
-          step: null,
-          continueLabel: 'Done',
-          onDone: () => Navigator.of(context).pop(),
-        ),
+        builder: (context, state) => const EditPromptsScreen(),
       ),
       GoRoute(
         path: '/profile/preferences',
