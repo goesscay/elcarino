@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Chat\ChatController;
+use App\Http\Controllers\Api\Chat\GifController;
 use App\Http\Controllers\Api\Discovery\BoostController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
 use App\Http\Controllers\Api\Matches\MatchController;
@@ -94,6 +95,12 @@ Route::prefix('v1')->group(function () {
                 ->middleware('throttle:chat-messages');
             Route::put('conversations/{conversation}/read', [ChatController::class, 'markRead']);
         });
+
+        // Phase 3 item 2 (open decision #17) — a plain top-level resource,
+        // not nested under `chat/`, since it's not scoped to any one
+        // conversation (the client picks a gif before knowing/caring which
+        // conversation it'll end up sent to next).
+        Route::get('gifs/search', [GifController::class, 'search'])->middleware('throttle:gif-search');
 
         Route::prefix('notifications')->group(function () {
             Route::get('/', [NotificationController::class, 'index']);

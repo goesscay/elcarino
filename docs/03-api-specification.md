@@ -236,13 +236,27 @@ extra HTTP round-trip to Reverb per message, the right trade here.
 |---|---|---|
 | GET | `/conversations` | inbox, ordered by `last_message_at` (a match with no messages yet sorts last, not dropped) |
 | GET | `/conversations/{id}/messages` | paginated history, newest first |
-| POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched (or there is none), reject with 403 `error.code = "subscription_required"` unless `request.user->isSubscriber()` — the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI. Rate-limited 30/min/conversation + 300/hour/user (docs/06 §7). Body: `body` (string, required unless `voice_note` present) **or** `voice_note` (multipart file upload, audio, ≤ `media.max_voice_note_size_kb`) + `duration_seconds` (int, client-reported, required with `voice_note`) — Phase 3 item 1 (open decision #16). A voice-note message gets `type: "voice_note"`, `body: null`, and a populated `attachment` object in the response/resource (`url` — signed, short TTL per `media.chat_media_signed_url_ttl_minutes`; `mime_type`; `duration_seconds`) |
+| POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched (or there is none), reject with 403 `error.code = "subscription_required"` unless `request.user->isSubscriber()` — the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI. Rate-limited 30/min/conversation + 300/hour/user (docs/06 §7). Body: `body` (string, required unless `voice_note` or `gif_id` present) **or** `voice_note` (multipart file upload, audio, ≤ `media.max_voice_note_size_kb`) + `duration_seconds` (int, client-reported, required with `voice_note`) — Phase 3 item 1 (open decision #16) — **or** `gif_id` (string, from a prior `GET /gifs/search` result — never a raw URL, see below) — Phase 3 item 2 (open decision #17). Only one of `voice_note`/`gif_id` may be present at once. A voice-note message gets `type: "voice_note"`, `body: null`, and a populated `attachment` object in the response/resource (`url` — signed, short TTL per `media.chat_media_signed_url_ttl_minutes`; `mime_type`; `duration_seconds`). A gif message gets `type: "gif"` and `body` set to the *server-resolved* gif URL (`attachment` stays null — a gif is already public third-party-hosted content, nothing to store privately); an unknown/expired `gif_id` is rejected with 422 `error.code = "gif_not_found"` |
 | PUT | `/conversations/{id}/read` | marks the *other* participant's unread messages read; broadcasts a read-receipt event so an open conversation screen updates live |
 | WS | `presence-conversation.{id}` | typing indicator + online/offline via Reverb channel — a presence channel's own member list *is* the online/offline signal, and typing indicators are peer-to-peer client (`whisper`) events over the same channel; neither needs a REST endpoint. `routes/channels.php`'s authorizer reuses `ConversationPolicy::view`, so the socket subscription is gated by the exact same participant-and-not-blocked rule as the REST endpoints. Auth for the socket handshake goes through `POST /api/broadcasting/auth` (registered outside the `/api/v1` prefix — see `bootstrap/app.php`), Sanctum-bearer-token-guarded like every other endpoint. Server → client events: `message.new` (`{ "message": MessageResource }`, now including `attachment` when present), `messages.read` (`{ "read_by_user_id", "read_at" }`). Client → client (`whisper`) event: `client-typing` |
 
 `message_attachments` (docs/02): voice notes (Phase 3 item 1, open decision #16) is its
-first reader/writer — `MessageAttachment` model, `MessageAttachmentResource`. GIFs/photo
-sharing (#17/#18) still unbuilt; revisit this table once those are confirmed.
+only reader/writer — `MessageAttachment` model, `MessageAttachmentResource`. Gifs (#17)
+deliberately don't use it — see the `POST` row above. Photo sharing (#18) still unbuilt;
+revisit this table once that's confirmed.
+
+## GIFs — `GET /gifs/search`
+
+Phase 3 item 2 (open decision #17). Not nested under `chat/` — the client picks a gif
+before knowing which conversation it'll end up sent to. Query: `q` (required string),
+`page` (optional int, 1-indexed). Response: `{ "gifs": [GifResultResource], "meta": {
+"has_more": bool } }`, where a `GifResultResource` is `{ id, preview_url, url, width,
+height }`. Rate-limited 60/min/user. Proxies `GifProvider::search()` server-side rather
+than the mobile app calling Giphy directly, so the API key never ships in the client and
+the provider can be swapped without a mobile release. `id` from a result here is what
+`POST /chat/conversations/{id}/messages`'s `gif_id` field takes — the client never sends
+a gif's `url` directly, only the `id`; the server re-resolves it via `GifProvider::find()`
+at send time.
 
 ## Media — `GET /media/message-attachments/{attachment}` — **outside `/api/v1`**
 

@@ -103,4 +103,39 @@ return [
         'cancel_url' => env('STRIPE_CANCEL_URL') ?: null,
     ],
 
+    'gifs' => [
+        // Open decision #17 (GIFs) — 'log' is the safe default (no outbound
+        // call at all, same role as SMS_PROVIDER/PUSH_PROVIDER/
+        // PAYMENT_PROVIDER=log) and what tests/CI always run against.
+        // 'giphy' is this feature's chosen provider — the de facto standard
+        // for exactly this use case (it's what Tinder itself uses). Still
+        // never the `.env` default, deliberately, so automated tests stay
+        // network-free.
+        'provider' => env('GIF_PROVIDER', 'log'),
+        'giphy' => [
+            // `?:`, not env()'s own default arg — GIPHY_API_KEY is present
+            // but blank in .env.example/.env (documents the variable exists
+            // without implying a real key is required), and env()'s second
+            // argument only ever applies when the key is fully absent, same
+            // normalization already used for GOOGLE_CLIENT_ID/APPLE_CLIENT_ID
+            // above. Falls back to Giphy's own documented public beta key —
+            // checked live while building this feature and it's currently
+            // dead (every request returns `{"meta":{"status":403,"msg":
+            // "BANNED"}}`, not a real result), so this fallback is really
+            // just "fail the same documented way as an unconfigured key"
+            // rather than a working zero-setup default the way it was
+            // presumably meant to be. Set GIPHY_API_KEY to a real
+            // (registered) key before relying on 'giphy' at all — unlike
+            // TwilioSmsSender/StripePaymentGateway, this provider hasn't
+            // been exercised against so much as a real response, only
+            // against Http::fake() in GiphyGifProviderTest.
+            'api_key' => env('GIPHY_API_KEY') ?: 'dc6zaTOxFJmzC',
+            // Giphy's own content-rating scale. A dating app showing
+            // third-party search results to adults — "pg-13" is a
+            // provisional, revisable default, same spirit as media.php's
+            // upload caps, not a business decision.
+            'rating' => env('GIPHY_RATING') ?: 'pg-13',
+        ],
+    ],
+
 ];

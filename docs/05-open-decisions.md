@@ -43,7 +43,7 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 | # | Decision | Working assumption | Status |
 |---|---|---|---|
 | 16 | Voice notes | Scheduled Phase 3, assume in-scope pending confirmation | 🔴 |
-| 17 | GIFs | Scheduled Phase 3, assume in-scope pending confirmation | 🔴 |
+| 17 | GIFs | Scheduled Phase 3, assume in-scope pending confirmation. Built (Phase 3 item 2): search-provider choice was itself unspecified — Giphy is this feature's engineering working default (industry standard for this exact use case), behind a provider-agnostic `GifProvider` interface, same pattern as #27's Stripe default. Not verified against any real Giphy response — the public beta key it falls back to when unconfigured turned out to be dead (confirmed live, 403 "BANNED" on every request), so this needs a real `GIPHY_API_KEY` and a fresh live check before relying on it, more so than #27's Stripe/#16's audio pipeline were | 🔴 |
 | 18 | Photo sharing (in chat) | Scheduled Phase 3, assume in-scope pending confirmation | 🔴 |
 | 19 | Voice calls | Scheduled Phase 3, provider TBD (WebRTC vs Agora) | 🔴 |
 | 20 | Video calls | Scheduled Phase 3, same provider decision as #19 | 🔴 |

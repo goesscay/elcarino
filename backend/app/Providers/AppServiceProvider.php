@@ -6,6 +6,9 @@ use App\Models\User;
 use App\Services\Auth\OAuth\AppleTokenVerifier;
 use App\Services\Auth\OAuth\GoogleTokenVerifier;
 use App\Services\Auth\OtpService;
+use App\Services\Gifs\GifProvider;
+use App\Services\Gifs\GiphyGifProvider;
+use App\Services\Gifs\LogGifProvider;
 use App\Services\Payments\AppStoreReceiptVerifier;
 use App\Services\Payments\LogPaymentGateway;
 use App\Services\Payments\PaymentGateway;
@@ -84,6 +87,18 @@ class AppServiceProvider extends ServiceProvider
             config('services.play.service_account_email'),
             config('services.play.service_account_private_key'),
         ));
+
+        // Phase 3 item 2 — same switch-on-a-config-value pattern as
+        // SmsSender/PushSender/PaymentGateway above.
+        $this->app->bind(GifProvider::class, function () {
+            return match (config('services.gifs.provider')) {
+                'giphy' => new GiphyGifProvider(
+                    config('services.gifs.giphy.api_key'),
+                    config('services.gifs.giphy.rating'),
+                ),
+                default => new LogGifProvider,
+            };
+        });
     }
 
     /**
@@ -178,5 +193,12 @@ class AppServiceProvider extends ServiceProvider
         // docs/06 §7 rate limit table: "safety/report | 20 / day / user (a
         // user reporting dozens of people per hour is itself a signal)."
         RateLimiter::for('safety-report', fn ($request) => Limit::perDay(20)->by($request->user()->id));
+
+        // Not in docs/06 §7's table (predates Phase 3) — a provisional cap
+        // in the same spirit as media.php's upload limits: a GIF search is
+        // cheap for us but still a proxied third-party API call worth
+        // bounding, especially per-keystroke live search from the mobile
+        // composer.
+        RateLimiter::for('gif-search', fn ($request) => Limit::perMinute(60)->by($request->user()->id));
     }
 }

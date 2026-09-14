@@ -174,6 +174,13 @@ any subscription state change (webhook, cancel, expiry job).
   auth check, same model, but `storage.local` doesn't support `Range` requests and
   re-sniffs `Content-Type` in a way that broke voice-note playback on Android's native
   `MediaPlayer` (confirmed live); see the controller's doc comment for the full story.
+- Gif messages (Phase 3 item 2) don't go through any of the above — deliberately not a
+  `message_attachments` row at all. A gif is already public, third-party-hosted content
+  (Giphy's own CDN); there's nothing of ours to keep private or mint a signed URL for.
+  The one control that *is* server-side: the client only ever sends a gif's `id` (from
+  `GET /gifs/search`), never a raw url — `ChatController::sendMessage` re-resolves it via
+  `GifProvider::find()` before storing anything, so a client can't smuggle an arbitrary
+  external URL into a message body through this field.
 
 ---
 

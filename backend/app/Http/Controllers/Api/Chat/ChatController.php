@@ -12,6 +12,7 @@ use App\Http\Resources\Chat\ConversationResource;
 use App\Http\Resources\Chat\MessageResource;
 use App\Models\Block;
 use App\Models\Conversation;
+use App\Services\Gifs\GifProvider;
 use App\Services\Media\AudioMimeTypeResolver;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,7 @@ class ChatController extends Controller
     public function __construct(
         private readonly NotificationService $notifications,
         private readonly AudioMimeTypeResolver $audioMimeTypes,
+        private readonly GifProvider $gifs,
     ) {}
 
     /**
@@ -117,13 +119,36 @@ class ChatController extends Controller
         }
 
         $voiceNote = $request->file('voice_note');
+        $gifId = $request->string('gif_id')->toString();
+
+        $gif = null;
+        if ($gifId !== '') {
+            $gif = $this->gifs->find($gifId);
+            if (! $gif) {
+                return $this->errorResponse('gif_not_found', 'That gif is no longer available.', 422);
+            }
+        }
 
         $message = $conversation->messages()->create([
             'sender_id' => $request->user()->id,
             // null body for a voice-note message — docs/02's schema note
             // ("null if attachment-only"), matching the migration comment.
-            'body' => $voiceNote ? null : $request->string('body')->toString(),
-            'type' => $voiceNote ? MessageType::VoiceNote : MessageType::Text,
+            // A gif message stores the *resolved* (server-side, re-fetched —
+            // see SendMessageRequest's gif_id doc comment) url in body, the
+            // same field a text message uses — no message_attachments row:
+            // unlike a voice note or photo, a gif is already public,
+            // third-party-hosted content, nothing here to store privately or
+            // mint a signed URL for.
+            'body' => match (true) {
+                $voiceNote !== null => null,
+                $gif !== null => $gif->url,
+                default => $request->string('body')->toString(),
+            },
+            'type' => match (true) {
+                $voiceNote !== null => MessageType::VoiceNote,
+                $gif !== null => MessageType::Gif,
+                default => MessageType::Text,
+            },
         ]);
 
         if ($voiceNote) {

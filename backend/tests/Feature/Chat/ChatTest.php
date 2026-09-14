@@ -15,6 +15,9 @@ use App\Models\SubscriptionPlan;
 use App\Models\Swipe;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Services\Gifs\GifProvider;
+use App\Services\Gifs\GifResult;
+use App\Services\Gifs\GifSearchResult;
 use App\Services\Matching\SwipeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -259,6 +262,88 @@ class ChatTest extends TestCase
         $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
             'voice_note' => UploadedFile::fake()->create('note.m4a', 200, 'audio/mp4'),
         ])->assertStatus(422)->assertJsonValidationErrors('duration_seconds');
+    }
+
+    /**
+     * Phase 3 item 2 (gifs, open decision #17): the client only ever sends
+     * the `id` from a prior GET /gifs/search result — this binds a fake
+     * GifProvider so the test isn't depending on GifSearchTest's fake being
+     * shared, and to assert the server actually calls find() (re-resolving
+     * server-side) rather than trusting a client-supplied url.
+     */
+    public function test_a_participant_can_send_a_gif(): void
+    {
+        Event::fake([NewMessageBroadcast::class]);
+        [$userA, $userB, $conversation] = $this->matchedPair();
+        $this->app->bind(GifProvider::class, fn () => new class implements GifProvider
+        {
+            public function search(string $query, int $page = 1): GifSearchResult
+            {
+                return new GifSearchResult([], false);
+            }
+
+            public function find(string $id): ?GifResult
+            {
+                return $id === 'abc123'
+                    ? new GifResult('abc123', 'https://example.com/preview.gif', 'https://example.com/full.gif', 400, 300)
+                    : null;
+            }
+        });
+
+        Sanctum::actingAs($userA);
+        $response = $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'gif_id' => 'abc123',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('message.type', 'gif');
+        $response->assertJsonPath('message.body', 'https://example.com/full.gif');
+        $response->assertJsonPath('message.attachment', null);
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $userA->id,
+            'body' => 'https://example.com/full.gif',
+            'type' => 'gif',
+        ]);
+        $this->assertDatabaseCount('message_attachments', 0);
+
+        Event::assertDispatched(NewMessageBroadcast::class);
+        $this->assertDatabaseHas('notifications', ['user_id' => $userB->id, 'type' => 'new_message']);
+    }
+
+    public function test_sending_an_unknown_gif_id_is_rejected(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+        $this->app->bind(GifProvider::class, fn () => new class implements GifProvider
+        {
+            public function search(string $query, int $page = 1): GifSearchResult
+            {
+                return new GifSearchResult([], false);
+            }
+
+            public function find(string $id): ?GifResult
+            {
+                return null;
+            }
+        });
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['gif_id' => 'nope'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'gif_not_found');
+    }
+
+    public function test_sending_a_gif_and_a_voice_note_together_is_rejected(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'gif_id' => 'abc123',
+            'voice_note' => UploadedFile::fake()->create('note.m4a', 200, 'audio/mp4'),
+            'duration_seconds' => 5,
+        ])->assertStatus(422)->assertJsonValidationErrors(['gif_id', 'voice_note']);
     }
 
     public function test_a_blocked_participant_cannot_send_or_view(): void
