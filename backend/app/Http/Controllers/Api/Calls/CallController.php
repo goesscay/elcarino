@@ -161,8 +161,19 @@ class CallController extends Controller
                 'status' => $wasActive ? CallStatus::Ended : CallStatus::Missed,
                 'ended_at' => now(),
                 'ended_by' => $request->user()->id,
+                // `(int)` — Carbon's `diffInSeconds` returns a float, which
+                // `json_encode` then prints as a whole-number float (e.g.
+                // `60.0` rather than `60`) that the mobile client's `as
+                // int?` cast rejected outright (see Call.fromJson's own
+                // comment) — caught live: it silently crashed both the
+                // caller's own end-call handling and the callee's
+                // `call.ended` broadcast listener for any call that reached
+                // `active`. Mobile now parses defensively via `num?`
+                // regardless, but this is the actual source of the bad
+                // shape, so fix it here too rather than relying solely on
+                // the client tolerating it.
                 'duration_seconds' => $wasActive && $call->started_at
-                    ? $call->started_at->diffInSeconds(now())
+                    ? (int) $call->started_at->diffInSeconds(now())
                     : null,
             ])->save();
 
