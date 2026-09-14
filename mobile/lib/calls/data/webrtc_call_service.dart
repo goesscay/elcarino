@@ -25,13 +25,17 @@ class WebRtcCallService {
   // named parameter can't be passed by name from another file, which would
   // force every call site onto positional args instead; keeping a public
   // `channel` param name and assigning it to the private field explicitly
-  // is the more usable shape.
+  // is the more usable shape. CI's `flutter analyze` treats even this
+  // info-level lint as fatal (first real CI run for this repo — see
+  // docs/04's Phase 3 write-up), so silence it here rather than restructure
+  // around a constraint that's already the deliberate, reasoned choice.
   WebRtcCallService({
     required this.callId,
     required this.type,
     required this.isCaller,
     required this.iceServers,
     required ConversationChannel channel,
+    // ignore: prefer_initializing_formals
   }) : _channel = channel;
 
   final int callId;
