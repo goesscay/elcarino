@@ -5,6 +5,8 @@ namespace Tests\Feature\Discovery;
 use App\Models\Block;
 use App\Models\Interest;
 use App\Models\Profile;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\Swipe;
 use App\Models\User;
 use App\Models\UserLocation;
@@ -273,5 +275,47 @@ class DiscoveryFeedTest extends TestCase
         $this->assertTrue($ids->contains($visible->id));
         $this->assertFalse($ids->contains($suspended->id));
         $this->assertFalse($ids->contains($banned->id));
+    }
+
+    /**
+     * Phase 2 item 2 (docs/01 §8 "Advanced filters"): applied only for a
+     * subscriber — a candidate with no stated religion is correctly
+     * excluded too (`whereIn` never matches NULL), not treated as a
+     * wildcard match.
+     */
+    public function test_a_subscriber_can_filter_by_religion(): void
+    {
+        $viewer = $this->setViewer();
+        Subscription::factory()->for($viewer)->for(SubscriptionPlan::factory()->create([
+            'entitlements' => ['advanced_filters' => true],
+        ]), 'plan')->create();
+        UserPreference::query()->where('user_id', $viewer->id)->update(['religion_filter' => ['buddhist']]);
+
+        $matching = $this->makeCandidate(latOffset: 0.01);
+        $matching->profile->forceFill(['religion' => 'buddhist'])->save();
+        $nonMatching = $this->makeCandidate(latOffset: 0.02);
+        $nonMatching->profile->forceFill(['religion' => 'muslim'])->save();
+        $unset = $this->makeCandidate(latOffset: 0.03);
+
+        $response = $this->getJson('/api/v1/discovery/feed')->assertOk();
+
+        $ids = collect($response->json('candidates'))->pluck('id');
+        $this->assertTrue($ids->contains($matching->id));
+        $this->assertFalse($ids->contains($nonMatching->id));
+        $this->assertFalse($ids->contains($unset->id));
+    }
+
+    public function test_a_free_users_stored_religion_filter_is_not_applied(): void
+    {
+        $viewer = $this->setViewer();
+        UserPreference::query()->where('user_id', $viewer->id)->update(['religion_filter' => ['buddhist']]);
+
+        $nonMatching = $this->makeCandidate(latOffset: 0.01);
+        $nonMatching->profile->forceFill(['religion' => 'muslim'])->save();
+
+        $response = $this->getJson('/api/v1/discovery/feed')->assertOk();
+
+        $ids = collect($response->json('candidates'))->pluck('id');
+        $this->assertTrue($ids->contains($nonMatching->id));
     }
 }

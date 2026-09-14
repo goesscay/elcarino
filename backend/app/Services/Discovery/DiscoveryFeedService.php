@@ -58,7 +58,7 @@ class DiscoveryFeedService
             // rows are still very much present, just status-flagged.
             ->where('status', UserStatus::Active)
             ->whereNotIn('id', $excludedIds)
-            ->whereHas('profile', function ($query) use ($preferences, $maxBirthDate, $minBirthDate) {
+            ->whereHas('profile', function ($query) use ($viewer, $preferences, $maxBirthDate, $minBirthDate) {
                 $query->whereIn('gender', $preferences->interested_in_genders)
                     ->whereDate('birth_date', '<=', $maxBirthDate)
                     ->whereDate('birth_date', '>=', $minBirthDate)
@@ -66,6 +66,24 @@ class DiscoveryFeedService
 
                 if (! empty($preferences->relationship_goal_filter)) {
                     $query->whereIn('relationship_goal', $preferences->relationship_goal_filter);
+                }
+
+                // Phase 2 item 2 (docs/01 §8 "Advanced filters", docs/06 §3.4):
+                // gated at read time regardless of what's stored on
+                // `preferences` — the authoritative check, not just
+                // PreferenceController's write-time one. A lapsed
+                // subscriber's still-stored religion_filter/politics_filter
+                // never narrows their feed once entitlement() goes false.
+                // `whereIn` never matches a NULL column, so a candidate who
+                // hasn't stated their own religion/politics is correctly
+                // excluded rather than treated as a wildcard match.
+                if ($viewer->entitlement('advanced_filters')) {
+                    if (! empty($preferences->religion_filter)) {
+                        $query->whereIn('religion', $preferences->religion_filter);
+                    }
+                    if (! empty($preferences->politics_filter)) {
+                        $query->whereIn('politics', $preferences->politics_filter);
+                    }
                 }
             })
             ->whereHas('location')

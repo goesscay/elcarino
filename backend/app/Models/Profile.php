@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['display_name', 'birth_date', 'gender', 'bio', 'relationship_goal'])]
+#[Fillable(['display_name', 'birth_date', 'gender', 'bio', 'relationship_goal', 'religion', 'politics'])]
 class Profile extends Model
 {
     /** @use HasFactory<ProfileFactory> */

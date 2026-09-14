@@ -67,8 +67,11 @@ below (Phase 1 item 9) once it actually had implementation notes to carry.
 ## Profiles — `/api/v1/profiles`
 
 **Implemented (Phase 1 — Onboarding flow, backend slice).** `GET`/`PUT /me` return/accept
-`display_name`, `birth_date`, `gender`, `bio`, `relationship_goal`; the response also
-carries the derived `is_verified` and `completion_pct`, plus a nested `photos` array.
+`display_name`, `birth_date`, `gender`, `bio`, `relationship_goal`, and (Phase 2 item 2)
+`religion`/`politics` — free-form, free for anyone to set (only *filtering* other people
+by them is premium-gated, see Preferences below); owner-only, never exposed on any
+resource another user can fetch. The response also carries the derived `is_verified`
+and `completion_pct`, plus a nested `photos` array.
 Photo uploads are re-encoded server-side and EXIF-stripped
 (`docs/06-security-architecture.md` §6); each photo resource is
 `{id, url, sort_order, moderation_status}` — `url` is a short-lived **signed** URL
@@ -121,17 +124,30 @@ free-form string arrays, not a fixed enum — decision #10 confirms the filters 
 exist, not their option taxonomy, and no value list is defined anywhere in `/docs`.
 Flag to the client if fixed lists are wanted.
 
+`religion_filter`/`politics_filter` are premium-gated (Phase 2 item 2, docs/06 §3.4):
+attempting to *set or change* either to a non-empty value that differs from what's
+already stored, without the `advanced_filters` entitlement, is rejected — `403 {
+"error": { "code": "upgrade_required" } }` — but resubmitting the exact value already
+on the row (e.g. a lapsed subscriber saving an unrelated field via this same
+full-replace endpoint) is allowed through unchanged. The entitlement is re-checked
+independently at read time (`DiscoveryFeedService`) regardless of what's stored, so
+stale data from a lapsed subscription is never actually applied either way.
+
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/me` | age/distance/gender/advanced filters; 404 (`preferences_not_found`) before they're set |
-| PUT | `/me` | update `user_preferences`; advanced filters (religion, politics) included |
+| PUT | `/me` | update `user_preferences`; advanced filters (religion, politics) included, premium-gated per above |
 
 ## Discovery — `/api/v1/discovery`
 
-**Implemented (Phase 1 items 5 + 7).** Inclusion filters are the *viewer's own*
-preferences (gender, age range, distance, relationship goal) — one-directional; mutual
-matching stays out of scope (nothing here requires the target to want the viewer back,
-only that the viewer's stated preferences match the target). Ranking layers item 7
+**Implemented (Phase 1 items 5 + 7; Phase 2 item 2 adds religion/politics).** Inclusion
+filters are the *viewer's own* preferences (gender, age range, distance, relationship
+goal, and — subscribers only — religion/politics) — one-directional; mutual matching
+stays out of scope (nothing here requires the target to want the viewer back, only that
+the viewer's stated preferences match the target). A candidate who hasn't stated their
+own religion/politics is excluded by that filter rather than treated as a wildcard
+match. Neither field is ever returned in the candidate response shape below — see
+Profiles above on why. Ranking layers item 7
 (Matching engine v1) on top: candidates are ordered by `shared_interests_count`
 (descending) first, then by `distance_km` (ascending), then by id. Per
 `docs/01-technical-specification.md` §10, this is deliberately **not** a compatibility

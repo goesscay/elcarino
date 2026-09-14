@@ -515,7 +515,49 @@ suspend a user and it takes effect immediately.
       JSON mapping, all four purchase-response shapes, `isActive`'s status +
       expiry truth table), `flutter analyze` + `dart format` clean, `flutter
       build apk --debug` verified with `url_launcher` linked in.
-- [ ] Advanced filters unlocked/gated by plan
+- [x] Advanced filters unlocked/gated by plan. docs/01 §8 named religion and
+      politics specifically ("build these as filterable fields on
+      user_preferences, not as an afterthought") — `user_preferences` already
+      had `religion_filter`/`politics_filter` (Phase 1 item 5), but `profiles`
+      had nothing for a candidate to actually *have*, so the filter was
+      structurally inert until now. **Backend:** new `profiles.religion`/
+      `profiles.politics` (docs/02; free-form strings, same no-invented-
+      taxonomy reasoning as the filter columns themselves) — free for anyone
+      to set on their own profile via the existing `PUT /profiles/me`; never
+      exposed on any resource another user can fetch (docs/07's Profile
+      detail spec doesn't list them, and they're the kind of trait docs/06 §5
+      treats as sensitive). `PreferenceController::update` enforces docs/06
+      §3.4's already-written contract ("Premium filters ... 403 +
+      error.code = upgrade_required") with one deliberate refinement: since
+      `PUT /preferences/me` is a full replace (same as prompts), rejecting
+      on "the field is non-empty" would lock a lapsed subscriber out of
+      saving *any* preference change, including ones unrelated to advanced
+      filters, the moment their old filter value got resent as a side effect
+      of the form. Only an actual attempted *change* to a new value without
+      the entitlement is rejected; resubmitting the exact stored value passes
+      through. `DiscoveryFeedService` re-checks the entitlement independently
+      at read time regardless of what's stored, so that's the real,
+      authoritative gate either way — the write-time check is UX, not the
+      control. 8 new backend tests (236 total), Pint + `composer audit`
+      clean. **Mobile:** `EditBasicsScreen` gained religion/politics fields
+      (free for everyone — the "advanced filters" screen's own doc comment
+      explains the split). The existing "Advanced filters" section in
+      Preferences (onboarding + Edit preferences) now checks the caller's
+      current subscription (item 1's `SubscriptionRepository`): entitled ->
+      unchanged; not entitled -> the *add* control locks with an "Upgrade"
+      link straight to the Premium screen (item 1), while *removing* an
+      already-set value (e.g. from a lapsed subscription) stays available,
+      mirroring the backend's own change-vs-resubmit distinction exactly.
+      Links to `PremiumScreen` directly rather than docs/07's more elaborate
+      generic paywall-modal concept (benefit callout -> full benefit list ->
+      plans) — a disclosed simplification, not a dropped screen, same
+      treatment as several other hi-fi interaction details throughout this
+      project. No dedicated widget test for the locked UI state itself
+      (mirrors Phase 1 item 2's own "no per-screen widget tests" call) —
+      the actual security boundary is the backend's, which is fully tested;
+      2 new mobile tests for the repository-level data contract instead. All
+      other mobile suites still green, `flutter analyze` + `dart format`
+      clean, `flutter build apk --debug` verified.
 - [ ] Unlimited likes, profile boost
 - [ ] Unmatched messaging — **server-side gate is Phase-1 code**; this phase adds the
       subscriber check and the upgrade-prompt UX around it (spec §12)

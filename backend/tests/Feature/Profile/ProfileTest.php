@@ -82,4 +82,27 @@ class ProfileTest extends TestCase
             'display_name' => 'Jane', 'birth_date' => '1995-06-15', 'gender' => 'robot',
         ])->assertStatus(422)->assertJsonValidationErrors('gender');
     }
+
+    /**
+     * Phase 2 item 2: anyone can state their own religion/politics for
+     * free — only *filtering* other people by it is premium-gated
+     * (PreferenceTest covers that side).
+     */
+    public function test_a_free_user_can_set_their_own_religion_and_politics(): void
+    {
+        Sanctum::actingAs($user = User::factory()->create());
+
+        $response = $this->putJson('/api/v1/profiles/me', [
+            'display_name' => 'Jane',
+            'birth_date' => '1995-06-15',
+            'gender' => 'woman',
+            'religion' => 'buddhist',
+            'politics' => 'centrist',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('profile.religion', 'buddhist');
+        $response->assertJsonPath('profile.politics', 'centrist');
+        $this->assertDatabaseHas('profiles', ['user_id' => $user->id, 'religion' => 'buddhist', 'politics' => 'centrist']);
+    }
 }

@@ -40,6 +40,8 @@ table below becomes one Laravel migration. Conventions used throughout:
 | gender | enum: man, woman, non_binary | open decision #6 — confirmed |
 | bio | text, nullable | |
 | relationship_goal | string, nullable | |
+| religion | string, nullable | not originally listed here — added for Phase 2 item 2 ("Advanced filters"). Free-form (no value taxonomy is defined anywhere in /docs); free for anyone to set, only *filtering* by it is premium-gated (`user_preferences.religion_filter`) |
+| politics | string, nullable | same as `religion` above |
 | is_verified | boolean | default false; set by verification pipeline |
 | completion_pct | smallint | denormalized for gamification "profile completion" |
 
