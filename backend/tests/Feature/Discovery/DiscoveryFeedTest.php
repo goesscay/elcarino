@@ -253,4 +253,25 @@ class DiscoveryFeedTest extends TestCase
         $response->assertJsonPath('candidates.1.id', $nearNoOverlap->id);
         $response->assertJsonPath('candidates.1.shared_interests_count', 0);
     }
+
+    /**
+     * Phase 1 item 11 / docs/06-security-architecture.md §9: a suspended or
+     * banned account must disappear from discovery immediately.
+     */
+    public function test_suspended_and_banned_candidates_are_excluded_from_the_feed(): void
+    {
+        $this->setViewer();
+        $visible = $this->makeCandidate(gender: 'woman', age: 25, latOffset: 0.01);
+        $suspended = $this->makeCandidate(gender: 'woman', age: 26, latOffset: 0.02);
+        $suspended->forceFill(['status' => 'suspended'])->save();
+        $banned = $this->makeCandidate(gender: 'woman', age: 27, latOffset: 0.03);
+        $banned->forceFill(['status' => 'banned'])->save();
+
+        $response = $this->getJson('/api/v1/discovery/feed')->assertOk();
+
+        $ids = collect($response->json('candidates'))->pluck('id');
+        $this->assertTrue($ids->contains($visible->id));
+        $this->assertFalse($ids->contains($suspended->id));
+        $this->assertFalse($ids->contains($banned->id));
+    }
 }

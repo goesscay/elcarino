@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
@@ -186,9 +187,24 @@ class AuthController extends Controller
      * deferred to a fast-follow so the client doesn't have to re-implement
      * its token handling later. Kept the TTL short (60 min default) to bound
      * the exposure in the meantime.
+     *
+     * Every login path (password, OTP, OAuth) funnels through here, so this
+     * is the one place that needs to enforce security doc §9's "Suspend:
+     * user cannot log in" / "Ban: as suspend" — a fresh `register()` call
+     * always hits this with a brand-new, still-`active` user, so the check
+     * is a no-op there. `deleted` never reaches this at all: SoftDeletes'
+     * global scope already excludes it from every lookup query above.
      */
     private function tokenResponse(User $user, string $deviceName, int $status = 200): JsonResponse
     {
+        if ($user->status === UserStatus::Suspended) {
+            return $this->errorResponse('account_suspended', 'This account has been suspended.', 403);
+        }
+
+        if ($user->status === UserStatus::Banned) {
+            return $this->errorResponse('account_banned', 'This account has been banned.', 403);
+        }
+
         $user->forceFill(['last_active_at' => now()])->save();
 
         $ttlMinutes = config('sanctum.expiration');

@@ -384,7 +384,67 @@ fix → commit, before moving to the next):
        copy) so both call sites share one copy of the dialog text. 46
        mobile tests passing (was 41), flutter analyze + dart format clean,
        `flutter build apk --debug` verified.
-11. [ ] Admin panel v1 (Filament): user management, reports queue, basic dashboard
+11. [x] Admin panel v1 (Filament): user management, reports queue, basic dashboard —
+       `composer require filament/filament` (landed on v5.8.1, the current stable
+       major — requiring the caret range `^4.0` explicitly first hit a composer quirk
+       where it treated that as pinning exactly `v4.0.0`, which composer's own
+       advisory audit then refused outright, 7 open advisories against that one tag;
+       dropping the version constraint and letting composer pick avoided the quirk
+       and landed on the newer, unaffected major anyway). `AdminPanelProvider`: `/admin`, brand red
+       `#DC2626`, and docs/06 §3.3's "mandatory 2FA (TOTP)" via Filament's *built-in*
+       TOTP provider (`Filament\Auth\MultiFactor\App\AppAuthentication`,
+       `isRequired: true`) — no third-party 2FA package needed, confirmed live
+       (logged in as a fresh admin, got forced through the challenge, generated the
+       code with `Google2FA` in tinker since there's no email/SMS channel to read it
+       from in a test). `User` gained the Filament contracts this needs
+       (`FilamentUser`/`canAccessPanel` gated to `admin`/`moderator` only,
+       `HasAppAuthentication`/`HasAppAuthenticationRecovery`, `HasName` — the last one
+       caught live, not by a test: Filament's account-menu widget hard-requires it and
+       500s without one, since `users` has no `name` column) plus two new encrypted
+       columns (`app_authentication_secret`/`app_authentication_recovery_codes`,
+       docs/02, docs/06 §5 "critical" data class). New `audit_log` table (docs/02,
+       docs/06 §8) + `App\Services\Admin\AuditLogger` as the one write path to it.
+       `UserResource` (list/view only, no create/edit — admin doesn't hand-edit
+       profile fields): search, status/role filters, and
+       suspend/reinstate/ban/delete as custom actions through
+       `AccountModerationService`, never a raw model update — each revokes every
+       Sanctum token immediately and writes an audit row. Ban/delete are gated to
+       `admin` only (docs/06 §3.3: moderators get "user suspend only") via
+       `Gate::define('banUsers'|'deleteUsers', ...)`, checked *inside* the action
+       closure (not just hidden from moderators in the UI) — same fail-closed
+       discipline as every API policy. `ReportResource` (list only): mark
+       actioned/dismiss through `ReportModerationService`, plus a combined "suspend
+       reported user" action (suspends + marks actioned in one click, still two
+       separate audited service calls under the hood). Server-side enforcement that
+       "admin can suspend a user and it takes effect immediately" (this phase's own
+       gate, below) needed three call sites that had *no* status check at all before
+       this feature, found while implementing it, not by a report:
+       `AuthController::tokenResponse` (suspended/banned can't log in, `403`
+       `account_suspended`/`account_banned` — `deleted` never reaches this at all,
+       already excluded by `SoftDeletes`' global scope), `DiscoveryFeedService`
+       (excludes non-active candidates), `ConversationPolicy::sendMessage` (freezes
+       an existing conversation read-only when *either* participant is
+       suspended/banned, not just the suspended one's own send button). Dashboard:
+       total/active/new-user, match, message, and pending-report counts — no
+       premium-user/revenue cards, since `subscriptions` doesn't exist until Phase 2
+       and a fake `0` would look like a working feature rather than an unbuilt one.
+       14 new backend tests (170 -> 184: login rejection x2, discovery exclusion,
+       conversation freeze, both moderation services, panel-access/gate/MFA-secret
+       round-trip), Pint + `composer audit` clean. Verified beyond automated tests,
+       live against a real browser session (this panel has no mobile-app UI, so
+       there's no `flutter build` equivalent gate for it): admin login through the
+       full TOTP challenge, dashboard stats against real seeded data, suspend ->
+       reinstate on a real user record (confirmed the header actions swap and the
+       `audit_log` row's `before`/`after` match), and the reports-queue "suspend
+       reported user" action end-to-end. Not built: verification review and
+       "suspicious accounts" (spec §19's Moderation bullet) — no verification
+       pipeline exists yet (that's Phase 4); content moderation beyond the existing
+       photo `moderation_status` (item 2) has no separate admin surface yet, nothing
+       in scope names what it would additionally do. Report evidence attachment
+       viewing stays flagged from item 10 (schema still has no column for it).
+       Moderator-role restrictions (ban/delete hidden+refused) are covered by the
+       `Gate` unit tests, not a second live login as a moderator — the gate itself is
+       the actual control either way.
 
 **Gate:** two people can register, complete onboarding, discover and match each other,
 and chat in real time on a staging build; block/report work end to end; admin can

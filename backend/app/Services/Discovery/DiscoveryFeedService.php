@@ -2,6 +2,7 @@
 
 namespace App\Services\Discovery;
 
+use App\Enums\UserStatus;
 use App\Models\Block;
 use App\Models\Swipe;
 use App\Models\User;
@@ -50,6 +51,12 @@ class DiscoveryFeedService
         $minBirthDate = $today->copy()->subYears($preferences->max_age + 1)->addDay();
 
         $candidates = User::query()
+            // Admin-suspended/banned accounts (Phase 1 item 11, docs/06 §9)
+            // must disappear from discovery immediately — soft-deleted
+            // ("deleted" status) accounts are already excluded for free by
+            // Eloquent's SoftDeletes global scope, but suspended/banned
+            // rows are still very much present, just status-flagged.
+            ->where('status', UserStatus::Active)
             ->whereNotIn('id', $excludedIds)
             ->whereHas('profile', function ($query) use ($preferences, $maxBirthDate, $minBirthDate) {
                 $query->whereIn('gender', $preferences->interested_in_genders)

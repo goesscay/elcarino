@@ -321,3 +321,11 @@ Admin CRUD/dashboards are served by Filament resources directly against the same
 database — no separate admin REST surface to design/maintain. Only build a dedicated
 `/api/v1/admin/*` endpoint if a native admin mobile experience is ever requested (not
 currently in scope).
+
+**Built (Phase 1 item 11):** panel at `/admin`, session auth + mandatory TOTP
+(docs/06 §3.3) — `Users` (search/view/suspend/reinstate/ban/delete) and `Reports`
+(reports queue: mark actioned/dismiss, plus a combined "suspend reported user"
+action) resources, and a dashboard with total/active/new-user, match, message, and
+pending-report counts. Premium-user/revenue dashboard stats are deferred to Phase 2
+(no `subscriptions` table yet). Subscription management in admin (spec §19's fourth
+bullet) is Phase 2 scope, not this item's.

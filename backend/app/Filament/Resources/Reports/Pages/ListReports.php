@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Filament\Resources\Reports\Pages;
+
+use App\Filament\Resources\Reports\ReportResource;
+use Filament\Resources\Pages\ListRecords;
+
+/**
+ * No CreateAction — see ReportResource's doc comment.
+ */
+class ListReports extends ListRecords
+{
+    protected static string $resource = ReportResource::class;
+}

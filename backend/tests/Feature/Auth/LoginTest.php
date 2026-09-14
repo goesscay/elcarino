@@ -60,4 +60,44 @@ class LoginTest extends TestCase
 
         $response->assertStatus(422)->assertJsonPath('error.code', 'invalid_credentials');
     }
+
+    /**
+     * docs/06-security-architecture.md §9 "Suspend: user cannot log in" —
+     * Phase 1 item 11. Every login path (password/OTP/OAuth) funnels
+     * through AuthController::tokenResponse, so exercising it here covers
+     * all of them.
+     */
+    public function test_a_suspended_user_cannot_log_in(): void
+    {
+        User::factory()->create([
+            'email' => 'jane@example.com',
+            'password' => Hash::make('correct-password'),
+            'status' => 'suspended',
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'jane@example.com',
+            'password' => 'correct-password',
+            'device_name' => 'iphone-15',
+        ]);
+
+        $response->assertStatus(403)->assertJsonPath('error.code', 'account_suspended');
+    }
+
+    public function test_a_banned_user_cannot_log_in(): void
+    {
+        User::factory()->create([
+            'email' => 'jane@example.com',
+            'password' => Hash::make('correct-password'),
+            'status' => 'banned',
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'jane@example.com',
+            'password' => 'correct-password',
+            'device_name' => 'iphone-15',
+        ]);
+
+        $response->assertStatus(403)->assertJsonPath('error.code', 'account_banned');
+    }
 }

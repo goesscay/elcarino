@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Services\Auth\OAuth\AppleTokenVerifier;
 use App\Services\Auth\OAuth\GoogleTokenVerifier;
 use App\Services\Auth\OtpService;
@@ -13,6 +14,7 @@ use App\Services\Sms\SmsSender;
 use App\Services\Sms\TwilioSmsSender;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -62,6 +64,22 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
         $this->configurePasswordResetUrl();
+        $this->configureAdminGates();
+    }
+
+    /**
+     * docs/06-security-architecture.md §3.3: "Moderators: reports queue +
+     * verification review + user suspend only. Cannot delete users..."
+     * Defined as Gates (not a User Policy) because these are coarse,
+     * record-independent admin-panel abilities, not per-resource
+     * ownership checks. Re-checked inside the Filament action closures
+     * themselves (see UsersTable) — hiding the button is defence in depth,
+     * never the actual control, same discipline as every API policy.
+     */
+    private function configureAdminGates(): void
+    {
+        Gate::define('banUsers', fn (User $user) => $user->isAdmin());
+        Gate::define('deleteUsers', fn (User $user) => $user->isAdmin());
     }
 
     /**

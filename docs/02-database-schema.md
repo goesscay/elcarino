@@ -26,6 +26,8 @@ table below becomes one Laravel migration. Conventions used throughout:
 | status | enum: active, suspended, banned, deleted | default `active` |
 | role | enum: user, admin, moderator | default `user` |
 | last_active_at | timestamp, nullable | for "online/offline" and admin dashboard |
+| app_authentication_secret | text, nullable, encrypted | not originally listed here — added for Phase 1 item 11 (admin panel). Filament's built-in TOTP app-authentication (docs/06 §3.3 "mandatory 2FA (TOTP)") needs this on the same `users` row it authenticates; admin-panel-only, never read by the mobile API |
+| app_authentication_recovery_codes | text, nullable, encrypted | pairs with the above — hashed one-time recovery codes for the TOTP flow |
 | deleted_at | timestamp, nullable | soft delete (account deletion) |
 
 ### `profiles`
@@ -214,6 +216,22 @@ table list) — supports phone/OTP login per spec §5.
 | status | enum: pending, reviewing, actioned, dismissed | default `pending` |
 | reviewed_by | FK → users (admin), nullable | |
 | reviewed_at | timestamp, nullable | |
+
+## Admin & audit
+
+### `audit_log`
+| Column | Type | Notes |
+|---|---|---|
+| id | bigint PK | |
+| actor_id | FK → users, nullable | the admin/moderator who performed the action; `nullOnDelete` (not cascade) — a later-deleted admin account must not take the historical record of what they did along with it |
+| action | string | e.g. `user.suspended`, `user.banned`, `user.reinstated`, `user.deleted`, `report.actioned`, `report.dismissed` |
+| target_type / target_id | string nullable / bigint nullable | the affected row (polymorphic-shaped, no formal morph map needed — nothing queries across this by relation, only by exact type+id) |
+| before / after | json, nullable | a small snapshot of what changed, not a full row diff |
+| created_at | timestamp | **no `updated_at`** — docs/06-security-architecture.md §8: "audit rows are never editable or deletable through the app, including by admins," so nothing about a row is ever mutated after insert |
+
+Written only by `App\Services\Admin\AuditLogger`, from the admin panel's
+suspend/ban/reinstate/delete actions (`AccountModerationService`) and report
+disposition actions (`ReportModerationService`) — Phase 1 item 11.
 
 ## Monetisation
 

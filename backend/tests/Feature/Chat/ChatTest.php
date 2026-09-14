@@ -161,6 +161,28 @@ class ChatTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * docs/06-security-architecture.md §9: a suspended/banned account's
+     * "existing conversations [are] frozen (read-only)" — Phase 1 item 11.
+     * The freeze applies to *either* participant sending, not just the
+     * suspended one, and viewing/reading stays allowed.
+     */
+    public function test_a_frozen_conversation_is_read_only_for_both_participants(): void
+    {
+        [$userA, $userB, $conversation] = $this->matchedPair();
+        $userB->forceFill(['status' => 'suspended'])->save();
+
+        Sanctum::actingAs($userA);
+        $this->getJson("/api/v1/chat/conversations/{$conversation->id}/messages")->assertOk();
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['body' => 'hi'])
+            ->assertForbidden();
+
+        Sanctum::actingAs($userB);
+        $this->getJson("/api/v1/chat/conversations/{$conversation->id}/messages")->assertOk();
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['body' => 'hi'])
+            ->assertForbidden();
+    }
+
     public function test_sending_to_an_unmatched_conversation_requires_a_subscription(): void
     {
         [$userA, , $conversation, $match] = $this->matchedPair();

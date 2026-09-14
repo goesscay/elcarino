@@ -109,6 +109,29 @@ configured here — unlike Reverb above; treat `FcmPushSender` the same as
 `TwilioSmsSender`, a real implementation that still needs its first live check before
 production.
 
+### Admin panel (Filament, Phase 1 item 11)
+
+`/admin` — session auth with mandatory TOTP, not the mobile Sanctum flow
+(docs/06 §3.3). Admin/moderator accounts are provisioned, never self-service (no
+registration form). To create the first one locally:
+
+```powershell
+cd C:\DatingApp\backend
+php artisan tinker
+```
+
+```php
+$user = \App\Models\User::factory()->create([
+    'email' => 'you@example.com',
+    'password' => \Illuminate\Support\Facades\Hash::make('a-real-password'),
+    'role' => \App\Enums\UserRole::Admin, // or ::Moderator
+]);
+```
+
+Logging in for the first time redirects straight into TOTP setup (scan the QR with
+any authenticator app) before the panel becomes usable at all — there's no way to
+opt out of 2FA once a role is `admin`/`moderator`.
+
 ### Backend tests
 
 ```powershell
