@@ -11,15 +11,16 @@ import '../../core/theme/app_spacing.dart';
 /// "Settings — coming soon" until this feature and Push notifications
 /// (item 9) both landed — its own doc comment said as much.
 ///
-/// Only **Privacy & Safety -> Blocked users** and **Log out** are real here.
-/// Notifications (per-type toggles need a preferences table that doesn't
-/// exist), Subscription (Phase 2), Help & Support / Legal (static content,
-/// a Phase 0 gap already flagged), and Delete account (the `DELETE /account`
-/// endpoint exists, docs/03, but its confirmation UX is its own scope) all
-/// show a coming-soon notice instead of a dead navigation — same pattern as
-/// the Google/Apple sign-in buttons. Log out itself was a real, silent gap
-/// before this: `AuthController.signedOut()` existed but nothing in the app
-/// ever called it outside of an automatic session-loss redirect.
+/// **Privacy & Safety -> Blocked users**, **Subscription** (Phase 2 item 1 —
+/// was coming-soon until this feature landed), and **Log out** are real
+/// here. Notifications (per-type toggles need a preferences table that
+/// doesn't exist), Help & Support / Legal (static content, a Phase 0 gap
+/// already flagged), and Delete account (the `DELETE /account` endpoint
+/// exists, docs/03, but its confirmation UX is its own scope) still show a
+/// coming-soon notice instead of a dead navigation — same pattern as the
+/// Google/Apple sign-in buttons. Log out itself was a real, silent gap
+/// before Phase 1 item 10: `AuthController.signedOut()` existed but nothing
+/// in the app ever called it outside of an automatic session-loss redirect.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -81,7 +82,7 @@ class SettingsScreen extends ConsumerWidget {
             ListTile(
               title: const Text('Subscription'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _comingSoon(context),
+              onTap: () => context.push('/settings/subscription'),
             ),
             const Divider(),
             const _SectionHeader('Support'),

@@ -29,6 +29,7 @@ import '../../profile/presentation/my_profile_screen.dart';
 import '../../safety/presentation/blocked_users_screen.dart';
 import '../../safety/presentation/report_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
+import '../../subscriptions/presentation/premium_screen.dart';
 import '../widgets/splash_screen.dart';
 
 /// App router, per the navigation map in `docs/07-ui-ux-design.md` §2.2:
@@ -182,6 +183,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/blocked-users',
         builder: (context, state) => const BlockedUsersScreen(),
+      ),
+      // Phase 2 item 1 — was "coming soon" (Phase 1 item 10).
+      GoRoute(
+        path: '/settings/subscription',
+        builder: (context, state) => const PremiumScreen(),
       ),
       // `extra` is a (userId, displayName) record — from ConversationScreen's
       // header overflow, the only entry point into reporting someone today.
