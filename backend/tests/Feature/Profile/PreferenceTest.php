@@ -163,6 +163,12 @@ class PreferenceTest extends TestCase
         ]);
 
         $response->assertStatus(403)->assertJsonPath('error.code', 'upgrade_required');
-        $this->assertDatabaseHas('user_preferences', ['user_id' => $user->id, 'religion_filter' => json_encode(['buddhist'])]);
+        // Not assertDatabaseHas() with the json value inline: PostgreSQL's
+        // `json` column type has no `=` operator at all (only SQLite is
+        // this loose about comparing one against a string literal), so that
+        // query fails outright on the CI Postgres job. Fetch and compare in
+        // PHP instead — engine-portable, and this is what backend/CLAUDE.md
+        // means by "PG-specific behaviour, verified by the CI Postgres job."
+        $this->assertSame(['buddhist'], $user->preferences()->first()->religion_filter);
     }
 }
