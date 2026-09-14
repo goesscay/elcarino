@@ -9,6 +9,8 @@ use App\Models\Block;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Profile;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\Swipe;
 use App\Models\User;
 use App\Models\UserMatch;
@@ -76,6 +78,37 @@ class ChatTest extends TestCase
         // So the client can unmatch (DELETE /matches/{id}) from the inbox
         // without a second round-trip to look the match id up.
         $response->assertJsonPath('conversations.0.match_id', $match->id);
+    }
+
+    /**
+     * Phase 2 item 4: `requires_subscription_to_message` reflects *this
+     * viewer's* access, not just whether the conversation itself is
+     * unmatched (ConversationResource's own doc comment explains why that
+     * distinction only became reachable once item 1 made isSubscriber() a
+     * real check).
+     */
+    public function test_requires_subscription_to_message_is_true_for_a_non_subscriber_on_an_unmatched_conversation(): void
+    {
+        [$userA, , $conversation, $match] = $this->matchedPair();
+        $match->forceFill(['unmatched_at' => now(), 'unmatched_by' => $userA->id])->save();
+
+        Sanctum::actingAs($userA);
+        $response = $this->getJson('/api/v1/chat/conversations')->assertOk();
+
+        $response->assertJsonPath('conversations.0.requires_subscription_to_message', true);
+    }
+
+    public function test_requires_subscription_to_message_is_false_for_a_subscriber_even_on_an_unmatched_conversation(): void
+    {
+        [$userA, , $conversation, $match] = $this->matchedPair();
+        $match->forceFill(['unmatched_at' => now(), 'unmatched_by' => $userA->id])->save();
+        $plan = SubscriptionPlan::factory()->create();
+        Subscription::factory()->for($userA)->for($plan, 'plan')->create();
+
+        Sanctum::actingAs($userA);
+        $response = $this->getJson('/api/v1/chat/conversations')->assertOk();
+
+        $response->assertJsonPath('conversations.0.requires_subscription_to_message', false);
     }
 
     public function test_a_non_participant_does_not_see_the_conversation(): void
@@ -192,6 +225,27 @@ class ChatTest extends TestCase
         $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['body' => 'still there?'])
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'subscription_required');
+    }
+
+    /**
+     * Phase 2 item 1 flipped User::isSubscriber() from a hardcoded `false`
+     * stub to a real check — this is the positive-path counterpart to the
+     * test above, which was the only one that *could* exist while
+     * subscriptions didn't. Phase 2 item 4 is "adds the subscriber check
+     * and the upgrade-prompt UX around it": the gate itself was already
+     * Phase 1 code (spec §12), but nothing before now actually exercised a
+     * real subscriber successfully sending here.
+     */
+    public function test_a_subscriber_can_send_to_an_unmatched_conversation(): void
+    {
+        [$userA, , $conversation, $match] = $this->matchedPair();
+        $match->forceFill(['unmatched_at' => now(), 'unmatched_by' => $userA->id])->save();
+        $plan = SubscriptionPlan::factory()->create(['entitlements' => ['unmatched_messaging' => true]]);
+        Subscription::factory()->for($userA)->for($plan, 'plan')->create();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['body' => 'still there?'])
+            ->assertCreated();
     }
 
     public function test_messages_are_paginated_newest_first(): void

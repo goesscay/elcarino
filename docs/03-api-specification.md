@@ -220,7 +220,13 @@ yet, per docs/07 §3.3, rather than only showing up once someone sends a first m
 fresh match with no messages yet — docs/07 §3.3's inbox row preview text),
 `unread_count`, and `requires_subscription_to_message`
 so the client can show the "subscribe to message" banner (docs/07's
-Unmatched-conversation banner) without a wasted 403 round-trip. Real-time delivery is
+Unmatched-conversation banner) without a wasted 403 round-trip. **Phase 2 item 4:**
+this flag is the *viewer's* access, not just whether the conversation itself lacks an
+active match — `requiresSubscriptionToMessage() && ! $viewer->isSubscriber()`. Before
+item 1 gave `isSubscriber()` a real implementation this distinction was unreachable
+(nobody could ever be a subscriber), so a subscriber viewing an unmatched conversation
+would have seen the banner and a hidden composer despite `POST .../messages` actually
+succeeding for them. Real-time delivery is
 `ShouldBroadcastNow` (not queued) — `QUEUE_CONNECTION` is `database` locally with no
 worker guaranteed running, and a message that silently never arrives because nobody
 ran `queue:work` would be a bad failure mode; broadcasting synchronously costs one

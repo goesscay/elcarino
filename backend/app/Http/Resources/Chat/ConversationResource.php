@@ -46,10 +46,17 @@ class ConversationResource extends JsonResource
             // falls back to "You matched — say hi!" in that case.
             'last_message_preview' => $lastMessage?->body,
             'unread_count' => $unreadCount,
-            // Whether sending a message here needs an active subscription
-            // (docs/06 §3.4) — lets the client show the "subscribe to
-            // message" banner without a wasted 403 round-trip.
-            'requires_subscription_to_message' => $this->requiresSubscriptionToMessage(),
+            // Whether *this viewer* needs an active subscription to send
+            // here (docs/06 §3.4) — lets the client show the "subscribe to
+            // message" banner without a wasted 403 round-trip. Phase 2 item
+            // 4: `requiresSubscriptionToMessage()` alone describes the
+            // conversation (unmatched or not), not the viewer — before this,
+            // a real subscriber viewing an unmatched conversation would
+            // still see the banner and a hidden composer despite being able
+            // to send successfully (isSubscriber() was a permanent `false`
+            // stub until item 1, so this was unreachable until subscriptions
+            // actually existed to expose it).
+            'requires_subscription_to_message' => $this->requiresSubscriptionToMessage() && ! $viewer->isSubscriber(),
         ];
     }
 }

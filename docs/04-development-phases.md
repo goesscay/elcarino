@@ -603,8 +603,39 @@ suspend a user and it takes effect immediately.
       item 2's advanced-filters lock already uses. 7 new mobile tests
       (59 -> 66), `flutter analyze` + `dart format` clean, `flutter build
       apk --debug` verified.
-- [ ] Unmatched messaging — **server-side gate is Phase-1 code**; this phase adds the
-      subscriber check and the upgrade-prompt UX around it (spec §12)
+- [x] Unmatched messaging — **server-side gate is Phase-1 code**; this phase adds the
+      subscriber check and the upgrade-prompt UX around it (spec §12). The send-time
+      gate itself (`ChatController::sendMessage` checking `isSubscriber()`) was already
+      correct — item 1 flipping that stub to real logic was the whole integration,
+      already proven by a positive-path test added here (a real subscriber
+      successfully sending to an unmatched conversation — the only test that
+      *could* exist before item 1). What genuinely needed the "subscriber check"
+      named in this item's own description was `ConversationResource`'s
+      `requires_subscription_to_message` flag, which reflected only whether the
+      conversation itself lacked an active match, never the viewer's own
+      subscription status — unreachable as a bug until item 1, since nobody
+      could ever be a subscriber before then. Found and fixed while
+      implementing this item, not by a report: a real subscriber viewing an
+      unmatched conversation was seeing the paywall banner and a hidden
+      composer despite being able to send successfully. Fixed to
+      `requiresSubscriptionToMessage() && ! $viewer->isSubscriber()`. 3 new
+      backend tests (252 -> 255: the send-path positive case, plus the
+      inbox flag's true/false assertions for a non-subscriber vs a
+      subscriber), Pint + `composer audit` clean.
+
+      **Mobile:** the unmatched-conversation banner (inert text since Phase 1
+      item 8) now has a real "Upgrade" button straight to PremiumScreen — same
+      disclosed simplification as items 2/3's paywall treatment. On return, the
+      screen re-fetches its own conversation (no `GET
+      /chat/conversations/{id}` exists, docs/03 — reuses the same "list + find
+      by id" approach `ConversationLoaderScreen` already established) and
+      flips the banner off immediately if the purchase went through, without
+      the user needing to leave and reopen the conversation. Verified live end
+      to end on the emulator, not just by a test: a subscriber sent a real
+      message to a genuinely unmatched conversation; cancelling the
+      subscription and reopening it brought the banner back with a working
+      Upgrade button; subscribing again and returning via the back button
+      dropped the banner and restored the composer in place.
 - [ ] Subscription management in admin panel (plans, payments, status)
 - [ ] Super Like / Rewind — **only if approved**, open decision #11
 
