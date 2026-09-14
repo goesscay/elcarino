@@ -43,10 +43,10 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 | # | Decision | Working assumption | Status |
 |---|---|---|---|
 | 16 | Voice notes | Scheduled Phase 3, assume in-scope pending confirmation | 🔴 |
-| 17 | GIFs | Scheduled Phase 3, assume in-scope pending confirmation | 🔴 |
-| 18 | Photo sharing (in chat) | Scheduled Phase 3, assume in-scope pending confirmation | 🔴 |
-| 19 | Voice calls | Scheduled Phase 3, provider TBD (WebRTC vs Agora) | 🔴 |
-| 20 | Video calls | Scheduled Phase 3, same provider decision as #19 | 🔴 |
+| 17 | GIFs | Scheduled Phase 3, assume in-scope pending confirmation. Built (Phase 3 item 2): search-provider choice was itself unspecified — Giphy is this feature's engineering working default (industry standard for this exact use case), behind a provider-agnostic `GifProvider` interface, same pattern as #27's Stripe default. Not verified against any real Giphy response — the public beta key it falls back to when unconfigured turned out to be dead (confirmed live, 403 "BANNED" on every request), so this needs a real `GIPHY_API_KEY` and a fresh live check before relying on it, more so than #27's Stripe/#16's audio pipeline were | 🔴 |
+| 18 | Photo sharing (in chat) | Scheduled Phase 3, assume in-scope pending confirmation. Built (Phase 3 item 3): reuses `ImageProcessor`/the mandatory EXIF-strip re-encode unchanged from profile photos (docs/06 §6) — no new business decision here, no separate size/dimension limits either (`media.max_photo_size_kb`/`max_photo_dimension` apply to both) | 🔴 |
+| 19 | Voice calls | **Confirmed: WebRTC** (client decision), not Agora. Peer-to-peer, no third-party calling vendor; signaling reuses the existing chat presence channel (docs/03 "Calls"). No TURN server configured — STUN-only (Google's public server), so calls behind a symmetric/carrier-grade NAT will fail to connect; disclosed, not silently assumed away | 🟢 |
+| 20 | Video calls | **Confirmed: WebRTC**, same decision and infrastructure as #19 — video is the same `calls` row/signaling with a camera track added, not a separate system | 🟢 |
 
 ## Verification
 
@@ -82,6 +82,7 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 | #2 Brand name | Elcarino / `com.mgs.elcarino`, brand red `#DC2626` |
 | #4 Age restrictions | 18+ minimum, no upper bound |
 | #6 Gender options | Man / Woman / Non-binary |
+| #19 / #20 Voice & video calling provider | WebRTC (client decision) |
 | Flutter state management (engineering, not a client decision) | Riverpod |
 | Local dev database (engineering) | SQLite locally; PostgreSQL in staging/prod |
 | Backend framework version (engineering) | Laravel 13 — latest stable at scaffold time (2026-09); spec originally said 12 |

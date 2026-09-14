@@ -1,9 +1,16 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
+import '../../calls/domain/call.dart';
+import '../../calls/domain/call_type.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -15,16 +22,22 @@ import '../data/chat_repository.dart';
 import '../data/chat_socket_service.dart';
 import '../domain/conversation.dart';
 import '../domain/message.dart';
+import '../domain/message_type.dart';
 import '../domain/read_receipt.dart';
+import 'gif_picker_sheet.dart';
 
 /// docs/07-ui-ux-design.md §3.3 "Conversation": message list (bubbles, own =
 /// trailing), read receipt on the last own message, typing indicator,
-/// online/last-active in the header. No attachment button — voice
-/// note/photo/GIF are [TBD-16/17/18], out of this feature's text-only scope
-/// (docs/03-api-specification.md "Chat"). Header overflow: Unmatch, Report,
+/// online/last-active in the header. Composer's single "+" button reveals a
+/// voice note (#16) / photo (#18) / GIF (#17) menu, per docs/07 — now that
+/// all three are built, matching the spec as written rather than the
+/// disclosed-simplification "separate always-visible buttons" this screen
+/// used while only some existed. Header overflow: Unmatch, Report,
 /// Block (item 10) — "View profile" isn't built, no such screen exists yet
 /// for viewing another user's full profile outside a match/discovery card.
 enum _ConversationMenuAction { unmatch, report, block }
+
+enum _AttachmentAction { voiceNote, photo, gif }
 
 class ConversationScreen extends ConsumerStatefulWidget {
   const ConversationScreen({required this.conversation, super.key});
@@ -38,17 +51,31 @@ class ConversationScreen extends ConsumerStatefulWidget {
 class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _composerController = TextEditingController();
   final _scrollController = ScrollController();
+  final _recorder = AudioRecorder();
+  final _imagePicker = ImagePicker();
+
+  // Kept in sync manually with the backend's
+  // config('media.max_voice_note_duration_seconds') default — there's no
+  // runtime config-fetch endpoint for the client to read this from.
+  static const _maxRecordingDuration = Duration(seconds: 120);
 
   ConversationChannel? _channel;
   StreamSubscription<Message>? _newMessageSub;
   StreamSubscription<ReadReceipt>? _readReceiptSub;
   StreamSubscription<void>? _typingSub;
+  StreamSubscription<Call>? _callIncomingSub;
   Timer? _typingResetTimer;
+  Timer? _recordingTicker;
   DateTime? _lastTypingWhisperAt;
 
   bool _loading = true;
   bool _loadingMore = false;
   bool _sending = false;
+  bool _recording = false;
+  bool _sendingVoiceNote = false;
+  bool _sendingGif = false;
+  bool _sendingPhoto = false;
+  Duration _recordingElapsed = Duration.zero;
   bool _otherIsTyping = false;
   String? _error;
   List<Message> _messages = [];
@@ -179,14 +206,53 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _newMessageSub = channel.onNewMessage.listen(_handleIncomingMessage);
     _readReceiptSub = channel.onMessagesRead.listen(_handleReadReceipt);
     _typingSub = channel.onTyping.listen((_) => _handleTypingSignal());
+    // Phase 3 items 4/5 — this is the entire "does an incoming call reach
+    // the callee" mechanism (see CallController's doc comment): only fires
+    // while this screen is open and subscribed, same scope disclosed there.
+    _callIncomingSub = channel.onCallIncoming.listen(_handleIncomingCall);
+  }
+
+  /// The `call.incoming` broadcast reaches *both* participants on this
+  /// channel — including the caller's own other-open instance of this
+  /// screen (backgrounded under the `CallScreen` it just pushed itself, via
+  /// the composer's call buttons, a direct user action, not this listener).
+  /// Same "sent by the other participant" test `_handleIncomingMessage`
+  /// already uses for the identical reason: this device has no notion of
+  /// "my own user id" to compare against directly (`core/auth` deliberately
+  /// holds none), so "the caller is the other participant" is how it's
+  /// inferred instead.
+  void _handleIncomingCall(Call call) {
+    if (!mounted || call.caller.id != widget.conversation.otherUser.id) {
+      return;
+    }
+    context.push('/calls', extra: (widget.conversation, call.type, call));
+  }
+
+  void _startCall(CallType type) {
+    context.push('/calls', extra: (widget.conversation, type, null));
+  }
+
+  /// Prepends [message] unless it's already present. Needed on *both* paths
+  /// a message can arrive: the `message.new` broadcast (`ShouldBroadcastNow`
+  /// — synchronous, so it can reach this device over the socket before the
+  /// sender's own HTTP response comes back) and the HTTP response itself
+  /// from `_send`/`_stopAndSendRecording`. Caught live testing voice notes:
+  /// without this same check on the HTTP-response side, a self-sent message
+  /// reliably rendered twice — the socket echo added it first, then the
+  /// HTTP response's own unconditional prepend added it again. Pre-existing
+  /// for text sends too (`_send` had no dedup at all before this), just
+  /// never visibly triggered until this feature's live pass.
+  bool _appendMessageIfNew(Message message) {
+    if (_messages.any((m) => m.id == message.id)) return false;
+    setState(() => _messages = [message, ..._messages]);
+    return true;
   }
 
   void _handleIncomingMessage(Message message) {
     if (!mounted) return;
-    if (_messages.any((m) => m.id == message.id)) {
+    if (!_appendMessageIfNew(message)) {
       return; // already have it (own optimistic add)
     }
-    setState(() => _messages = [message, ..._messages]);
     // A conversation is always exactly two people (docs/02-database-schema.md
     // `conversations`), so "sent by the other participant" is simply "sent
     // by `Conversation.otherUser`'s id" — no separate "my user id" call is
@@ -235,15 +301,204 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           .sendMessage(widget.conversation.id, body);
       if (!mounted) return;
       _composerController.clear();
-      setState(() {
-        _messages = [message, ..._messages];
-        _sending = false;
-      });
+      _appendMessageIfNew(message);
+      setState(() => _sending = false);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _sending = false);
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Tap-to-start/tap-to-stop, not press-and-hold — a disclosed
+  /// simplification of docs/07's implied recording gesture, same spirit as
+  /// this screen's other "simpler but functionally equivalent" choices
+  /// (left/right reorder buttons instead of drag, in PhotosScreen).
+  /// Microphone permission is requested here, at point of use, matching the
+  /// existing location/notification permission pattern (requested where
+  /// needed, not batched into onboarding).
+  Future<void> _startRecording() async {
+    final status = await Permission.microphone.request();
+    if (!status.isGranted || !await _recorder.hasPermission()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Microphone access is needed to record a voice note.'),
+        ),
+      );
+      return;
+    }
+
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/voice-note-${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorder.start(const RecordConfig(), path: path);
+    if (!mounted) return;
+
+    setState(() {
+      _recording = true;
+      _recordingElapsed = Duration.zero;
+    });
+    _recordingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _recordingElapsed += const Duration(seconds: 1));
+      if (_recordingElapsed >= _maxRecordingDuration) {
+        _stopAndSendRecording();
+      }
+    });
+  }
+
+  Future<void> _cancelRecording() async {
+    _recordingTicker?.cancel();
+    await _recorder.stop();
+    if (mounted) setState(() => _recording = false);
+  }
+
+  Future<void> _stopAndSendRecording() async {
+    _recordingTicker?.cancel();
+    final path = await _recorder.stop();
+    final duration = _recordingElapsed;
+    if (!mounted) return;
+    setState(() => _recording = false);
+
+    // Below the backend's own `duration_seconds` min:1 — discard quietly
+    // rather than round-tripping to the API for a validation error over
+    // what was obviously an accidental tap.
+    if (path == null || duration.inSeconds < 1) return;
+
+    setState(() => _sendingVoiceNote = true);
+    try {
+      final message = await ref
+          .read(chatRepositoryProvider)
+          .sendVoiceNote(widget.conversation.id, path, duration.inSeconds);
+      if (!mounted) return;
+      _appendMessageIfNew(message);
+      setState(() => _sendingVoiceNote = false);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _sendingVoiceNote = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Phase 3 item 2 (gifs, open decision #17). The sheet returns the
+  /// picked [GifResult]; only its `id` is sent — `ChatRepository.sendGif`'s
+  /// signature doesn't even accept a url, so there's no way to accidentally
+  /// send one (see that method's doc comment for why).
+  Future<void> _pickAndSendGif() async {
+    final gif = await showGifPickerSheet(context);
+    if (gif == null || !mounted) return;
+
+    setState(() => _sendingGif = true);
+    try {
+      final message = await ref
+          .read(chatRepositoryProvider)
+          .sendGif(widget.conversation.id, gif.id);
+      if (!mounted) return;
+      _appendMessageIfNew(message);
+      setState(() => _sendingGif = false);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _sendingGif = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Phase 3 item 3 (photo sharing, open decision #18). Same camera/gallery
+  /// choice + `pickImage` constraints as `PhotosScreen._addPhoto` (profile
+  /// photos) — reused for consistency, not re-derived.
+  Future<void> _pickAndSendPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final file = await _imagePicker.pickImage(
+      source: source,
+      maxWidth: 2048,
+      maxHeight: 2048,
+      imageQuality: 90,
+    );
+    if (file == null || !mounted) return;
+
+    setState(() => _sendingPhoto = true);
+    try {
+      final message = await ref
+          .read(chatRepositoryProvider)
+          .sendPhoto(widget.conversation.id, file.path);
+      if (!mounted) return;
+      _appendMessageIfNew(message);
+      setState(() => _sendingPhoto = false);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _sendingPhoto = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Composer's single "+" button — docs/07's "attachment button reveals
+  /// voice/photo/GIF" menu, now that all three (#16/#17/#18) are built.
+  /// Kept as a bottom sheet rather than a popup/dropdown to match the
+  /// picker sheets' own presentation (gif picker, photo's camera/gallery
+  /// choice) — one consistent "sheet slides up from the bottom" idiom for
+  /// every composer-triggered choice in this screen.
+  Future<void> _showAttachmentMenu() async {
+    final action = await showModalBottomSheet<_AttachmentAction>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.mic_none),
+              title: const Text('Voice note'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, _AttachmentAction.voiceNote),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Photo'),
+              onTap: () => Navigator.pop(sheetContext, _AttachmentAction.photo),
+            ),
+            ListTile(
+              leading: const Icon(Icons.gif_box_outlined),
+              title: const Text('GIF'),
+              onTap: () => Navigator.pop(sheetContext, _AttachmentAction.gif),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+
+    switch (action) {
+      case _AttachmentAction.voiceNote:
+        await _startRecording();
+      case _AttachmentAction.photo:
+        await _pickAndSendPhoto();
+      case _AttachmentAction.gif:
+        await _pickAndSendGif();
     }
   }
 
@@ -319,7 +574,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _newMessageSub?.cancel();
     _readReceiptSub?.cancel();
     _typingSub?.cancel();
+    _callIncomingSub?.cancel();
     _typingResetTimer?.cancel();
+    _recordingTicker?.cancel();
+    _recorder.dispose();
     // Leave the presence channel so the member list (the online/offline
     // signal) reflects that this device is no longer actually looking.
     ref
@@ -349,6 +607,21 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           ],
         ),
         actions: [
+          // Phase 3 items 4/5 — shown unconditionally; the actual active-
+          // match/subscriber gate is server-side (CallController), same
+          // "the UI never needs to pre-check" discipline as every other
+          // premium/entitlement gate in this app. `CallType` here is a
+          // `calls` feature type, not this one's — see
+          // `_handleIncomingCall`'s doc comment for why `chat` importing
+          // from `calls` (not the usual direction) is deliberate.
+          IconButton(
+            icon: const Icon(Icons.call_outlined),
+            onPressed: () => _startCall(CallType.voice),
+          ),
+          IconButton(
+            icon: const Icon(Icons.videocam_outlined),
+            onPressed: () => _startCall(CallType.video),
+          ),
           PopupMenuButton<_ConversationMenuAction>(
             onSelected: _handleMenuAction,
             itemBuilder: (context) => [
@@ -380,12 +653,21 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   await _refreshSubscriptionRequirement();
                 },
               )
+            else if (_recording)
+              _RecordingIndicator(
+                elapsed: _recordingElapsed,
+                onCancel: _cancelRecording,
+                onStop: _stopAndSendRecording,
+              )
             else
               _Composer(
                 controller: _composerController,
                 sending: _sending,
+                attachmentBusy:
+                    _sendingVoiceNote || _sendingGif || _sendingPhoto,
                 onChanged: _onComposerChanged,
                 onSend: _send,
+                onAttachment: _showAttachmentMenu,
               ),
           ],
         ),
@@ -446,6 +728,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             _otherReadUpTo != null &&
             !message.createdAt.isAfter(_otherReadUpTo!);
         return _MessageBubble(
+          // The list prepends new messages (`_handleIncomingMessage`/`_send`),
+          // which shifts every existing bubble's builder index — a stable key
+          // keeps _VoiceNotePlayer's per-message AudioPlayer state (and
+          // playback position) from getting reassigned to the wrong message
+          // across a rebuild.
+          key: ValueKey(message.id),
           message: message,
           isMine: isMine,
           showReadReceipt: showReadReceipt,
@@ -460,11 +748,18 @@ class _MessageBubble extends StatelessWidget {
     required this.message,
     required this.isMine,
     required this.showReadReceipt,
+    super.key,
   });
 
   final Message message;
   final bool isMine;
   final bool showReadReceipt;
+
+  String? _bubbleImageUrl() => switch (message.type) {
+    MessageType.gif => message.body,
+    MessageType.photo => message.attachment?.url,
+    _ => null,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -477,27 +772,65 @@ class _MessageBubble extends StatelessWidget {
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
-            Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: isMine ? AppColors.primary : AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-              child: Text(
-                message.body ?? '',
-                style: TextStyle(
-                  color: isMine
-                      ? AppColors.onPrimary
-                      : AppColors.textPrimaryLight,
+            if (message.type == MessageType.gif ||
+                message.type == MessageType.photo)
+              // No padding/colour fill for a gif/photo — same bubble
+              // alignment and max-width as text/voice-note, but the image
+              // itself is the bubble (matches every other chat app's image
+              // rendering; a coloured background behind one just reads as a
+              // border). A gif's url lives in `body` (ChatController
+              // resolves it server-side, no attachment row — see its doc
+              // comment); a photo's lives in `attachment.url` (a private,
+              // signed URL — see MessageAttachmentResource).
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.6,
                 ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: _bubbleImageUrl() == null
+                      ? const _MediaUnavailable()
+                      : Image.network(
+                          _bubbleImageUrl()!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const _MediaUnavailable(),
+                          loadingBuilder: (context, child, progress) =>
+                              progress == null
+                              ? child
+                              : const _MediaUnavailable(loading: true),
+                        ),
+                ),
+              )
+            else
+              Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: isMine ? AppColors.primary : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: message.type == MessageType.voiceNote
+                    ? (message.attachment == null
+                          ? const Text('Voice note unavailable')
+                          : _VoiceNotePlayer(
+                              attachment: message.attachment!,
+                              isMine: isMine,
+                            ))
+                    : Text(
+                        message.body ?? '',
+                        style: TextStyle(
+                          color: isMine
+                              ? AppColors.onPrimary
+                              : AppColors.textPrimaryLight,
+                        ),
+                      ),
               ),
-            ),
             if (showReadReceipt)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -513,25 +846,73 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
+/// Placeholder for a gif/photo bubble that has no image url to show
+/// (shouldn't happen — ChatController::sendMessage always resolves one
+/// before creating the message — but a defensive fallback beats a broken-
+/// image icon) or whose image failed to load (an expired/removed Giphy
+/// asset — third-party content, no guarantee it stays reachable forever —
+/// or a signed URL that expired before the bubble was scrolled back to),
+/// and the loading state in between.
+class _MediaUnavailable extends StatelessWidget {
+  const _MediaUnavailable({this.loading = false});
+
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      height: 100,
+      color: AppColors.surfaceLight,
+      alignment: Alignment.center,
+      child: loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(
+              Icons.image_not_supported_outlined,
+              color: AppColors.textSecondaryLight,
+            ),
+    );
+  }
+}
+
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.sending,
+    required this.attachmentBusy,
     required this.onChanged,
     required this.onSend,
+    required this.onAttachment,
   });
 
   final TextEditingController controller;
   final bool sending;
+  final bool attachmentBusy;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
+  final VoidCallback onAttachment;
 
   @override
   Widget build(BuildContext context) {
+    final busy = sending || attachmentBusy;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Row(
         children: [
+          IconButton(
+            onPressed: busy ? null : onAttachment,
+            icon: attachmentBusy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.add_circle_outline),
+          ),
           Expanded(
             child: TextField(
               controller: controller,
@@ -550,7 +931,7 @@ class _Composer extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           IconButton.filled(
-            onPressed: sending ? null : onSend,
+            onPressed: busy ? null : onSend,
             icon: sending
                 ? const SizedBox(
                     width: 18,
@@ -561,6 +942,178 @@ class _Composer extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Shown in place of [_Composer] while recording — tap the stop button to
+/// send, the trash button to discard. Tap-to-start/tap-to-stop, not
+/// press-and-hold (see [_ConversationScreenState._startRecording]'s doc).
+class _RecordingIndicator extends StatelessWidget {
+  const _RecordingIndicator({
+    required this.elapsed,
+    required this.onCancel,
+    required this.onStop,
+  });
+
+  final Duration elapsed;
+  final VoidCallback onCancel;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = elapsed.inMinutes;
+    final seconds = elapsed.inSeconds % 60;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onCancel,
+            icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+          ),
+          const Icon(
+            Icons.fiber_manual_record,
+            color: AppColors.danger,
+            size: 14,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              'Recording… $minutes:${seconds.toString().padLeft(2, '0')}',
+            ),
+          ),
+          IconButton.filled(onPressed: onStop, icon: const Icon(Icons.stop)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A message bubble's inline voice-note player. Keyed per-message
+/// ([_MessageBubble]'s key) so its [AudioPlayer] and playback position stay
+/// tied to the right message as the list is prepended to.
+///
+/// Playback over the signed URL is verified live on the Android emulator —
+/// it wasn't on the first pass (`adb logcat` showed
+/// `NuCachedSource2: source returned error -1`), which turned out to be
+/// three stacked issues, not one: (1) no `network_security_config.xml`
+/// exception meant Android's native networking layer (what `audioplayers`'
+/// underlying `MediaPlayer` goes through) silently refused the plain-`http`
+/// connection to the dev backend before it ever left the device — Dart's own
+/// `dart:io` HTTP client (what the JSON API calls use) doesn't consult that
+/// policy at all, so every other network call in the app kept working the
+/// whole time, which is what made this confusing to isolate; see
+/// `android/app/src/debug/res/xml/network_security_config.xml`. (2) and (3)
+/// were server-side — see `MessageAttachmentStreamController`'s and
+/// `AudioMimeTypeResolver`'s doc comments.
+class _VoiceNotePlayer extends StatefulWidget {
+  const _VoiceNotePlayer({required this.attachment, required this.isMine});
+
+  final MessageAttachment attachment;
+  final bool isMine;
+
+  @override
+  State<_VoiceNotePlayer> createState() => _VoiceNotePlayerState();
+}
+
+class _VoiceNotePlayerState extends State<_VoiceNotePlayer> {
+  final _player = AudioPlayer();
+  bool _playing = false;
+  Duration _position = Duration.zero;
+  Duration? _duration;
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<Duration>? _durationSub;
+  StreamSubscription<void>? _completeSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _duration = widget.attachment.durationSeconds == null
+        ? null
+        : Duration(seconds: widget.attachment.durationSeconds!);
+    _positionSub = _player.onPositionChanged.listen((p) {
+      if (mounted) setState(() => _position = p);
+    });
+    _durationSub = _player.onDurationChanged.listen((d) {
+      if (mounted) setState(() => _duration = d);
+    });
+    _completeSub = _player.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _playing = false;
+        _position = Duration.zero;
+      });
+    });
+  }
+
+  /// The attachment's `url` is a short-lived signed URL
+  /// (`media.chat_media_signed_url_ttl_minutes`) resolved once when this
+  /// [Message] was fetched/received — not cached or refreshed here, so a
+  /// bubble scrolled back to long after the link expired will fail to play.
+  /// No retry/refetch exists yet for that edge case (there's no single-
+  /// message refetch endpoint — see `_refreshSubscriptionRequirement`'s doc
+  /// for the same "list + find by id" limitation elsewhere in this screen).
+  Future<void> _toggle() async {
+    if (_playing) {
+      await _player.pause();
+    } else {
+      await _player.play(UrlSource(widget.attachment.url));
+    }
+    if (mounted) setState(() => _playing = !_playing);
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+    _completeSub?.cancel();
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.isMine
+        ? AppColors.onPrimary
+        : AppColors.textPrimaryLight;
+    final total = _duration ?? Duration.zero;
+    final progress = total.inMilliseconds == 0
+        ? 0.0
+        : _position.inMilliseconds / total.inMilliseconds;
+    final minutes = total.inMinutes;
+    final seconds = total.inSeconds % 60;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: _toggle,
+          icon: Icon(
+            _playing ? Icons.pause_circle_filled : Icons.play_circle_fill,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        SizedBox(
+          width: 100,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              color: color,
+              backgroundColor: color.withValues(alpha: 0.3),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          '$minutes:${seconds.toString().padLeft(2, '0')}',
+          style: TextStyle(color: color, fontSize: 12),
+        ),
+      ],
     );
   }
 }

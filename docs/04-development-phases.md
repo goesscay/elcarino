@@ -709,15 +709,141 @@ activates entitlements within a defined SLA (e.g. < 1 minute via webhook).
 
 ## Phase 3 — Communication (~2–3 weeks)
 
-- [ ] Voice notes — if confirmed in scope (open decision #16)
-- [ ] GIFs — if confirmed (open decision #17)
-- [ ] Photo sharing in chat — if confirmed (open decision #18)
-- [ ] Voice calling (WebRTC/Agora) — subscriber-gated (spec §13)
-- [ ] Video calling — subscriber-gated
+- [x] Voice notes — if confirmed in scope (open decision #16). Built and verified
+      live end-to-end (record → upload → store → send/receive over the socket →
+      render in the bubble → play back with visible progress and clean
+      completion), including catching and fixing two real bugs found only by
+      testing live rather than trusting automated tests: a duplicate-message
+      race (`conversation_screen.dart`'s `_appendMessageIfNew`), and — the
+      bigger one — playback failing on the Android emulator, which turned out
+      to be three stacked issues: (1) no Android Network Security Config
+      exception for the dev backend's plain-`http` host, which blocked the
+      native media layer's connection before it left the device while every
+      *other* network call kept working fine (Dart's own HTTP client doesn't
+      consult that policy) — `mobile/android/app/src/debug/res/xml/network_security_config.xml`;
+      (2) Laravel's built-in local-disk temporary-URL route not supporting
+      `Range` requests — `MessageAttachmentStreamController` + a dedicated
+      signed route; (3) AAC-in-MP4 mime-sniffing ambiguously as `video/mp4` —
+      `AudioMimeTypeResolver`. See those three files' doc comments for the
+      full story.
+- [x] GIFs — if confirmed (open decision #17). Built and verified live: search UI
+      (debounced query, loading/empty/error states, infinite scroll), send, and
+      bubble rendering all confirmed on the Android emulator, plus one real bug
+      caught and fixed live — the picker's results area rendered fully behind
+      the open keyboard (a fixed-height `SizedBox` sized against the full
+      screen height, not the shrunk visible viewport); fixed with the standard
+      `viewInsets.bottom` padding pattern (`gif_picker_sheet.dart`). Search
+      itself couldn't be verified against real Giphy results — the provider's
+      public beta key it falls back to when unconfigured turned out to be
+      dead (confirmed live, 403 "BANNED"), so this was verified two ways
+      instead: the empty/loading/error states via the `log` driver (real
+      round trip, real UI, zero external results by design), and bubble
+      rendering via a manually-inserted `gif`-type message pointing at a real
+      external image, which rendered correctly. `GiphyGifProvider` itself
+      stays "confirm before production," a stricter bar than #16's audio
+      pipeline or #27's Stripe default — see its own doc comment.
+- [x] Photo sharing in chat — if confirmed (open decision #18). Built and verified
+      live end-to-end: composer → camera/gallery picker → upload → private-disk
+      storage with the mandatory EXIF strip (reused `ImageProcessor` unchanged
+      from profile photos) → signed URL → bubble rendering, all confirmed on the
+      Android emulator with a real pushed-in gallery image, no `APP_URL`
+      workaround needed this time (confirmed live that the custom media route
+      resolves against the request's own Host header, not `APP_URL` — unlike
+      `storage.local`/profile photos — so this was never actually an issue for
+      any `message_attachments`-backed feature, just profile photos). Also used
+      this item to do the composer consolidation flagged as deferred in #16/#17:
+      voice note/photo/gif now share one "+" attachment menu instead of
+      separate always-visible buttons, matching docs/07 as written.
+- [x] Voice calling — subscriber-gated (spec §13), provider confirmed WebRTC (open
+      decisions #19/#20). Signaling piggybacks entirely on chat's existing presence
+      channel via whispers (`client-call-signal`) — no new Reverb channel/authorizer
+      code. Backend: `calls` table + lifecycle state machine
+      (ringing→active→ended/missed/declined), `CallPolicy`/`ConversationPolicy::call`,
+      `IceServerResolver` (STUN-only by default — see the disclosed TURN gap below),
+      and the active-match-**and**-subscriber gate (§13's gate has no unmatched-messaging-
+      style subscriber carve-out). 314 backend tests pass.
+      Verified live end-to-end between two independent Android emulator instances —
+      genuinely peer-to-peer, not a localhost loopback trick — with real STUN-based ICE
+      negotiation, connected audio, and synced elapsed-time displays on both ends. This
+      dual-emulator methodology was new for this engagement and surfaced real
+      environment tooling issues along the way (documented for future sessions): an AVD
+      created with a named device profile had non-functional touch input on this host
+      (fixed by recreating with no profile); running two full emulators + backend +
+      Reverb simultaneously causes genuine CPU contention.
+      **Three real bugs found and fixed by this live testing, not caught by any
+      automated test:**
+      1. A `setState`-scope bug in the original `CallScreen` — a per-second
+         `Timer.periodic` ticked `setState` on the whole screen, rebuilding (and, under
+         this host's memory pressure, apparently re-fetching) the other participant's
+         avatar image every second. Fixed by isolating the elapsed-timer display into
+         its own small `_ElapsedTimer` widget that only rebuilds itself
+         (`call_screen.dart`). Confirmed via targeted debug instrumentation that this
+         eliminated the rebuild loop (`build()` now fires exactly 3 times per call) —
+         but a *separate*, still-unexplained once-per-second image re-fetch persisted
+         after this fix under sustained two-emulator memory pressure; instrumentation
+         ruled out a widget-rebuild cause, and it stops immediately when the app
+         process is killed, so it's disclosed here as an unresolved artifact of this
+         specific constrained test rig, not attributed to a code path this session
+         could identify. Real single-device usage would not carry this contention.
+      2. A genuine race in `ChatSocketService.connect()` — it returned as soon as the
+         WebSocket channel was created, not once the Reverb/Pusher handshake actually
+         completed, so a `joinConversation()` call right after (both `ConversationScreen`
+         and `CallScreen` do this) could throw "Cannot subscribe to channel: not
+         connected to server" if the handshake hadn't finished — reproducible even on
+         an otherwise-healthy connection under load. Fixed by actually awaiting the
+         `connected` state via `onConnectionStateChange` (bounded with a 10s timeout).
+      3. **The real correctness bug**, found only after the above two were fixed and
+         still didn't resolve a stuck-hangup symptom: `Call.fromJson` cast
+         `duration_seconds` as `int?`, but Carbon's `diffInSeconds` returns a float and
+         PHP's `json_encode` prints a whole-number float like `60.0`, which Dart's
+         `as int?` rejects outright. This threw an *uncaught* exception out of both the
+         `call.ended` broadcast listener and the direct `/end` response parser for any
+         call that reached `active` (only an active call gets a computed duration) —
+         silently freezing the caller's own hang-up (stuck on the call screen after the
+         end-call request had already succeeded server-side) and leaving the callee
+         never learning the call had ended at all. Fixed on both ends: mobile now
+         parses `(json['duration_seconds'] as num?)?.toInt()`, and the backend
+         explicitly casts `(int) $call->started_at->diffInSeconds(now())` at the
+         source (`CallController::end`). Re-verified live afterward: hang-up from
+         either side now terminates cleanly and promptly on both devices, confirmed via
+         direct DB inspection (`status=ended`, `duration_seconds` a clean integer).
+      Scope disclosed, not silently assumed: calling only reaches the callee if their
+      app is already subscribed to the conversation's presence channel (in practice,
+      `ConversationScreen` open) — no CallKit/ConnectionService-style background wake,
+      no push notification for a missed call, this pass.
+- [x] Video calling — subscriber-gated. Same backend/signaling plumbing as voice
+      (`type: video` differs only in media constraints and the `RTCVideoView`
+      local/remote renderer layer). A first live smoke test genuinely stalled —
+      "Connecting…" for 7+ minutes and never reached active, unlike voice's
+      consistent 5–15s — enough of a surprise to warrant digging in rather than
+      shrugging it off as more of the same host slowness already seen elsewhere in
+      this phase. Instrumented `WebRtcCallService`/`CallScreen` end to end
+      (`getUserMedia` → `createPeerConnection` → offer/answer/ICE exchange, every
+      peer-connection/ICE/signaling-state callback) and reran it: that pass connected
+      cleanly on both sides in ~33s (slower than voice — two more media tracks and
+      roughly double the ICE candidates to gather and check pairwise, consistent with
+      the extra cost being real, not a bug), with live two-way video rendering on both
+      the remote (full-screen) and local (picture-in-picture) `RTCVideoView`s, synced
+      elapsed timers, the camera-toggle button correctly disabling/re-enabling the
+      local track and propagating to the other side's remote view (verified: it went
+      black on the peer's screen while toggled off), and a clean hang-up on both ends
+      afterward (`status=ended`, `duration_seconds` a clean integer again). No code
+      changes were needed — the instrumented run is what fixed itself, meaning the
+      stuck first attempt is disclosed as an unreproduced, unattributed one-off (most
+      likely transient exhaustion on a host that had been running two full emulators
+      plus backend plus Reverb for several hours straight by that point) rather than a
+      located defect. If it recurs, the next step is the same instrumentation again —
+      it isolates the stall to an exact step within seconds of reproducing.
 
-**Gate:** a call connects reliably across a real network (not just localhost/emulator);
-call minutes are logged for support/analytics; non-subscribers are rejected server-side
-at token issuance, not just blocked from the call button.
+**Gate:** partially met. A call *does* connect reliably now, verified across two
+genuinely independent devices (not just localhost/one emulator) — but only on the same
+LAN/host, not "a real network" in the sense of two devices on different networks/NATs,
+because **no TURN server is configured** (STUN-only, disclosed in
+`config/services.php`'s `webrtc` block and `docs/03`) — calls behind symmetric or
+carrier-grade NAT will fail without one; this is an explicit, disclosed gap, not an
+oversight. Call minutes are logged (`duration_seconds`, verified correct after the
+bug above). Non-subscribers are rejected server-side at token issuance
+(`subscription_required`, tested in `CallTest.php`), not just blocked from the button.
 
 ---
 

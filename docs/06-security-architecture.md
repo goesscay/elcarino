@@ -111,6 +111,7 @@ hides the relevant UI, but that is defence-in-depth, never the control:
 |---|---|---|
 | Messaging an **unmatched** user requires an active subscription (spec §12) | `POST /chat/conversations/{id}/messages` policy check | `403` + `error.code = "subscription_required"` |
 | Voice/video **call token** issuance requires an active subscription (spec §13) | `POST /calls/token` policy check | `403` + `error.code = "subscription_required"` |
+| Calling also requires an **active match** — no subscriber carve-out for a missing/unmatched one, unlike messaging | `POST /calls/token` | `403` + `error.code = "active_match_required"` |
 | Premium filters / unlimited likes / boost / who-liked-me | respective endpoints check `user->entitlement(...)` | `403` + `error.code = "upgrade_required"` |
 | Under-18 signup | registration Form Request validates age from `birth_date` | `422` |
 
@@ -165,8 +166,25 @@ any subscription state change (webhook, cancel, expiry job).
   short expiry (minutes for chat media, longer but still bounded for profile photos).
 - `profile_photos.moderation_status` gates visibility: a `pending` photo is visible
   only to its owner until `approved`.
-- Chat attachments (`message_attachments`) inherit the conversation's authorization —
-  a signed URL is minted per request for a participant, never a stable public link.
+- Chat attachments (`message_attachments` — voice notes, Phase 3 item 1, and chat
+  photos, Phase 3 item 3) inherit the conversation's authorization — a signed URL is
+  minted per request for a participant, never a stable public link. On a cloud disk
+  (`s3`, staging/prod) that's `Storage::temporaryUrl()` as usual. On the `local` disk
+  (dev) it's a dedicated signed route
+  (`media.message-attachments.show`/`MessageAttachmentStreamController`) instead of
+  Laravel's built-in `storage.local` route — `signed` middleware is still the entire
+  auth check, same model, but `storage.local` doesn't support `Range` requests and
+  re-sniffs `Content-Type` in a way that broke voice-note playback on Android's native
+  `MediaPlayer` (confirmed live); see the controller's doc comment for the full story.
+  A chat photo goes through the exact same mandatory re-encode/EXIF-strip
+  (`ImageProcessor::reencode`) as a profile photo — no separate/weaker path for chat.
+- Gif messages (Phase 3 item 2) don't go through any of the above — deliberately not a
+  `message_attachments` row at all. A gif is already public, third-party-hosted content
+  (Giphy's own CDN); there's nothing of ours to keep private or mint a signed URL for.
+  The one control that *is* server-side: the client only ever sends a gif's `id` (from
+  `GET /gifs/search`), never a raw url — `ChatController::sendMessage` re-resolves it via
+  `GifProvider::find()` before storing anything, so a client can't smuggle an arbitrary
+  external URL into a message body through this field.
 
 ---
 

@@ -236,20 +236,67 @@ extra HTTP round-trip to Reverb per message, the right trade here.
 |---|---|---|
 | GET | `/conversations` | inbox, ordered by `last_message_at` (a match with no messages yet sorts last, not dropped) |
 | GET | `/conversations/{id}/messages` | paginated history, newest first |
-| POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched (or there is none), reject with 403 `error.code = "subscription_required"` unless `request.user->isSubscriber()` — the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI. Rate-limited 30/min/conversation + 300/hour/user (docs/06 §7) |
+| POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched (or there is none), reject with 403 `error.code = "subscription_required"` unless `request.user->isSubscriber()` — the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI. Rate-limited 30/min/conversation + 300/hour/user (docs/06 §7). Body: `body` (string, required unless `voice_note`, `gif_id`, or `photo` present) **or** `voice_note` (multipart file upload, audio, ≤ `media.max_voice_note_size_kb`) + `duration_seconds` (int, client-reported, required with `voice_note`) — Phase 3 item 1 (open decision #16) — **or** `gif_id` (string, from a prior `GET /gifs/search` result — never a raw URL, see below) — Phase 3 item 2 (open decision #17) — **or** `photo` (multipart file upload, image, ≤ `media.max_photo_size_kb`, re-encoded/EXIF-stripped exactly like `POST /profiles/me/photos`) — Phase 3 item 3 (open decision #18). At most one of `voice_note`/`gif_id`/`photo` may be present at once. A voice-note or photo message gets `type: "voice_note"`/`"photo"`, `body: null`, and a populated `attachment` object in the response/resource (`url` — signed, short TTL per `media.chat_media_signed_url_ttl_minutes`; `mime_type`; `duration_seconds` — always `null` for a photo). A gif message gets `type: "gif"` and `body` set to the *server-resolved* gif URL (`attachment` stays null — a gif is already public third-party-hosted content, nothing to store privately); an unknown/expired `gif_id` is rejected with 422 `error.code = "gif_not_found"`; an invalid/corrupt/oversized-dimension `photo` is rejected with 422 `error.code = "invalid_image"` (same as `PhotoUploadRequest`) |
 | PUT | `/conversations/{id}/read` | marks the *other* participant's unread messages read; broadcasts a read-receipt event so an open conversation screen updates live |
-| WS | `presence-conversation.{id}` | typing indicator + online/offline via Reverb channel — a presence channel's own member list *is* the online/offline signal, and typing indicators are peer-to-peer client (`whisper`) events over the same channel; neither needs a REST endpoint. `routes/channels.php`'s authorizer reuses `ConversationPolicy::view`, so the socket subscription is gated by the exact same participant-and-not-blocked rule as the REST endpoints. Auth for the socket handshake goes through `POST /api/broadcasting/auth` (registered outside the `/api/v1` prefix — see `bootstrap/app.php`), Sanctum-bearer-token-guarded like every other endpoint. Server → client events: `message.new` (`{ "message": MessageResource }`), `messages.read` (`{ "read_by_user_id", "read_at" }`). Client → client (`whisper`) event: `client-typing` |
+| WS | `presence-conversation.{id}` | typing indicator + online/offline via Reverb channel — a presence channel's own member list *is* the online/offline signal, and typing indicators are peer-to-peer client (`whisper`) events over the same channel; neither needs a REST endpoint. `routes/channels.php`'s authorizer reuses `ConversationPolicy::view`, so the socket subscription is gated by the exact same participant-and-not-blocked rule as the REST endpoints. Auth for the socket handshake goes through `POST /api/broadcasting/auth` (registered outside the `/api/v1` prefix — see `bootstrap/app.php`), Sanctum-bearer-token-guarded like every other endpoint. Server → client events: `message.new` (`{ "message": MessageResource }`, now including `attachment` when present), `messages.read` (`{ "read_by_user_id", "read_at" }`). Client → client (`whisper`) event: `client-typing` |
 
-`message_attachments` (docs/02) isn't built this feature — no reader or writer for it
-in a text-only scope, unlike `swipes`/`blocks`/`likes` in earlier features which had an
-immediate reader. Revisit once #16/17/18 are confirmed.
+`message_attachments` (docs/02): written by voice notes (Phase 3 item 1, open decision
+#16, `duration_seconds` set) and photo sharing (Phase 3 item 3, open decision #18,
+`duration_seconds` null) — `MessageAttachment` model, `MessageAttachmentResource`. Gifs
+(#17) deliberately don't use it at all — see the `POST` row above.
 
-## Calls — `/api/v1/calls` — **[PROPOSED]**, subscriber-only
+## GIFs — `GET /gifs/search`
+
+Phase 3 item 2 (open decision #17). Not nested under `chat/` — the client picks a gif
+before knowing which conversation it'll end up sent to. Query: `q` (required string),
+`page` (optional int, 1-indexed). Response: `{ "gifs": [GifResultResource], "meta": {
+"has_more": bool } }`, where a `GifResultResource` is `{ id, preview_url, url, width,
+height }`. Rate-limited 60/min/user. Proxies `GifProvider::search()` server-side rather
+than the mobile app calling Giphy directly, so the API key never ships in the client and
+the provider can be swapped without a mobile release. `id` from a result here is what
+`POST /chat/conversations/{id}/messages`'s `gif_id` field takes — the client never sends
+a gif's `url` directly, only the `id`; the server re-resolves it via `GifProvider::find()`
+at send time.
+
+## Media — `GET /media/message-attachments/{attachment}` — **outside `/api/v1`**
+
+Signed (`media.chat_media_signed_url_ttl_minutes`), not Sanctum-guarded — same model as
+the built-in `storage.local` route profile photos use, and outside `/api` for the same
+reason (`bootstrap/app.php`'s `broadcasting/auth` comment): a native media player
+fetching this URL carries no bearer token, only the signature. Only used on the `local`
+disk (dev); a cloud disk (`s3`, staging/prod) keeps using `Storage::temporaryUrl()`
+directly, unchanged. Exists instead of reusing `storage.local` because that route
+doesn't support `Range` requests and re-sniffs `Content-Type` via `finfo`, which reports
+an AAC-in-MP4 voice note as `video/mp4` — both broke playback on Android's native
+`MediaPlayer`, confirmed live. See `MessageAttachmentStreamController`'s doc comment.
+
+## Calls — `/api/v1/calls` — **Implemented (Phase 3 items 4/5), WebRTC confirmed**
+
+Open decisions #19/#20 resolved: **WebRTC**, peer-to-peer, no third-party calling
+vendor. `/token`'s name and "rejects non-subscribers server-side" guarantee both
+predate that decision and are unchanged — a WebRTC "token" is just this response's
+`ice_servers` config + the created call's id, not an opaque provider credential.
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/token` | issues a WebRTC/Agora session token — **rejects non-subscribers server-side** (spec §13 gate) |
-| POST | `/{id}/end` | logs call duration for analytics/support |
+| POST | `/token` | **caller** starts a call. Body: `conversation_id`, `type` (`voice`\|`video`). **Server-side gate (spec §13, docs/06 §3.4):** requires an active match (403 `error.code = "active_match_required"` if not — unlike unmatched-messaging, calling has no subscriber carve-out for a missing match) **and** `request.user->isSubscriber()` (403 `error.code = "subscription_required"`). Creates a `calls` row (`status: "ringing"`), broadcasts `call.incoming`, returns `{ call: CallResource, ice_servers: RTCIceServer[] }` |
+| POST | `/{id}/answer` | **callee only** (403 otherwise). 422 `error.code = "call_not_ringing"` if the call isn't still ringing. Sets `status: "active"`, `started_at`, broadcasts `call.answered`, returns the same `{ call, ice_servers }` shape as `/token` — the callee never calls `/token` itself |
+| POST | `/{id}/decline` | **callee only**. 422 `call_not_ringing` if not ringing. Sets `status: "declined"`, broadcasts `call.ended` |
+| POST | `/{id}/end` | **either participant.** Idempotent — ending an already-ended call just returns its current state, no error, no re-broadcast. If the call was `active`: sets `status: "ended"`, computes `duration_seconds`. If still `ringing` (nobody answered): sets `status: "missed"` instead — a distinct, more useful analytics state than "ended". Broadcasts `call.ended` |
+| WS | `presence-conversation.{id}` | **Same channel chat already uses** (docs §"Chat" — reused, not a new one) for both server broadcasts (`call.incoming`, `call.answered`, `call.ended`, each `{ call: CallResource }`) and the actual WebRTC signaling itself: SDP offer/answer and ICE candidates are a peer-to-peer client **whisper** (`client-call-signal`, `{ call_id, type: "offer"\|"answer"\|"ice-candidate", payload }`) over this same channel — never a REST call, never persisted. A whisper payload has to fit within Reverb/Pusher's per-message size limit (~10KB); a typical SDP offer/answer (a few KB) and an ICE candidate (well under 1KB) both do |
+
+`ice_servers` is `RTCIceServer[]` — currently just Google's public STUN server
+(`config('services.webrtc.stun_urls')`, no account/key needed). **No TURN server is
+configured** (`services.webrtc.turn_url`, unset) — calls between peers behind a
+symmetric or carrier-grade NAT will fail to connect without one; disclosed, not
+silently assumed away. See `CallController`'s and `config/services.php`'s `webrtc` key's
+doc comments.
+
+**Scope disclosed, not silently assumed:** a call only reaches the callee if their app
+is already subscribed to the conversation's presence channel — in practice,
+`ConversationScreen` open on their device. There's no CallKit/ConnectionService-style
+wake-from-background path (native platform work well beyond a Flutter plugin, out of
+scope this pass) and no push notification for a missed call yet either.
 
 ## Notifications — `/api/v1/notifications`
 

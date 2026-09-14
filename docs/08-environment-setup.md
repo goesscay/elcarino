@@ -248,6 +248,38 @@ flutter test --dart-define-from-file=config/dev.json
 - **Android emulator can't reach the API** → use `http://10.0.2.2:8000`, not
   `localhost`, from inside the emulator (`10.0.2.2` is the emulator's alias for the
   host). iOS simulator can use `localhost`.
+- **Signed media URLs (profile photos) fail to load on the Android emulator
+  specifically** — same root cause as the gotcha above, one level deeper: the JSON
+  request succeeds (that goes through `config/dev.json`'s `10.0.2.2` base URL), but the
+  *signed URL inside the response* is built server-side from `.env`'s `APP_URL`, which
+  is `http://localhost:8000` — correct for a desktop browser hitting Filament,
+  unreachable from the emulator's own network namespace. Confirmed live while building
+  Phase 3 item 1 (voice notes) — `curl` from the host downloaded the file cleanly, only
+  the emulator's in-app fetch couldn't resolve the host. Not applicable to any
+  `message_attachments`-backed feature any more (chat voice notes, and — confirmed
+  live building Phase 3 item 3 — chat photos too: both get their own signed route on
+  the `local` disk, generated relative to the current request rather than `APP_URL` —
+  see `MessageAttachmentStreamController`), but still true for profile photos
+  (`ProfilePhotoResource`, unchanged). No fix applied there — swapping `APP_URL` to
+  `10.0.2.2` would break the desktop-browser Filament case instead. Workaround for a
+  local emulator session that needs to see a real profile photo: temporarily set
+  `APP_URL` to `http://10.0.2.2:8000` in `.env`, restart `php artisan serve`, revert
+  after.
+- **A native-Android-networking plugin (audio/video players, some image libraries)
+  can't reach the dev backend even though every other network call works fine** —
+  Dart's own `dart:io` HTTP client (what Dio/the JSON API calls use) doesn't consult
+  Android's Network Security Config at all, but a plugin backed by native Android
+  networking (`audioplayers`' underlying `MediaPlayer`, confirmed live building Phase 3
+  item 1's voice-note playback) does, and by default cleartext (`http://`, not
+  `https://`) is blocked outright for `targetSdkVersion >= 28` — silently, no exception
+  thrown, `adb logcat` just shows the native component erroring
+  (`NuCachedSource2: source returned error -1`) and the backend's own access log shows
+  the request never arrived at all. Fixed for debug builds via
+  `mobile/android/app/src/debug/res/xml/network_security_config.xml` (permits cleartext
+  to `10.0.2.2`/`localhost`/`127.0.0.1` only, referenced from
+  `android/app/src/debug/AndroidManifest.xml` — never merged into a release build). A
+  newly-added native-networking plugin hitting the same wall needs no new fix, just
+  confirmation its target host is one of the three already permitted there.
 - **`php artisan migrate` fails on a fresh clone** → you skipped
   `New-Item database\database.sqlite` — Laravel won't create the SQLite file itself.
 - **CRLF/LF churn in diffs** → `.gitattributes` normalizes to LF; if you cloned before

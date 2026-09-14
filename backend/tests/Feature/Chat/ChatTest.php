@@ -8,22 +8,35 @@ use App\Events\NewMessageBroadcast;
 use App\Models\Block;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\Profile;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Swipe;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Services\Gifs\GifProvider;
+use App\Services\Gifs\GifResult;
+use App\Services\Gifs\GifSearchResult;
 use App\Services\Matching\SwipeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ChatTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Storage::disk('local')->deleteDirectory('voice-notes');
+        Storage::disk('local')->deleteDirectory('chat-photos');
+        parent::tearDown();
+    }
 
     private function matchedPair(): array
     {
@@ -181,6 +194,227 @@ class ChatTest extends TestCase
         Sanctum::actingAs($userA);
         $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['body' => ''])
             ->assertStatus(422)->assertJsonValidationErrors('body');
+    }
+
+    /**
+     * Phase 3 item 1 (voice notes, open decision #16 — "in scope pending
+     * confirmation"): a voice_note upload with no body is a valid send, the
+     * mirror image of the text-only rule above (`body` is
+     * required_without:voice_note, not always required).
+     */
+    public function test_a_participant_can_send_a_voice_note(): void
+    {
+        Event::fake([NewMessageBroadcast::class]);
+        [$userA, $userB, $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $response = $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.m4a', 200, 'audio/mp4'),
+            'duration_seconds' => 12,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('message.type', 'voice_note');
+        $response->assertJsonPath('message.body', null);
+        $response->assertJsonPath('message.attachment.duration_seconds', 12);
+        $response->assertJsonPath('message.attachment.mime_type', 'audio/mp4');
+        $this->assertNotNull($response->json('message.attachment.url'));
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $userA->id,
+            'body' => null,
+            'type' => 'voice_note',
+        ]);
+        $attachment = MessageAttachment::query()->firstOrFail();
+        Storage::disk('local')->assertExists($attachment->storage_path);
+
+        Event::assertDispatched(NewMessageBroadcast::class);
+        $this->assertDatabaseHas('notifications', ['user_id' => $userB->id, 'type' => 'new_message']);
+    }
+
+    public function test_sending_a_voice_note_rejects_a_non_audio_file(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.txt', 10, 'text/plain'),
+            'duration_seconds' => 12,
+        ])->assertStatus(422)->assertJsonValidationErrors('voice_note');
+    }
+
+    public function test_sending_a_voice_note_rejects_an_oversized_file(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.m4a', config('media.max_voice_note_size_kb') + 1, 'audio/mp4'),
+            'duration_seconds' => 12,
+        ])->assertStatus(422)->assertJsonValidationErrors('voice_note');
+    }
+
+    public function test_sending_a_voice_note_requires_duration_seconds(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.m4a', 200, 'audio/mp4'),
+        ])->assertStatus(422)->assertJsonValidationErrors('duration_seconds');
+    }
+
+    /**
+     * Phase 3 item 2 (gifs, open decision #17): the client only ever sends
+     * the `id` from a prior GET /gifs/search result — this binds a fake
+     * GifProvider so the test isn't depending on GifSearchTest's fake being
+     * shared, and to assert the server actually calls find() (re-resolving
+     * server-side) rather than trusting a client-supplied url.
+     */
+    public function test_a_participant_can_send_a_gif(): void
+    {
+        Event::fake([NewMessageBroadcast::class]);
+        [$userA, $userB, $conversation] = $this->matchedPair();
+        $this->app->bind(GifProvider::class, fn () => new class implements GifProvider
+        {
+            public function search(string $query, int $page = 1): GifSearchResult
+            {
+                return new GifSearchResult([], false);
+            }
+
+            public function find(string $id): ?GifResult
+            {
+                return $id === 'abc123'
+                    ? new GifResult('abc123', 'https://example.com/preview.gif', 'https://example.com/full.gif', 400, 300)
+                    : null;
+            }
+        });
+
+        Sanctum::actingAs($userA);
+        $response = $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'gif_id' => 'abc123',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('message.type', 'gif');
+        $response->assertJsonPath('message.body', 'https://example.com/full.gif');
+        $response->assertJsonPath('message.attachment', null);
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $userA->id,
+            'body' => 'https://example.com/full.gif',
+            'type' => 'gif',
+        ]);
+        $this->assertDatabaseCount('message_attachments', 0);
+
+        Event::assertDispatched(NewMessageBroadcast::class);
+        $this->assertDatabaseHas('notifications', ['user_id' => $userB->id, 'type' => 'new_message']);
+    }
+
+    public function test_sending_an_unknown_gif_id_is_rejected(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+        $this->app->bind(GifProvider::class, fn () => new class implements GifProvider
+        {
+            public function search(string $query, int $page = 1): GifSearchResult
+            {
+                return new GifSearchResult([], false);
+            }
+
+            public function find(string $id): ?GifResult
+            {
+                return null;
+            }
+        });
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['gif_id' => 'nope'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'gif_not_found');
+    }
+
+    public function test_sending_a_gif_and_a_voice_note_together_is_rejected(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'gif_id' => 'abc123',
+            'voice_note' => UploadedFile::fake()->create('note.m4a', 200, 'audio/mp4'),
+            'duration_seconds' => 5,
+        ])->assertStatus(422)->assertJsonValidationErrors(['gif_id', 'voice_note']);
+    }
+
+    /**
+     * Phase 3 item 3 (photo sharing, open decision #18). Reuses
+     * ImageProcessor — same mandatory re-encode/EXIF-strip as profile
+     * photos (docs/06 §6) — so this asserts the *chat-specific* wiring: a
+     * message_attachments row gets created (unlike a gif), storage_path is
+     * under chat-photos/{conversation}, and the response's attachment.url
+     * resolves through the same signed route voice notes use.
+     */
+    public function test_a_participant_can_send_a_photo(): void
+    {
+        Event::fake([NewMessageBroadcast::class]);
+        [$userA, $userB, $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $response = $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'photo' => UploadedFile::fake()->image('pic.jpg', 800, 600),
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('message.type', 'photo');
+        $response->assertJsonPath('message.body', null);
+        $response->assertJsonPath('message.attachment.mime_type', 'image/jpeg');
+        $response->assertJsonPath('message.attachment.duration_seconds', null);
+        $this->assertNotNull($response->json('message.attachment.url'));
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $userA->id,
+            'body' => null,
+            'type' => 'photo',
+        ]);
+        $attachment = MessageAttachment::query()->firstOrFail();
+        $this->assertStringStartsWith("chat-photos/{$conversation->id}/", $attachment->storage_path);
+        Storage::disk('local')->assertExists($attachment->storage_path);
+
+        Event::assertDispatched(NewMessageBroadcast::class);
+        $this->assertDatabaseHas('notifications', ['user_id' => $userB->id, 'type' => 'new_message']);
+    }
+
+    public function test_sending_a_photo_rejects_a_non_image_file(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'photo' => UploadedFile::fake()->create('note.txt', 10, 'text/plain'),
+        ])->assertStatus(422)->assertJsonValidationErrors('photo');
+    }
+
+    public function test_sending_a_photo_rejects_an_oversized_file(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'photo' => UploadedFile::fake()->image('pic.jpg')->size(config('media.max_photo_size_kb') + 1),
+        ])->assertStatus(422)->assertJsonValidationErrors('photo');
+    }
+
+    public function test_sending_a_photo_and_a_gif_together_is_rejected(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'photo' => UploadedFile::fake()->image('pic.jpg'),
+            'gif_id' => 'abc123',
+        ])->assertStatus(422)->assertJsonValidationErrors(['photo', 'gif_id']);
     }
 
     public function test_a_blocked_participant_cannot_send_or_view(): void

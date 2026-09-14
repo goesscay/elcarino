@@ -103,4 +103,72 @@ return [
         'cancel_url' => env('STRIPE_CANCEL_URL') ?: null,
     ],
 
+    'gifs' => [
+        // Open decision #17 (GIFs) — 'log' is the safe default (no outbound
+        // call at all, same role as SMS_PROVIDER/PUSH_PROVIDER/
+        // PAYMENT_PROVIDER=log) and what tests/CI always run against.
+        // 'giphy' is this feature's chosen provider — the de facto standard
+        // for exactly this use case (it's what Tinder itself uses). Still
+        // never the `.env` default, deliberately, so automated tests stay
+        // network-free.
+        'provider' => env('GIF_PROVIDER', 'log'),
+        'giphy' => [
+            // `?:`, not env()'s own default arg — GIPHY_API_KEY is present
+            // but blank in .env.example/.env (documents the variable exists
+            // without implying a real key is required), and env()'s second
+            // argument only ever applies when the key is fully absent, same
+            // normalization already used for GOOGLE_CLIENT_ID/APPLE_CLIENT_ID
+            // above. Falls back to Giphy's own documented public beta key —
+            // checked live while building this feature and it's currently
+            // dead (every request returns `{"meta":{"status":403,"msg":
+            // "BANNED"}}`, not a real result), so this fallback is really
+            // just "fail the same documented way as an unconfigured key"
+            // rather than a working zero-setup default the way it was
+            // presumably meant to be. Set GIPHY_API_KEY to a real
+            // (registered) key before relying on 'giphy' at all — unlike
+            // TwilioSmsSender/StripePaymentGateway, this provider hasn't
+            // been exercised against so much as a real response, only
+            // against Http::fake() in GiphyGifProviderTest.
+            'api_key' => env('GIPHY_API_KEY') ?: 'dc6zaTOxFJmzC',
+            // Giphy's own content-rating scale. A dating app showing
+            // third-party search results to adults — "pg-13" is a
+            // provisional, revisable default, same spirit as media.php's
+            // upload caps, not a business decision.
+            'rating' => env('GIPHY_RATING') ?: 'pg-13',
+        ],
+    ],
+
+    'webrtc' => [
+        // Phase 3 items 4/5 (calling, open decisions #19/#20) — confirmed
+        // WebRTC over Agora/other. No provider-switch pattern like
+        // gifs/sms/push above: WebRTC is peer-to-peer, there's no vendor
+        // API to swap out, just ICE server configuration. Signaling
+        // (offer/answer/ICE candidates) reuses the existing chat presence
+        // channel via client whispers — no separate signaling
+        // infrastructure of our own either.
+        //
+        // Google's public STUN server — free, no account, no key, and (a
+        // deliberate exception to this project's "verify a public/free
+        // credential before trusting it" rule learned from Giphy's dead
+        // beta key) *not* independently re-verified here the same way,
+        // because there's nothing to curl-test: STUN reachability is a
+        // live UDP negotiation, and this is `RTCIceServer` config handed
+        // to the mobile client to try, not a request this backend ever
+        // makes itself. Confirm connectivity is empirically established or
+        // not by an actual call, covered in this feature's own live
+        // verification.
+        'stun_urls' => array_filter(explode(',', env('WEBRTC_STUN_URLS', 'stun:stun.l.google.com:19302'))),
+
+        // No TURN server configured or provisioned — STUN alone can't
+        // negotiate a direct peer connection through every NAT (symmetric
+        // NAT, some corporate/carrier-grade NAT setups); those calls will
+        // fail to connect without one. A real TURN deployment (self-hosted
+        // coturn, or a paid relay service — genuine ongoing bandwidth
+        // cost, ops burden) is out of scope for this pass and disclosed as
+        // a known gap, not silently assumed unnecessary.
+        'turn_url' => env('WEBRTC_TURN_URL') ?: null,
+        'turn_username' => env('WEBRTC_TURN_USERNAME') ?: null,
+        'turn_credential' => env('WEBRTC_TURN_CREDENTIAL') ?: null,
+    ],
+
 ];

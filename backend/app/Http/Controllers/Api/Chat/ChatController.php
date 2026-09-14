@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Chat;
 
+use App\Enums\MessageType;
 use App\Events\MessagesReadBroadcast;
 use App\Events\NewMessageBroadcast;
 use App\Http\Concerns\RespondsWithErrorEnvelope;
@@ -11,16 +12,27 @@ use App\Http\Resources\Chat\ConversationResource;
 use App\Http\Resources\Chat\MessageResource;
 use App\Models\Block;
 use App\Models\Conversation;
+use App\Services\Gifs\GifProvider;
+use App\Services\Media\AudioMimeTypeResolver;
+use App\Services\Media\ImageProcessor;
+use App\Services\Media\InvalidImageException;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
     use RespondsWithErrorEnvelope;
 
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly AudioMimeTypeResolver $audioMimeTypes,
+        private readonly GifProvider $gifs,
+        private readonly ImageProcessor $images,
+    ) {}
 
     /**
      * GET /api/v1/chat/conversations — inbox, most-recently-active first.
@@ -78,6 +90,7 @@ class ChatController extends Controller
         // order for a fully-loaded conversation) — reorder() clears that so
         // this listing's own newest-first pagination isn't fighting it.
         $messages = $conversation->messages()
+            ->with('attachment')
             ->reorder('created_at', 'desc')
             ->paginate($perPage);
 
@@ -108,10 +121,85 @@ class ChatController extends Controller
             );
         }
 
+        $voiceNote = $request->file('voice_note');
+        $photo = $request->file('photo');
+        $gifId = $request->string('gif_id')->toString();
+
+        $gif = null;
+        if ($gifId !== '') {
+            $gif = $this->gifs->find($gifId);
+            if (! $gif) {
+                return $this->errorResponse('gif_not_found', 'That gif is no longer available.', 422);
+            }
+        }
+
+        // Re-encoded up front, before the message row even exists — an
+        // InvalidImageException here (corrupt file, dimensions over
+        // media.max_photo_dimension) needs to fail with nothing created,
+        // same as ProfilePhotoController::store.
+        $photoBytes = null;
+        if ($photo) {
+            try {
+                $photoBytes = $this->images->reencode($photo);
+            } catch (InvalidImageException $e) {
+                return $this->errorResponse('invalid_image', $e->getMessage(), 422);
+            }
+        }
+
         $message = $conversation->messages()->create([
             'sender_id' => $request->user()->id,
-            'body' => $request->string('body')->toString(),
+            // null body for a voice-note/photo message — docs/02's schema
+            // note ("null if attachment-only"), matching the migration
+            // comment. A gif message stores the *resolved* (server-side,
+            // re-fetched — see SendMessageRequest's gif_id doc comment) url
+            // in body, the same field a text message uses — no
+            // message_attachments row: unlike a voice note or photo, a gif
+            // is already public, third-party-hosted content, nothing here
+            // to store privately or mint a signed URL for.
+            'body' => match (true) {
+                $voiceNote !== null, $photoBytes !== null => null,
+                $gif !== null => $gif->url,
+                default => $request->string('body')->toString(),
+            },
+            'type' => match (true) {
+                $voiceNote !== null => MessageType::VoiceNote,
+                $photoBytes !== null => MessageType::Photo,
+                $gif !== null => MessageType::Gif,
+                default => MessageType::Text,
+            },
         ]);
+
+        if ($voiceNote) {
+            $path = Storage::disk(config('filesystems.default'))->putFileAs(
+                'voice-notes/'.$conversation->id,
+                $voiceNote,
+                Str::uuid().'.'.$voiceNote->extension(),
+            );
+
+            $mimeType = $this->audioMimeTypes->resolve($voiceNote->extension(), $voiceNote->getMimeType());
+
+            $message->setRelation('attachment', $message->attachment()->create([
+                'storage_path' => $path,
+                'mime_type' => $mimeType,
+                'duration_seconds' => $request->integer('duration_seconds'),
+            ]));
+        } elseif ($photoBytes !== null) {
+            // Always .jpg — ImageProcessor::reencode always outputs JPEG
+            // (re-encoding, the mandatory EXIF/GPS strip, is a decode-then-
+            // encode round trip regardless of the upload's original format).
+            $path = 'chat-photos/'.$conversation->id.'/'.Str::uuid().'.jpg';
+            Storage::disk(config('filesystems.default'))->put($path, $photoBytes);
+
+            $message->setRelation('attachment', $message->attachment()->create([
+                'storage_path' => $path,
+                'mime_type' => 'image/jpeg',
+                'duration_seconds' => null,
+            ]));
+        } else {
+            // Populate the relation so MessageResource::whenLoaded('attachment')
+            // resolves to null rather than being omitted entirely.
+            $message->setRelation('attachment', null);
+        }
 
         $conversation->forceFill(['last_message_at' => $message->created_at])->save();
 

@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:datingapp/chat/data/chat_repository.dart';
+import 'package:datingapp/chat/domain/message_type.dart';
 import 'package:datingapp/core/network/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -156,6 +158,143 @@ void main() {
       expect(adapter.lastRequest!.data, {'body': 'Hey there!'});
       expect(message.body, 'Hey there!');
       expect(message.isRead, isFalse);
+    });
+
+    test(
+      'sendVoiceNote uploads the file and maps the created message',
+      () async {
+        final (repository, adapter) = _repositoryReturning({
+          '/chat/conversations/1/messages': {
+            'message': {
+              'id': 12,
+              'conversation_id': 1,
+              'sender_id': 3,
+              'body': null,
+              'type': 'voice_note',
+              'attachment': {
+                'url': 'https://cdn.test/voice-notes/1/a.m4a',
+                'mime_type': 'audio/mp4',
+                'duration_seconds': 8,
+              },
+              'read_at': null,
+              'created_at': '2026-09-16T00:00:00.000000Z',
+            },
+          },
+        });
+        final file = File(
+          '${Directory.systemTemp.path}/chat_repository_test_note.m4a',
+        )..writeAsBytesSync([0, 1, 2, 3]);
+        // Best-effort cleanup: the fake adapter never drains the multipart
+        // file stream dio opened, which can leave the handle briefly locked
+        // on Windows — not worth failing the test over a leftover temp file.
+        addTearDown(() {
+          try {
+            file.deleteSync();
+          } on FileSystemException {
+            // Ignored.
+          }
+        });
+
+        final message = await repository.sendVoiceNote(1, file.path, 8);
+
+        expect(adapter.lastRequest!.method, 'POST');
+        final form = adapter.lastRequest!.data as FormData;
+        expect(form.files.single.key, 'voice_note');
+        expect(
+          form.fields.firstWhere((f) => f.key == 'duration_seconds').value,
+          '8',
+        );
+        expect(message.type, MessageType.voiceNote);
+        expect(message.attachment!.durationSeconds, 8);
+      },
+    );
+
+    test('searchGifs sends q/page and maps the pagination meta', () async {
+      final (repository, adapter) = _repositoryReturning({
+        '/gifs/search': {
+          'gifs': [
+            {
+              'id': 'abc123',
+              'preview_url': 'https://media.giphy.com/abc123/small.gif',
+              'url': 'https://media.giphy.com/abc123/downsized.gif',
+              'width': 400,
+              'height': 300,
+            },
+          ],
+          'meta': {'has_more': true},
+        },
+      });
+
+      final page = await repository.searchGifs('cats', page: 2);
+
+      expect(adapter.lastRequest!.method, 'GET');
+      expect(adapter.lastRequest!.queryParameters, {'q': 'cats', 'page': 2});
+      expect(page.gifs, hasLength(1));
+      expect(page.gifs.single.id, 'abc123');
+      expect(page.hasMore, isTrue);
+    });
+
+    test('sendGif posts the gif_id and maps the created message', () async {
+      final (repository, adapter) = _repositoryReturning({
+        '/chat/conversations/1/messages': {
+          'message': {
+            'id': 13,
+            'conversation_id': 1,
+            'sender_id': 3,
+            'body': 'https://media.giphy.com/abc123/downsized.gif',
+            'type': 'gif',
+            'read_at': null,
+            'created_at': '2026-09-16T00:00:00.000000Z',
+          },
+        },
+      });
+
+      final message = await repository.sendGif(1, 'abc123');
+
+      expect(adapter.lastRequest!.method, 'POST');
+      expect(adapter.lastRequest!.data, {'gif_id': 'abc123'});
+      expect(message.type, MessageType.gif);
+      expect(message.body, 'https://media.giphy.com/abc123/downsized.gif');
+    });
+
+    test('sendPhoto uploads the file and maps the created message', () async {
+      final (repository, adapter) = _repositoryReturning({
+        '/chat/conversations/1/messages': {
+          'message': {
+            'id': 14,
+            'conversation_id': 1,
+            'sender_id': 3,
+            'body': null,
+            'type': 'photo',
+            'attachment': {
+              'url': 'https://cdn.test/chat-photos/1/a.jpg',
+              'mime_type': 'image/jpeg',
+              'duration_seconds': null,
+            },
+            'read_at': null,
+            'created_at': '2026-09-16T00:00:00.000000Z',
+          },
+        },
+      });
+      final file = File(
+        '${Directory.systemTemp.path}/chat_repository_test_photo.jpg',
+      )..writeAsBytesSync([0, 1, 2, 3]);
+      addTearDown(() {
+        try {
+          file.deleteSync();
+        } on FileSystemException {
+          // Ignored — same best-effort cleanup as sendVoiceNote's test.
+        }
+      });
+
+      final message = await repository.sendPhoto(1, file.path);
+
+      expect(adapter.lastRequest!.method, 'POST');
+      final form = adapter.lastRequest!.data as FormData;
+      expect(form.files.single.key, 'photo');
+      expect(message.type, MessageType.photo);
+      expect(message.attachment!.url, 'https://cdn.test/chat-photos/1/a.jpg');
+      expect(message.attachment!.durationSeconds, isNull);
     });
 
     test('markRead calls PUT on the right path', () async {

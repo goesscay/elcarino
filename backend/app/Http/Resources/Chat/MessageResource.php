@@ -19,6 +19,14 @@ class MessageResource extends JsonResource
             'sender_id' => $this->sender_id,
             'body' => $this->body,
             'type' => $this->type->value,
+            // Only present for voice_note/photo messages (never gif — see
+            // ChatController::sendMessage's doc comment) — relies on the
+            // caller eager-loading `attachment` so this isn't an N+1 per
+            // message (see ChatController::messages/sendMessage).
+            'attachment' => $this->whenLoaded(
+                'attachment',
+                fn () => $this->attachment ? new MessageAttachmentResource($this->attachment) : null,
+            ),
             'read_at' => $this->read_at,
             'created_at' => $this->created_at,
         ];
