@@ -454,7 +454,13 @@ class _BoostSheetState extends ConsumerState<_BoostSheet> {
 
   String _statusMessage(BoostStatus status) {
     if (status.active) {
-      final ends = status.endsAt!;
+      // .toLocal(): the backend sends an ISO 8601 UTC timestamp
+      // (DateTime.parse keeps it flagged as UTC, so .hour/.minute without
+      // this would show the UTC hour, not the device's) — caught live on
+      // the emulator (a device clock away from UTC), not by a test, since
+      // the repository-level test fixtures didn't exercise a non-UTC
+      // device timezone.
+      final ends = status.endsAt!.toLocal();
       final time =
           '${ends.hour.toString().padLeft(2, '0')}:${ends.minute.toString().padLeft(2, '0')}';
       return "You're boosted until $time.";

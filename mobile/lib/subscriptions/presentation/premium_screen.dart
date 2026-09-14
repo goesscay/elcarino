@@ -294,6 +294,11 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
     return lines;
   }
 
-  String _formatDate(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  // .toLocal(): same UTC-vs-device-timezone bug as discover_feed_screen's
+  // boost end time (its own doc comment explains why) — found alongside it
+  // while verifying this feature live, fixed the same way here.
+  String _formatDate(DateTime date) {
+    final local = date.toLocal();
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
+  }
 }
