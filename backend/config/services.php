@@ -138,4 +138,37 @@ return [
         ],
     ],
 
+    'webrtc' => [
+        // Phase 3 items 4/5 (calling, open decisions #19/#20) — confirmed
+        // WebRTC over Agora/other. No provider-switch pattern like
+        // gifs/sms/push above: WebRTC is peer-to-peer, there's no vendor
+        // API to swap out, just ICE server configuration. Signaling
+        // (offer/answer/ICE candidates) reuses the existing chat presence
+        // channel via client whispers — no separate signaling
+        // infrastructure of our own either.
+        //
+        // Google's public STUN server — free, no account, no key, and (a
+        // deliberate exception to this project's "verify a public/free
+        // credential before trusting it" rule learned from Giphy's dead
+        // beta key) *not* independently re-verified here the same way,
+        // because there's nothing to curl-test: STUN reachability is a
+        // live UDP negotiation, and this is `RTCIceServer` config handed
+        // to the mobile client to try, not a request this backend ever
+        // makes itself. Confirm connectivity is empirically established or
+        // not by an actual call, covered in this feature's own live
+        // verification.
+        'stun_urls' => array_filter(explode(',', env('WEBRTC_STUN_URLS', 'stun:stun.l.google.com:19302'))),
+
+        // No TURN server configured or provisioned — STUN alone can't
+        // negotiate a direct peer connection through every NAT (symmetric
+        // NAT, some corporate/carrier-grade NAT setups); those calls will
+        // fail to connect without one. A real TURN deployment (self-hosted
+        // coturn, or a paid relay service — genuine ongoing bandwidth
+        // cost, ops burden) is out of scope for this pass and disclosed as
+        // a known gap, not silently assumed unnecessary.
+        'turn_url' => env('WEBRTC_TURN_URL') ?: null,
+        'turn_username' => env('WEBRTC_TURN_USERNAME') ?: null,
+        'turn_credential' => env('WEBRTC_TURN_CREDENTIAL') ?: null,
+    ],
+
 ];

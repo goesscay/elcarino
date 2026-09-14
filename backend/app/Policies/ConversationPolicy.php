@@ -38,6 +38,21 @@ class ConversationPolicy
             && $conversation->userTwo->status === UserStatus::Active;
     }
 
+    /**
+     * Phase 3 items 4/5 (calling). Same participant/not-blocked/both-active
+     * checks as `sendMessage` — a frozen (suspended-account) conversation
+     * shouldn't allow calls either, same reasoning as that method's own doc
+     * comment. The *active-match* and *caller-is-subscriber* checks (spec
+     * §13's "Match → subscriber? → yes: voice/video") aren't here — they
+     * need CallController's specific `error.code` envelope, same reason
+     * `sendMessage`'s own subscription check lives in ChatController, not a
+     * Policy.
+     */
+    public function call(User $user, Conversation $conversation): bool
+    {
+        return $this->sendMessage($user, $conversation);
+    }
+
     private function blockedEitherDirection(Conversation $conversation, User $viewer): bool
     {
         $other = $conversation->otherUser($viewer);

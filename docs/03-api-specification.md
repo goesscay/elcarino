@@ -270,12 +270,33 @@ doesn't support `Range` requests and re-sniffs `Content-Type` via `finfo`, which
 an AAC-in-MP4 voice note as `video/mp4` — both broke playback on Android's native
 `MediaPlayer`, confirmed live. See `MessageAttachmentStreamController`'s doc comment.
 
-## Calls — `/api/v1/calls` — **[PROPOSED]**, subscriber-only
+## Calls — `/api/v1/calls` — **Implemented (Phase 3 items 4/5), WebRTC confirmed**
+
+Open decisions #19/#20 resolved: **WebRTC**, peer-to-peer, no third-party calling
+vendor. `/token`'s name and "rejects non-subscribers server-side" guarantee both
+predate that decision and are unchanged — a WebRTC "token" is just this response's
+`ice_servers` config + the created call's id, not an opaque provider credential.
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/token` | issues a WebRTC/Agora session token — **rejects non-subscribers server-side** (spec §13 gate) |
-| POST | `/{id}/end` | logs call duration for analytics/support |
+| POST | `/token` | **caller** starts a call. Body: `conversation_id`, `type` (`voice`\|`video`). **Server-side gate (spec §13, docs/06 §3.4):** requires an active match (403 `error.code = "active_match_required"` if not — unlike unmatched-messaging, calling has no subscriber carve-out for a missing match) **and** `request.user->isSubscriber()` (403 `error.code = "subscription_required"`). Creates a `calls` row (`status: "ringing"`), broadcasts `call.incoming`, returns `{ call: CallResource, ice_servers: RTCIceServer[] }` |
+| POST | `/{id}/answer` | **callee only** (403 otherwise). 422 `error.code = "call_not_ringing"` if the call isn't still ringing. Sets `status: "active"`, `started_at`, broadcasts `call.answered`, returns the same `{ call, ice_servers }` shape as `/token` — the callee never calls `/token` itself |
+| POST | `/{id}/decline` | **callee only**. 422 `call_not_ringing` if not ringing. Sets `status: "declined"`, broadcasts `call.ended` |
+| POST | `/{id}/end` | **either participant.** Idempotent — ending an already-ended call just returns its current state, no error, no re-broadcast. If the call was `active`: sets `status: "ended"`, computes `duration_seconds`. If still `ringing` (nobody answered): sets `status: "missed"` instead — a distinct, more useful analytics state than "ended". Broadcasts `call.ended` |
+| WS | `presence-conversation.{id}` | **Same channel chat already uses** (docs §"Chat" — reused, not a new one) for both server broadcasts (`call.incoming`, `call.answered`, `call.ended`, each `{ call: CallResource }`) and the actual WebRTC signaling itself: SDP offer/answer and ICE candidates are a peer-to-peer client **whisper** (`client-call-signal`, `{ call_id, type: "offer"\|"answer"\|"ice-candidate", payload }`) over this same channel — never a REST call, never persisted. A whisper payload has to fit within Reverb/Pusher's per-message size limit (~10KB); a typical SDP offer/answer (a few KB) and an ICE candidate (well under 1KB) both do |
+
+`ice_servers` is `RTCIceServer[]` — currently just Google's public STUN server
+(`config('services.webrtc.stun_urls')`, no account/key needed). **No TURN server is
+configured** (`services.webrtc.turn_url`, unset) — calls between peers behind a
+symmetric or carrier-grade NAT will fail to connect without one; disclosed, not
+silently assumed away. See `CallController`'s and `config/services.php`'s `webrtc` key's
+doc comments.
+
+**Scope disclosed, not silently assumed:** a call only reaches the callee if their app
+is already subscribed to the conversation's presence channel — in practice,
+`ConversationScreen` open on their device. There's no CallKit/ConnectionService-style
+wake-from-background path (native platform work well beyond a Flutter plugin, out of
+scope this pass) and no push notification for a missed call yet either.
 
 ## Notifications — `/api/v1/notifications`
 

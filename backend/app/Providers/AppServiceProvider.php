@@ -200,5 +200,11 @@ class AppServiceProvider extends ServiceProvider
         // bounding, especially per-keystroke live search from the mobile
         // composer.
         RateLimiter::for('gif-search', fn ($request) => Limit::perMinute(60)->by($request->user()->id));
+
+        // Not in docs/06 §7's table (predates Phase 3) — a provisional cap,
+        // same spirit as chat-messages: bounds call-spamming a match
+        // without meaningfully limiting legitimate use (nobody places more
+        // than a handful of calls a minute).
+        RateLimiter::for('call-token', fn ($request) => Limit::perMinute(10)->by($request->user()->id));
     }
 }

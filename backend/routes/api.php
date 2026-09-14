@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Calls\CallController;
 use App\Http\Controllers\Api\Chat\ChatController;
 use App\Http\Controllers\Api\Chat\GifController;
 use App\Http\Controllers\Api\Discovery\BoostController;
@@ -101,6 +102,16 @@ Route::prefix('v1')->group(function () {
         // conversation (the client picks a gif before knowing/caring which
         // conversation it'll end up sent to next).
         Route::get('gifs/search', [GifController::class, 'search'])->middleware('throttle:gif-search');
+
+        // Phase 3 items 4/5 (open decisions #19/#20, confirmed WebRTC) — see
+        // CallController's doc comment. `token` is rate-limited the same as
+        // chat-messages (call spam is a comparable abuse surface).
+        Route::prefix('calls')->group(function () {
+            Route::post('token', [CallController::class, 'token'])->middleware('throttle:call-token');
+            Route::post('{call}/answer', [CallController::class, 'answer']);
+            Route::post('{call}/decline', [CallController::class, 'decline']);
+            Route::post('{call}/end', [CallController::class, 'end']);
+        });
 
         Route::prefix('notifications')->group(function () {
             Route::get('/', [NotificationController::class, 'index']);

@@ -196,6 +196,31 @@ table list) — supports phone/OTP login per spec §5.
 | mime_type | string | |
 | duration_seconds | smallint, nullable | voice notes |
 
+## Calling
+
+New with Phase 3 items 4/5 (open decisions #19/#20, confirmed WebRTC) — not pre-speced
+the way `message_attachments` was, since spec §13 was `[PROPOSED]` with no provider
+chosen until now.
+
+### `calls`
+| Column | Type | Notes |
+|---|---|---|
+| id | bigint PK | |
+| conversation_id | FK → conversations | |
+| caller_id | FK → users | |
+| callee_id | FK → users | stored directly, not derived, for analytics/support queries |
+| type | enum: voice, video | |
+| status | enum: ringing, active, ended, missed, declined, failed | `failed` reserved, not written by any code yet — no client-reported ICE-failure endpoint this pass |
+| started_at | timestamp, nullable | set when the callee answers |
+| ended_at | timestamp, nullable | |
+| ended_by | FK → users, nullable | who hung up / declined |
+| duration_seconds | smallint, nullable | set at end time, only when the call actually connected |
+| created_at / updated_at | timestamp | |
+
+WebRTC signaling itself (SDP offer/answer, ICE candidates) isn't stored anywhere — it's
+a peer-to-peer client whisper over the existing `presence-conversation.{id}` channel
+(docs/03 "Calls"), not persisted.
+
 ## Safety
 
 ### `blocks`

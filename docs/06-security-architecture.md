@@ -111,6 +111,7 @@ hides the relevant UI, but that is defence-in-depth, never the control:
 |---|---|---|
 | Messaging an **unmatched** user requires an active subscription (spec §12) | `POST /chat/conversations/{id}/messages` policy check | `403` + `error.code = "subscription_required"` |
 | Voice/video **call token** issuance requires an active subscription (spec §13) | `POST /calls/token` policy check | `403` + `error.code = "subscription_required"` |
+| Calling also requires an **active match** — no subscriber carve-out for a missing/unmatched one, unlike messaging | `POST /calls/token` | `403` + `error.code = "active_match_required"` |
 | Premium filters / unlimited likes / boost / who-liked-me | respective endpoints check `user->entitlement(...)` | `403` + `error.code = "upgrade_required"` |
 | Under-18 signup | registration Form Request validates age from `birth_date` | `422` |
 
