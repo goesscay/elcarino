@@ -26,6 +26,8 @@
 	<string>Elcarino needs photo library access to choose profile photos.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Elcarino uses your location to show you people nearby.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Elcarino needs microphone access to record voice notes in chat.</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>

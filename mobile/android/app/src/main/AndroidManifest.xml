@@ -2,12 +2,14 @@
     <!-- Flutter's tooling auto-adds INTERNET for debug builds only — declare it
          explicitly now that the app does real networking, so release builds get
          it too. Location/camera/notifications back the onboarding flow's
-         Photos, Location permission, and Notification permission screens. -->
+         Photos, Location permission, and Notification permission screens.
+         RECORD_AUDIO backs Phase 3 item 1's voice-note composer button. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="Elcarino"
         android:name="${applicationName}"

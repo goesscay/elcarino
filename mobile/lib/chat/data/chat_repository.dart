@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
@@ -51,6 +52,29 @@ class ChatRepository {
       '/chat/conversations/$conversationId/messages',
       method: 'POST',
       data: {'body': body},
+    );
+    return Message.fromJson(response.data['message'] as Map<String, dynamic>);
+  }
+
+  /// Phase 3 item 1 (voice notes, open decision #16). Mirrors
+  /// `ProfileRepository.uploadPhoto`'s `FormData`/`MultipartFile.fromFile`
+  /// pattern — same reason: goes through the shared `request()` wrapper so a
+  /// 422 (non-audio mime, oversized file, missing duration) surfaces as the
+  /// same typed `ApiException`/`ValidationException` every other screen
+  /// handles.
+  Future<Message> sendVoiceNote(
+    int conversationId,
+    String filePath,
+    int durationSeconds,
+  ) async {
+    final form = FormData.fromMap({
+      'voice_note': await MultipartFile.fromFile(filePath),
+      'duration_seconds': durationSeconds,
+    });
+    final response = await _client.request(
+      '/chat/conversations/$conversationId/messages',
+      method: 'POST',
+      data: form,
     );
     return Message.fromJson(response.data['message'] as Map<String, dynamic>);
   }

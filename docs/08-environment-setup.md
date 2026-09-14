@@ -248,6 +248,19 @@ flutter test --dart-define-from-file=config/dev.json
 - **Android emulator can't reach the API** → use `http://10.0.2.2:8000`, not
   `localhost`, from inside the emulator (`10.0.2.2` is the emulator's alias for the
   host). iOS simulator can use `localhost`.
+- **Signed media URLs (profile photos, chat voice notes) fail to load on the Android
+  emulator specifically** — same root cause as the gotcha above, one level deeper: the
+  JSON request succeeds (that goes through `config/dev.json`'s `10.0.2.2` base URL),
+  but the *signed URL inside the response* is built server-side from `.env`'s
+  `APP_URL`, which is `http://localhost:8000` — correct for a desktop browser hitting
+  Filament, unreachable from the emulator's own network namespace. Confirmed live
+  while verifying Phase 3 item 1 (voice notes): the backend and the URL's signature
+  were both fine (`curl` from the host downloaded the file cleanly), only the
+  emulator's in-app player couldn't resolve the host (`NuCachedSource2: source
+  returned error -1` in `adb logcat`). No fix applied — swapping `APP_URL` to
+  `10.0.2.2` would break the desktop-browser Filament case instead. Workaround for a
+  local emulator session that needs to see real media: temporarily set `APP_URL` to
+  `http://10.0.2.2:8000` in `.env`, restart `php artisan serve`, revert after.
 - **`php artisan migrate` fails on a fresh clone** → you skipped
   `New-Item database\database.sqlite` — Laravel won't create the SQLite file itself.
 - **CRLF/LF churn in diffs** → `.gitattributes` normalizes to LF; if you cloned before

@@ -21,6 +21,54 @@ void main() {
       expect(message.sentBy(1), isFalse);
     });
 
+    test('parses a voice note message with its attachment', () {
+      final message = Message.fromJson({
+        'id': 2,
+        'conversation_id': 5,
+        'sender_id': 9,
+        'body': null,
+        'type': 'voice_note',
+        'attachment': {
+          'url': 'https://cdn.test/voice-notes/1/a.m4a?signature=abc',
+          'mime_type': 'audio/mp4',
+          'duration_seconds': 12,
+        },
+        'read_at': null,
+        'created_at': '2026-09-16T00:00:00.000000Z',
+      });
+
+      expect(message.type, MessageType.voiceNote);
+      expect(message.body, isNull);
+      expect(message.attachment, isNotNull);
+      expect(message.attachment!.mimeType, 'audio/mp4');
+      expect(message.attachment!.durationSeconds, 12);
+    });
+
+    test('a text message has no attachment whether the key is absent or null', () {
+      final withoutKey = Message.fromJson({
+        'id': 1,
+        'conversation_id': 5,
+        'sender_id': 9,
+        'body': 'hi',
+        'type': 'text',
+        'read_at': null,
+        'created_at': '2026-09-16T00:00:00.000000Z',
+      });
+      final withNullKey = Message.fromJson({
+        'id': 1,
+        'conversation_id': 5,
+        'sender_id': 9,
+        'body': 'hi',
+        'type': 'text',
+        'attachment': null,
+        'read_at': null,
+        'created_at': '2026-09-16T00:00:00.000000Z',
+      });
+
+      expect(withoutKey.attachment, isNull);
+      expect(withNullKey.attachment, isNull);
+    });
+
     test('parses a read message with a read_at timestamp', () {
       final message = Message.fromJson({
         'id': 1,
