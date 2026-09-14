@@ -38,6 +38,8 @@ Profile _profileWithPhotos(List<ProfilePhoto> photos) => Profile(
   gender: Gender.woman,
   bio: null,
   relationshipGoal: null,
+  religion: null,
+  politics: null,
   isVerified: false,
   completionPct: 40,
   photos: photos,

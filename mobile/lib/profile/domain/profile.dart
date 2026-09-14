@@ -29,6 +29,8 @@ class Profile {
     required this.gender,
     required this.bio,
     required this.relationshipGoal,
+    required this.religion,
+    required this.politics,
     required this.isVerified,
     required this.completionPct,
     required this.photos,
@@ -41,6 +43,11 @@ class Profile {
     gender: Gender.fromApiValue(json['gender'] as String),
     bio: json['bio'] as String?,
     relationshipGoal: json['relationship_goal'] as String?,
+    // Phase 2 item 2 — the viewer's own value. Owner-only in the API
+    // response (ProfileResource's own doc comment); never present on
+    // another user's profile.
+    religion: json['religion'] as String?,
+    politics: json['politics'] as String?,
     isVerified: json['is_verified'] as bool,
     completionPct: json['completion_pct'] as int,
     photos: (json['photos'] as List<dynamic>? ?? [])
@@ -54,6 +61,8 @@ class Profile {
   final Gender gender;
   final String? bio;
   final String? relationshipGoal;
+  final String? religion;
+  final String? politics;
   final bool isVerified;
   final int completionPct;
   final List<ProfilePhoto> photos;

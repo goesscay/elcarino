@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:datingapp/core/network/api_client.dart';
 import 'package:datingapp/profile/data/profile_repository.dart';
+import 'package:datingapp/profile/domain/gender.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,6 +15,7 @@ class _FakeAdapter implements HttpClientAdapter {
 
   final Map<String, Map<String, dynamic>> responses;
   final List<String> calls = [];
+  dynamic lastData;
 
   @override
   void close({bool force = false}) {}
@@ -25,6 +27,7 @@ class _FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     calls.add('${options.method} ${options.path}');
+    lastData = options.data;
     final body = responses[options.path] ?? {'message': 'ok'};
     return ResponseBody.fromString(
       jsonEncode(body),
@@ -114,5 +117,67 @@ void main() {
         expect(result.map((p) => p.promptId), [2, 1]);
       },
     );
+  });
+
+  group('ProfileRepository basics (Phase 2 item 2)', () {
+    test(
+      'updateProfileBasics includes religion and politics when set',
+      () async {
+        final (repository, adapter) = _repositoryReturning({
+          '/profiles/me': {
+            'profile': {
+              'id': 1,
+              'display_name': 'Jane',
+              'birth_date': '1995-06-15',
+              'gender': 'woman',
+              'bio': null,
+              'relationship_goal': null,
+              'religion': 'buddhist',
+              'politics': 'centrist',
+              'is_verified': false,
+              'completion_pct': 40,
+            },
+          },
+        });
+
+        await repository.updateProfileBasics(
+          displayName: 'Jane',
+          birthDate: DateTime(1995, 6, 15),
+          gender: Gender.woman,
+          religion: 'buddhist',
+          politics: 'centrist',
+        );
+
+        expect(adapter.calls, contains('PUT /profiles/me'));
+        expect(adapter.lastData['religion'], 'buddhist');
+        expect(adapter.lastData['politics'], 'centrist');
+      },
+    );
+
+    test('updateProfileBasics omits religion and politics when null', () async {
+      final (repository, adapter) = _repositoryReturning({
+        '/profiles/me': {
+          'profile': {
+            'id': 1,
+            'display_name': 'Jane',
+            'birth_date': '1995-06-15',
+            'gender': 'woman',
+            'bio': null,
+            'relationship_goal': null,
+            'is_verified': false,
+            'completion_pct': 40,
+          },
+        },
+      });
+
+      await repository.updateProfileBasics(
+        displayName: 'Jane',
+        birthDate: DateTime(1995, 6, 15),
+        gender: Gender.woman,
+      );
+
+      expect(adapter.lastData.containsKey('religion'), isFalse);
+      expect(adapter.lastData.containsKey('politics'), isFalse);
+    });
   });
 }

@@ -7,11 +7,21 @@ import '../../core/theme/app_spacing.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/domain/gender.dart';
 import '../../profile/domain/preferences.dart';
+import '../../subscriptions/data/subscription_repository.dart';
 import 'onboarding_scaffold.dart';
 
 /// docs/07-ui-ux-design.md §3.1 "Preferences": interested-in multi-select,
 /// age range, max distance, and collapsible advanced filters (religion,
 /// politics — free-form here; docs/03 notes no fixed value list exists yet).
+///
+/// Phase 2 item 2: the advanced filters are premium-gated
+/// (docs/07 "Filters sheet": "advanced — gated to premium in Phase 2"). A
+/// non-subscriber can still see and *remove* an already-set value (e.g. from
+/// a lapsed subscription — the backend allows that, PreferenceController's
+/// own doc comment explains why) but can't add a new one; the input is
+/// locked instead, with a link straight to the Premium screen (item 1)
+/// rather than the more elaborate dedicated paywall modal docs/07 describes
+/// generically — a disclosed simplification, not a dropped screen.
 ///
 /// Reused from the onboarding wizard (default: advances to Location; nothing
 /// to pre-fill, this is the first time preferences are set) and the
@@ -41,6 +51,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
   final Set<Gender> _interestedIn = {};
   final List<String> _religionFilter = [];
   final List<String> _politicsFilter = [];
+  bool _hasAdvancedFilters = false;
   bool _submitting = false;
   String? _error;
 
@@ -52,6 +63,9 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
 
   Future<void> _load() async {
     final existing = await ref.read(profileRepositoryProvider).getPreferences();
+    final subscription = await ref
+        .read(subscriptionRepositoryProvider)
+        .getCurrent();
     if (!mounted) return;
     setState(() {
       if (existing != null) {
@@ -64,6 +78,10 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
         _religionFilter.addAll(existing.religionFilter);
         _politicsFilter.addAll(existing.politicsFilter);
       }
+      _hasAdvancedFilters =
+          subscription != null &&
+          subscription.isActive &&
+          subscription.plan.entitlementBool('advanced_filters');
       _loading = false;
     });
   }
@@ -161,10 +179,31 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             title: const Text('Advanced filters (optional)'),
+            subtitle: _hasAdvancedFilters
+                ? null
+                : const Text('Premium feature'),
             children: [
+              if (!_hasAdvancedFilters)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Upgrade to filter by religion or politics.',
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/settings/subscription'),
+                        child: const Text('Upgrade'),
+                      ),
+                    ],
+                  ),
+                ),
               _ChipInput(
                 label: 'Religion',
                 values: _religionFilter,
+                locked: !_hasAdvancedFilters,
                 onChanged: (values) => setState(() {
                   _religionFilter
                     ..clear()
@@ -175,6 +214,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
               _ChipInput(
                 label: 'Politics',
                 values: _politicsFilter,
+                locked: !_hasAdvancedFilters,
                 onChanged: (values) => setState(() {
                   _politicsFilter
                     ..clear()
@@ -210,16 +250,24 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
 /// A free-text tag list — used for religion/politics since no fixed option
 /// list exists anywhere in /docs (see docs/03-api-specification.md's note on
 /// this).
+///
+/// [locked] (Phase 2 item 2) disables *adding* a new value without
+/// disabling *removing* an existing one — the backend allows a non-
+/// subscriber to clear a lapsed-subscription value but not add a new one
+/// (PreferenceController's own doc comment), and the UI mirrors that
+/// distinction rather than blocking the field outright.
 class _ChipInput extends StatefulWidget {
   const _ChipInput({
     required this.label,
     required this.values,
     required this.onChanged,
+    this.locked = false,
   });
 
   final String label;
   final List<String> values;
   final ValueChanged<List<String>> onChanged;
+  final bool locked;
 
   @override
   State<_ChipInput> createState() => _ChipInputState();
@@ -251,11 +299,15 @@ class _ChipInputState extends State<_ChipInput> {
             Expanded(
               child: TextField(
                 controller: _controller,
+                enabled: !widget.locked,
                 decoration: InputDecoration(labelText: widget.label),
                 onSubmitted: (_) => _add(),
               ),
             ),
-            IconButton(icon: const Icon(Icons.add), onPressed: _add),
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: widget.locked ? null : _add,
+            ),
           ],
         ),
         Wrap(

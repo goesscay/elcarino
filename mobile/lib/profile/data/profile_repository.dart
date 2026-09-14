@@ -35,6 +35,8 @@ class ProfileRepository {
     required Gender gender,
     String? bio,
     String? relationshipGoal,
+    String? religion,
+    String? politics,
   }) async {
     final response = await _client.request(
       '/profiles/me',
@@ -46,6 +48,10 @@ class ProfileRepository {
         'gender': gender.apiValue,
         'bio': ?bio,
         'relationship_goal': ?relationshipGoal,
+        // Phase 2 item 2 — free for everyone to state; only filtering by it
+        // is premium-gated (see preferences_screen.dart).
+        'religion': ?religion,
+        'politics': ?politics,
       },
     );
     return Profile.fromJson(response.data['profile'] as Map<String, dynamic>);

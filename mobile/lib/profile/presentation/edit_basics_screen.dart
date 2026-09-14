@@ -21,6 +21,8 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
   final _relationshipGoalController = TextEditingController();
+  final _religionController = TextEditingController();
+  final _politicsController = TextEditingController();
   DateTime? _birthDate;
   Gender? _gender;
   bool _loading = true;
@@ -41,6 +43,8 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
         _nameController.text = profile.displayName;
         _bioController.text = profile.bio ?? '';
         _relationshipGoalController.text = profile.relationshipGoal ?? '';
+        _religionController.text = profile.religion ?? '';
+        _politicsController.text = profile.politics ?? '';
         _birthDate = profile.birthDate;
         _gender = profile.gender;
       }
@@ -53,6 +57,8 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
     _nameController.dispose();
     _bioController.dispose();
     _relationshipGoalController.dispose();
+    _religionController.dispose();
+    _politicsController.dispose();
     super.dispose();
   }
 
@@ -98,6 +104,12 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
             relationshipGoal: _relationshipGoalController.text.trim().isEmpty
                 ? null
                 : _relationshipGoalController.text.trim(),
+            religion: _religionController.text.trim().isEmpty
+                ? null
+                : _religionController.text.trim(),
+            politics: _politicsController.text.trim().isEmpty
+                ? null
+                : _politicsController.text.trim(),
           );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -177,6 +189,25 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
                         maxLength: 100,
                         decoration: const InputDecoration(
                           labelText: 'Relationship goal',
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      // Phase 2 item 2 — feeds the (premium-gated) advanced
+                      // filters in Edit preferences; free for anyone to set
+                      // on their own profile, same as bio/relationship goal.
+                      TextFormField(
+                        controller: _religionController,
+                        maxLength: 100,
+                        decoration: const InputDecoration(
+                          labelText: 'Religion (optional)',
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      TextFormField(
+                        controller: _politicsController,
+                        maxLength: 100,
+                        decoration: const InputDecoration(
+                          labelText: 'Politics (optional)',
                         ),
                       ),
                       if (_error != null) ...[
