@@ -21,13 +21,16 @@ import '../domain/conversation.dart';
 import '../domain/message.dart';
 import '../domain/message_type.dart';
 import '../domain/read_receipt.dart';
+import 'gif_picker_sheet.dart';
 
 /// docs/07-ui-ux-design.md §3.3 "Conversation": message list (bubbles, own =
 /// trailing), read receipt on the last own message, typing indicator,
-/// online/last-active in the header. Composer has a single mic button for
-/// voice notes (Phase 3 item 1, open decision #16) — deliberately not
-/// docs/07's fuller "attachment button reveals voice/photo/GIF" menu, since
-/// gif/photo (#17/#18) aren't built yet. Header overflow: Unmatch, Report,
+/// online/last-active in the header. Composer has a dedicated mic button
+/// (voice notes, Phase 3 item 1, #16) and gif button (Phase 3 item 2, #17)
+/// — deliberately two plain buttons rather than docs/07's single
+/// "attachment button reveals voice/photo/GIF" menu, since photo (#18)
+/// still isn't built; revisit as one combined menu once it is. Header
+/// overflow: Unmatch, Report,
 /// Block (item 10) — "View profile" isn't built, no such screen exists yet
 /// for viewing another user's full profile outside a match/discovery card.
 enum _ConversationMenuAction { unmatch, report, block }
@@ -64,6 +67,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   bool _sending = false;
   bool _recording = false;
   bool _sendingVoiceNote = false;
+  bool _sendingGif = false;
   Duration _recordingElapsed = Duration.zero;
   bool _otherIsTyping = false;
   String? _error;
@@ -348,6 +352,30 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     }
   }
 
+  /// Phase 3 item 2 (gifs, open decision #17). The sheet returns the
+  /// picked [GifResult]; only its `id` is sent — `ChatRepository.sendGif`'s
+  /// signature doesn't even accept a url, so there's no way to accidentally
+  /// send one (see that method's doc comment for why).
+  Future<void> _pickAndSendGif() async {
+    final gif = await showGifPickerSheet(context);
+    if (gif == null || !mounted) return;
+
+    setState(() => _sendingGif = true);
+    try {
+      final message = await ref
+          .read(chatRepositoryProvider)
+          .sendGif(widget.conversation.id, gif.id);
+      if (!mounted) return;
+      _appendMessageIfNew(message);
+      setState(() => _sendingGif = false);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _sendingGif = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _handleMenuAction(_ConversationMenuAction action) async {
     switch (action) {
       case _ConversationMenuAction.unmatch:
@@ -494,9 +522,11 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 controller: _composerController,
                 sending: _sending,
                 sendingVoiceNote: _sendingVoiceNote,
+                sendingGif: _sendingGif,
                 onChanged: _onComposerChanged,
                 onSend: _send,
                 onStartRecording: _startRecording,
+                onPickGif: _pickAndSendGif,
               ),
           ],
         ),
@@ -595,34 +625,60 @@ class _MessageBubble extends StatelessWidget {
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
-            Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: isMine ? AppColors.primary : AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-              child: message.type == MessageType.voiceNote
-                  ? (message.attachment == null
-                        ? const Text('Voice note unavailable')
-                        : _VoiceNotePlayer(
-                            attachment: message.attachment!,
-                            isMine: isMine,
-                          ))
-                  : Text(
-                      message.body ?? '',
-                      style: TextStyle(
-                        color: isMine
-                            ? AppColors.onPrimary
-                            : AppColors.textPrimaryLight,
+            if (message.type == MessageType.gif)
+              // No padding/colour fill for a gif — same bubble alignment
+              // and max-width as text/voice-note, but the image itself is
+              // the bubble (matches every other chat app's gif rendering;
+              // a coloured background behind a gif just reads as a border).
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.6,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: message.body == null
+                      ? const _GifUnavailable()
+                      : Image.network(
+                          message.body!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const _GifUnavailable(),
+                          loadingBuilder: (context, child, progress) =>
+                              progress == null
+                              ? child
+                              : const _GifUnavailable(loading: true),
+                        ),
+                ),
+              )
+            else
+              Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: isMine ? AppColors.primary : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: message.type == MessageType.voiceNote
+                    ? (message.attachment == null
+                          ? const Text('Voice note unavailable')
+                          : _VoiceNotePlayer(
+                              attachment: message.attachment!,
+                              isMine: isMine,
+                            ))
+                    : Text(
+                        message.body ?? '',
+                        style: TextStyle(
+                          color: isMine
+                              ? AppColors.onPrimary
+                              : AppColors.textPrimaryLight,
+                        ),
                       ),
-                    ),
-            ),
+              ),
             if (showReadReceipt)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -638,26 +694,62 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
+/// Placeholder for a gif bubble that has no body (shouldn't happen —
+/// ChatController::sendMessage always resolves one before creating the
+/// message — but a defensive fallback beats a broken-image icon) or whose
+/// image failed to load (an expired/removed Giphy asset — third-party
+/// content, no guarantee it stays reachable forever), and the loading state
+/// in between.
+class _GifUnavailable extends StatelessWidget {
+  const _GifUnavailable({this.loading = false});
+
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      height: 100,
+      color: AppColors.surfaceLight,
+      alignment: Alignment.center,
+      child: loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(
+              Icons.gif_box_outlined,
+              color: AppColors.textSecondaryLight,
+            ),
+    );
+  }
+}
+
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.sending,
     required this.sendingVoiceNote,
+    required this.sendingGif,
     required this.onChanged,
     required this.onSend,
     required this.onStartRecording,
+    required this.onPickGif,
   });
 
   final TextEditingController controller;
   final bool sending;
   final bool sendingVoiceNote;
+  final bool sendingGif;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
   final VoidCallback onStartRecording;
+  final VoidCallback onPickGif;
 
   @override
   Widget build(BuildContext context) {
-    final busy = sending || sendingVoiceNote;
+    final busy = sending || sendingVoiceNote || sendingGif;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Row(
@@ -671,6 +763,16 @@ class _Composer extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.mic_none),
+          ),
+          IconButton(
+            onPressed: busy ? null : onPickGif,
+            icon: sendingGif
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.gif_box_outlined),
           ),
           Expanded(
             child: TextField(

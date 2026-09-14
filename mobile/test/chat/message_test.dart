@@ -69,6 +69,22 @@ void main() {
       expect(withNullKey.attachment, isNull);
     });
 
+    test('parses a gif message (body holds the url directly)', () {
+      final message = Message.fromJson({
+        'id': 3,
+        'conversation_id': 5,
+        'sender_id': 9,
+        'body': 'https://media.giphy.com/abc/full.gif',
+        'type': 'gif',
+        'read_at': null,
+        'created_at': '2026-09-16T00:00:00.000000Z',
+      });
+
+      expect(message.type, MessageType.gif);
+      expect(message.body, 'https://media.giphy.com/abc/full.gif');
+      expect(message.attachment, isNull);
+    });
+
     test('parses a read message with a read_at timestamp', () {
       final message = Message.fromJson({
         'id': 1,

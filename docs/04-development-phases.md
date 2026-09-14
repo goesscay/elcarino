@@ -726,7 +726,22 @@ activates entitlements within a defined SLA (e.g. < 1 minute via webhook).
       signed route; (3) AAC-in-MP4 mime-sniffing ambiguously as `video/mp4` —
       `AudioMimeTypeResolver`. See those three files' doc comments for the
       full story.
-- [ ] GIFs — if confirmed (open decision #17)
+- [x] GIFs — if confirmed (open decision #17). Built and verified live: search UI
+      (debounced query, loading/empty/error states, infinite scroll), send, and
+      bubble rendering all confirmed on the Android emulator, plus one real bug
+      caught and fixed live — the picker's results area rendered fully behind
+      the open keyboard (a fixed-height `SizedBox` sized against the full
+      screen height, not the shrunk visible viewport); fixed with the standard
+      `viewInsets.bottom` padding pattern (`gif_picker_sheet.dart`). Search
+      itself couldn't be verified against real Giphy results — the provider's
+      public beta key it falls back to when unconfigured turned out to be
+      dead (confirmed live, 403 "BANNED"), so this was verified two ways
+      instead: the empty/loading/error states via the `log` driver (real
+      round trip, real UI, zero external results by design), and bubble
+      rendering via a manually-inserted `gif`-type message pointing at a real
+      external image, which rendered correctly. `GiphyGifProvider` itself
+      stays "confirm before production," a stricter bar than #16's audio
+      pipeline or #27's Stripe default — see its own doc comment.
 - [ ] Photo sharing in chat — if confirmed (open decision #18)
 - [ ] Voice calling (WebRTC/Agora) — subscriber-gated (spec §13)
 - [ ] Video calling — subscriber-gated

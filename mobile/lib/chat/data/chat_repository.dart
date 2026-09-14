@@ -3,12 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
 import '../domain/conversation.dart';
+import '../domain/gif_result.dart';
 import '../domain/message.dart';
 
 class MessagePage {
   const MessagePage({required this.messages, required this.hasMore});
 
   final List<Message> messages;
+  final bool hasMore;
+}
+
+class GifSearchPage {
+  const GifSearchPage({required this.gifs, required this.hasMore});
+
+  final List<GifResult> gifs;
   final bool hasMore;
 }
 
@@ -75,6 +83,39 @@ class ChatRepository {
       '/chat/conversations/$conversationId/messages',
       method: 'POST',
       data: form,
+    );
+    return Message.fromJson(response.data['message'] as Map<String, dynamic>);
+  }
+
+  /// Phase 3 item 2 (gifs, open decision #17). `/gifs/search`, not nested
+  /// under `/chat/` — see docs/03 "GIFs" — the picker searches before the
+  /// user has necessarily picked which conversation to send into.
+  Future<GifSearchPage> searchGifs(String query, {int page = 1}) async {
+    final response = await _client.request(
+      '/gifs/search',
+      method: 'GET',
+      queryParameters: {'q': query, 'page': page},
+    );
+    final gifs = (response.data['gifs'] as List<dynamic>)
+        .map((e) => GifResult.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return GifSearchPage(
+      gifs: gifs,
+      hasMore: response.data['meta']['has_more'] as bool,
+    );
+  }
+
+  /// Sends the `id` from a `searchGifs` result — never the gif's `url`
+  /// directly. The server re-resolves it itself (`GifProvider::find()`)
+  /// rather than trusting a client-supplied external URL, the same
+  /// discipline as never letting the client pick its own subscription
+  /// plan price; this repository method's signature enforces that at the
+  /// call site too (there's no way to call it with a raw url).
+  Future<Message> sendGif(int conversationId, String gifId) async {
+    final response = await _client.request(
+      '/chat/conversations/$conversationId/messages',
+      method: 'POST',
+      data: {'gif_id': gifId},
     );
     return Message.fromJson(response.data['message'] as Map<String, dynamic>);
   }

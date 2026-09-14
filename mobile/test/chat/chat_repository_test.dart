@@ -209,6 +209,54 @@ void main() {
       },
     );
 
+    test('searchGifs sends q/page and maps the pagination meta', () async {
+      final (repository, adapter) = _repositoryReturning({
+        '/gifs/search': {
+          'gifs': [
+            {
+              'id': 'abc123',
+              'preview_url': 'https://media.giphy.com/abc123/small.gif',
+              'url': 'https://media.giphy.com/abc123/downsized.gif',
+              'width': 400,
+              'height': 300,
+            },
+          ],
+          'meta': {'has_more': true},
+        },
+      });
+
+      final page = await repository.searchGifs('cats', page: 2);
+
+      expect(adapter.lastRequest!.method, 'GET');
+      expect(adapter.lastRequest!.queryParameters, {'q': 'cats', 'page': 2});
+      expect(page.gifs, hasLength(1));
+      expect(page.gifs.single.id, 'abc123');
+      expect(page.hasMore, isTrue);
+    });
+
+    test('sendGif posts the gif_id and maps the created message', () async {
+      final (repository, adapter) = _repositoryReturning({
+        '/chat/conversations/1/messages': {
+          'message': {
+            'id': 13,
+            'conversation_id': 1,
+            'sender_id': 3,
+            'body': 'https://media.giphy.com/abc123/downsized.gif',
+            'type': 'gif',
+            'read_at': null,
+            'created_at': '2026-09-16T00:00:00.000000Z',
+          },
+        },
+      });
+
+      final message = await repository.sendGif(1, 'abc123');
+
+      expect(adapter.lastRequest!.method, 'POST');
+      expect(adapter.lastRequest!.data, {'gif_id': 'abc123'});
+      expect(message.type, MessageType.gif);
+      expect(message.body, 'https://media.giphy.com/abc123/downsized.gif');
+    });
+
     test('markRead calls PUT on the right path', () async {
       final (repository, adapter) = _repositoryReturning({});
 
