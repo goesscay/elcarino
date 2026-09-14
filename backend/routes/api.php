@@ -5,16 +5,24 @@ use App\Http\Controllers\Api\Chat\ChatController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
 use App\Http\Controllers\Api\Matches\MatchController;
 use App\Http\Controllers\Api\Notifications\NotificationController;
+use App\Http\Controllers\Api\Payments\PaymentController;
 use App\Http\Controllers\Api\Profile\InterestController;
 use App\Http\Controllers\Api\Profile\PreferenceController;
 use App\Http\Controllers\Api\Profile\ProfileController;
 use App\Http\Controllers\Api\Profile\ProfilePhotoController;
 use App\Http\Controllers\Api\Profile\PromptController;
 use App\Http\Controllers\Api\Safety\SafetyController;
+use App\Http\Controllers\Api\Subscriptions\SubscriptionController;
 use App\Http\Controllers\Api\Swipe\SwipeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserDeviceController;
+use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
+
+// Outside `/v1` and outside `auth:sanctum` — same reasoning as
+// `/api/broadcasting/auth` (bootstrap/app.php): Stripe can't hold a bearer
+// token, so its own request signature is the authentication here.
+Route::post('webhooks/stripe', [StripeWebhookController::class, 'handle']);
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -96,6 +104,17 @@ Route::prefix('v1')->group(function () {
             Route::delete('block/{userId}', [SafetyController::class, 'unblock']);
             Route::post('report', [SafetyController::class, 'report'])->middleware('throttle:safety-report');
             Route::get('report-categories', [SafetyController::class, 'reportCategories']);
+        });
+
+        Route::prefix('subscriptions')->group(function () {
+            Route::get('plans', [SubscriptionController::class, 'plans']);
+            Route::get('me', [SubscriptionController::class, 'me']);
+            Route::post('/', [SubscriptionController::class, 'store']);
+            Route::post('cancel', [SubscriptionController::class, 'cancel']);
+        });
+
+        Route::prefix('payments')->group(function () {
+            Route::get('history', [PaymentController::class, 'history']);
         });
     });
 });

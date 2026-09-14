@@ -270,18 +270,35 @@ than failing as a duplicate or leaving a stale row nobody prunes.
 
 ## Subscriptions — `/api/v1/subscriptions`
 
+Phase 2 item 1 (docs/04). Open decision #27 (payment gateway) is
+unresolved; Stripe is this feature's chosen working default
+(`App\Services\Payments\StripePaymentGateway`, real but not yet verified
+against a live account) — native store billing (`app_store`/`play_store`)
+is a separate, always-available path via real-but-unconfigured
+`ReceiptVerifier`s, same status as `TwilioSmsSender`/`FcmPushSender`.
+
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/plans` | public — active `subscription_plans` |
-| GET | `/me` | current subscription status/entitlements |
-| POST | `/` | start a subscription (provider-specific receipt validation) |
-| POST | `/cancel` | |
+| GET | `/plans` | "public" per the original table below, but kept behind auth like every other route in this app for now — same reasoning as `GET /prompts`'s library endpoint. Active `subscription_plans` only |
+| GET | `/me` | `{ "subscription": SubscriptionResource\|null, "entitlements": {...} }` |
+| POST | `/` | body: `{ "plan_id", "provider": "stripe"\|"app_store"\|"play_store", "receipt"? }` (`receipt` required for the two native providers; `"other"` is a valid `subscriptions.provider` enum value for schema completeness only — never accepted here). Response shape depends on provider: `provider: "stripe"` returns **either** `201 { "subscription": SubscriptionResource }` (the log-driven local-dev gateway, which activates synchronously) **or** `202 { "checkout_url": "..." }` (a real Stripe account — the subscription doesn't exist yet, `POST /webhooks/stripe` creates it once payment is confirmed). `provider: "app_store"\|"play_store"` always returns `201` synchronously once the receipt verifies |
+| POST | `/cancel` | ends access immediately (`ends_at` -> now) — does **not** keep access until the current paid period ends, a real-billing-UX nicety this MVP doesn't implement (flagged, not silently the friendlier behaviour by accident) |
 
 ## Payments — `/api/v1/payments`
 
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/history` | current user's payment history |
+
+## Webhooks — `/api/webhooks/*` (not under `/api/v1`, no Sanctum auth)
+
+Same reasoning as `/api/broadcasting/auth` (`bootstrap/app.php`): the caller
+isn't a mobile client and can't hold a bearer token, so each webhook's own
+request signature is the entire authentication.
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/stripe` | `Stripe-Signature` header HMAC-verified against `STRIPE_WEBHOOK_SECRET` (`App\Services\Payments\StripeWebhookSignatureVerifier`) — `503` if unconfigured, `400` if the signature doesn't verify. Handles `checkout.session.completed` (activates the subscription), `customer.subscription.deleted` (cancels it), `invoice.payment_failed` (marks it `past_due`). **Not handled:** `invoice.payment_succeeded` extending `ends_at` on renewal — every subscription this feature creates gets exactly one billing period and then lapses even if Stripe keeps charging successfully. Flagged as the natural next fast-follow, not silently dropped |
 | POST | `/webhook/{provider}` | **public**, signature-verified — gateway callback, not user-facing |
 
 ## Verification — `/api/v1/verification`

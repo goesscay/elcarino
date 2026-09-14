@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SubscriptionStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
@@ -65,11 +66,50 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         ];
     }
 
+    /**
+     * Phase 2 item 1: was stubbed `return false` until the subscriptions
+     * feature existed (spec §16/§17). Every existing call site
+     * (`RateLimiter::for('swipes', ...)`, `ConversationPolicy`/
+     * `ChatController`'s unmatched-messaging gate) was already written
+     * against this exact method, so flipping the stub to a real check is
+     * the whole integration — no call site needed to change.
+     */
     public function isSubscriber(): bool
     {
-        // Stubbed until the subscriptions feature (Phase 2) lands — spec §16/§17.
-        // Never hardcode true here; premium-gated endpoints must fail closed.
-        return false;
+        return $this->currentSubscription() !== null;
+    }
+
+    /**
+     * The one query that decides "does this user have paying access right
+     * now" — a plain query, not cached. docs/06-security-architecture.md
+     * §3.4 describes this class of read as eventually cached (Redis, short
+     * TTL); not done here on purpose: there's no Redis locally (backend/
+     * CLAUDE.md), and a cache keyed by user id is a real staleness hazard
+     * under RefreshDatabase's per-test id reuse — a subscription cached for
+     * "user 5" in one test would leak into a completely different "user 5"
+     * in the next. Add the cache, with an explicit invalidation hook,
+     * alongside Redis's actual introduction — not before.
+     */
+    public function currentSubscription(): ?Subscription
+    {
+        return $this->subscriptions()
+            ->with('plan')
+            ->where('status', SubscriptionStatus::Active)
+            ->where('ends_at', '>', now())
+            ->latest('ends_at')
+            ->first();
+    }
+
+    /**
+     * docs/06 §3.4: "`user->entitlement($key)` read from the `subscriptions`
+     * + `subscription_plans.entitlements` join." Returns `false` (not null)
+     * for "no active subscription" so a caller can use this directly in an
+     * `if` without an extra null check, matching how every entitlement key
+     * in `entitlements` is itself boolean-or-a-limit-number.
+     */
+    public function entitlement(string $key): mixed
+    {
+        return $this->currentSubscription()?->plan?->entitlements[$key] ?? false;
     }
 
     public function isAdmin(): bool
@@ -196,6 +236,16 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     public function reportsReceived(): HasMany
     {
         return $this->hasMany(Report::class, 'reported_id');
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function devices(): HasMany

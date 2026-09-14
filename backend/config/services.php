@@ -44,6 +44,20 @@ return [
 
     'apple' => [
         'client_id' => env('APPLE_CLIENT_ID') ?: null,
+        // App Store receipt verification (Phase 2 item 1) — a different
+        // secret than the Sign In With Apple client id above, kept under
+        // the same 'apple' key since both are Apple-issued credentials.
+        'shared_secret' => env('APPLE_SHARED_SECRET') ?: null,
+    ],
+
+    'play' => [
+        // Google Play Developer API service account (Phase 2 item 1) — a
+        // *different* Google credential than 'google.client_id' above
+        // (that one verifies a Sign-In ID token; this one calls the
+        // Play Developer API), kept as its own key rather than overloading
+        // 'google'.
+        'service_account_email' => env('PLAY_SERVICE_ACCOUNT_EMAIL') ?: null,
+        'service_account_private_key' => env('PLAY_SERVICE_ACCOUNT_PRIVATE_KEY') ?: null,
     ],
 
     'sms' => [
@@ -65,6 +79,28 @@ return [
             'service_account_email' => env('FCM_SERVICE_ACCOUNT_EMAIL'),
             'service_account_private_key' => env('FCM_SERVICE_ACCOUNT_PRIVATE_KEY'),
         ],
+    ],
+
+    'payments' => [
+        // Open decision #27 (payment gateway) — 'log' activates a purchase
+        // immediately without any real charge, same role as SMS_PROVIDER/
+        // PUSH_PROVIDER=log; 'stripe' is this feature's chosen working
+        // default (docs/04 item 1), not yet exercised against a real
+        // account. Native store billing (app_store/play_store) is a
+        // separate, always-available code path — see 'apple'/'play' above
+        // and App\Services\Payments\ReceiptVerifier.
+        'provider' => env('PAYMENT_PROVIDER', 'log'),
+    ],
+
+    'stripe' => [
+        'secret_key' => env('STRIPE_SECRET_KEY') ?: null,
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET') ?: null,
+        // Where Stripe Checkout redirects after payment — no mobile
+        // deep-link handler exists yet for either outcome (flagged in
+        // StripePaymentGateway's doc comment), so these default to plain
+        // backend URLs rather than an app:// scheme that goes nowhere.
+        'success_url' => env('STRIPE_SUCCESS_URL') ?: null,
+        'cancel_url' => env('STRIPE_CANCEL_URL') ?: null,
     ],
 
 ];

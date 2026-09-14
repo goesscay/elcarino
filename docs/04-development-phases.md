@@ -454,8 +454,67 @@ suspend a user and it takes effect immediately.
 
 ## Phase 2 — Premium (~3–4 weeks)
 
-- [ ] Subscription plans + purchase flow (App Store / Play Store or Stripe — per
-      open decision #27)
+- [x] Subscription plans + purchase flow (App Store / Play Store or Stripe — per
+      open decision #27). Asked before building: decision #27 is unresolved and
+      materially changes what's testable here (native IAP needs real App Store
+      Connect/Play Console accounts this machine doesn't have; Stripe has a test
+      mode that needs none) — chose "build both, Stripe as the working default."
+      **Backend:** `subscription_plans`/`subscriptions`/`payments` migrations
+      (docs/02, unchanged from what it already specified). `PaymentGateway`
+      interface (`LogPaymentGateway` default — activates instantly, same role as
+      `LogSmsSender`/`LogPushSender`; `StripePaymentGateway` — real, calls
+      Stripe's REST API via `Http` the same way `TwilioSmsSender`/
+      `FcmPushSender` call theirs rather than pulling in `stripe/stripe-php`,
+      not yet verified against a live account) and a separate `ReceiptVerifier`
+      pair (`AppStoreReceiptVerifier`/`PlayStoreReceiptVerifier` — real-shaped,
+      genuinely unconfigured, same status as Twilio/FCM) for native store
+      billing, since the mobile client already knows which store it bought
+      through rather than needing a server-side switch. `SubscriptionService`
+      orchestrates both into one `activate()` (idempotent on
+      `provider_subscription_id`, so a retried webhook or client retry can't
+      double-create a subscription/payment pair). `POST /webhooks/stripe`
+      (outside `/api/v1`, no Sanctum — the `Stripe-Signature` HMAC header is the
+      entire authentication, `StripeWebhookSignatureVerifier`) handles
+      `checkout.session.completed`/`customer.subscription.deleted`/
+      `invoice.payment_failed`; **not** `invoice.payment_succeeded` extending
+      `ends_at` on renewal, flagged as the natural fast-follow, not silently
+      dropped. `User::isSubscriber()` — a hardcoded `return false` stub since
+      Phase 1 (spec §16/§17) — is now real; every existing call site
+      (`RateLimiter::for('swipes', ...)`, the chat unmatched-messaging gate)
+      was already written against it, so flipping the stub was the entire
+      integration for both, no call site changed. New `User::entitlement($key)`
+      per docs/06 §3.4, deliberately **not** cached (that section describes an
+      eventual Redis cache; skipped here — no Redis locally, and a cache keyed
+      by user id is a real staleness hazard under `RefreshDatabase`'s per-test
+      id reuse) — a plain query, correct and fast enough at this scale. Pricing
+      (open decision #12: "not set") is never hardcoded anywhere — plans are
+      fully data-driven (`subscription_plans.entitlements` jsonb), and the one
+      seeded plan is explicitly commented as a local-dev/test placeholder, not
+      a business figure. 44 new backend tests (184 -> 228: purchase flow via
+      both paths, the full webhook lifecycle including replay-safety, both
+      receipt verifiers, the signature verifier's edge cases, `isSubscriber`/
+      `entitlement` truth table), Pint + `composer audit` clean.
+      **Mobile:** new `lib/subscriptions/` feature — `SubscriptionRepository`
+      (plans/me/purchase/cancel) always sends `provider: "stripe"`; new
+      `PremiumScreen` lists plans or the active subscription, launches a
+      returned `checkout_url` in the device browser via `url_launcher` (new
+      dependency) when a real Stripe account is configured, otherwise the
+      log-driver path activates instantly and the screen reflects it
+      immediately — no deep-link handler exists yet to notice a completed
+      browser payment automatically, so a manual pull-to-refresh is the
+      recovery path, flagged not silently assumed away. Settings ->
+      Subscription (a coming-soon placeholder since Phase 1 item 10, built
+      specifically for this) now opens it. No native-store purchase UI — the
+      backend endpoints exist but nothing in the app drives them yet, same
+      disclosed-gap treatment as the Google/Apple sign-in buttons since
+      onboarding. The chat "Subscribe to message people you haven't matched
+      with" banner (item 8) is still plain text, not a tappable upgrade CTA —
+      that's this phase's own item 4 ("adds ... the upgrade-prompt UX around
+      it"), not this one's, kept as a deliberate scope boundary rather than
+      blurring the two. 11 new mobile tests (46 -> 57: plan/subscription
+      JSON mapping, all four purchase-response shapes, `isActive`'s status +
+      expiry truth table), `flutter analyze` + `dart format` clean, `flutter
+      build apk --debug` verified with `url_launcher` linked in.
 - [ ] Advanced filters unlocked/gated by plan
 - [ ] Unlimited likes, profile boost
 - [ ] Unmatched messaging — **server-side gate is Phase-1 code**; this phase adds the

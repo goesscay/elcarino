@@ -6,6 +6,11 @@ use App\Models\User;
 use App\Services\Auth\OAuth\AppleTokenVerifier;
 use App\Services\Auth\OAuth\GoogleTokenVerifier;
 use App\Services\Auth\OtpService;
+use App\Services\Payments\AppStoreReceiptVerifier;
+use App\Services\Payments\LogPaymentGateway;
+use App\Services\Payments\PaymentGateway;
+use App\Services\Payments\PlayStoreReceiptVerifier;
+use App\Services\Payments\StripePaymentGateway;
 use App\Services\Push\FcmPushSender;
 use App\Services\Push\LogPushSender;
 use App\Services\Push\PushSender;
@@ -54,6 +59,30 @@ class AppServiceProvider extends ServiceProvider
             $app->make(SmsSender::class),
             config('otp.ttl_seconds'),
             config('otp.max_attempts'),
+        ));
+
+        // Phase 2 item 1 — provider-agnostic, same switch-on-a-config-value
+        // pattern as SmsSender/PushSender above. Native store billing
+        // (app_store/play_store) isn't switched here at all — see
+        // ReceiptVerifier's own doc comment for why that's a separate path.
+        $this->app->bind(PaymentGateway::class, function () {
+            return match (config('services.payments.provider')) {
+                'stripe' => new StripePaymentGateway(
+                    config('services.stripe.secret_key'),
+                    config('services.stripe.success_url'),
+                    config('services.stripe.cancel_url'),
+                ),
+                default => new LogPaymentGateway,
+            };
+        });
+
+        $this->app->bind(AppStoreReceiptVerifier::class, fn () => new AppStoreReceiptVerifier(
+            config('services.apple.shared_secret'),
+        ));
+
+        $this->app->bind(PlayStoreReceiptVerifier::class, fn () => new PlayStoreReceiptVerifier(
+            config('services.play.service_account_email'),
+            config('services.play.service_account_private_key'),
         ));
     }
 

@@ -68,7 +68,7 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 
 | # | Decision | Working assumption | Status |
 |---|---|---|---|
-| 27 | Payment gateway | Not selected — affects `subscriptions.provider` enum and Phase 2 scope | 🔴 |
+| 27 | Payment gateway | Not selected by the client. Engineering working default as of Phase 2 item 1: Stripe (real, not yet verified against a live account) behind a provider-agnostic `PaymentGateway` interface; native store billing (App Store/Play Store) built as a separate, always-available path via real-but-unconfigured receipt verifiers. Still affects `subscriptions.provider`'s final real-world usage | 🔴 |
 | 28 | App Store / Google Play subscription strategy | Assume native store billing (Apple/Google IAP) unless a gateway is chosen for #27 | 🔴 |
 | 29 | Admin users | Assume MGS + client both have admin accounts at launch; roles/permissions TBD | 🔴 |
 | 30 | Launch date | Not set — timeline in `04-development-phases.md` is duration-based, not date-based | 🔴 |
