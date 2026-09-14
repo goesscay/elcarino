@@ -257,6 +257,46 @@ void main() {
       expect(message.body, 'https://media.giphy.com/abc123/downsized.gif');
     });
 
+    test('sendPhoto uploads the file and maps the created message', () async {
+      final (repository, adapter) = _repositoryReturning({
+        '/chat/conversations/1/messages': {
+          'message': {
+            'id': 14,
+            'conversation_id': 1,
+            'sender_id': 3,
+            'body': null,
+            'type': 'photo',
+            'attachment': {
+              'url': 'https://cdn.test/chat-photos/1/a.jpg',
+              'mime_type': 'image/jpeg',
+              'duration_seconds': null,
+            },
+            'read_at': null,
+            'created_at': '2026-09-16T00:00:00.000000Z',
+          },
+        },
+      });
+      final file = File(
+        '${Directory.systemTemp.path}/chat_repository_test_photo.jpg',
+      )..writeAsBytesSync([0, 1, 2, 3]);
+      addTearDown(() {
+        try {
+          file.deleteSync();
+        } on FileSystemException {
+          // Ignored — same best-effort cleanup as sendVoiceNote's test.
+        }
+      });
+
+      final message = await repository.sendPhoto(1, file.path);
+
+      expect(adapter.lastRequest!.method, 'POST');
+      final form = adapter.lastRequest!.data as FormData;
+      expect(form.files.single.key, 'photo');
+      expect(message.type, MessageType.photo);
+      expect(message.attachment!.url, 'https://cdn.test/chat-photos/1/a.jpg');
+      expect(message.attachment!.durationSeconds, isNull);
+    });
+
     test('markRead calls PUT on the right path', () async {
       final (repository, adapter) = _repositoryReturning({});
 

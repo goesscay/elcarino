@@ -117,7 +117,9 @@ class _GifPickerSheetState extends ConsumerState<_GifPickerSheet> {
     // GIFs found." was actually rendering correctly, just invisible until
     // the keyboard was dismissed.
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SafeArea(
         child: SizedBox(
           height: MediaQuery.of(context).size.height * 0.75,

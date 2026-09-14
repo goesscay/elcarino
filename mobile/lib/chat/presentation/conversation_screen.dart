@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -25,15 +26,16 @@ import 'gif_picker_sheet.dart';
 
 /// docs/07-ui-ux-design.md §3.3 "Conversation": message list (bubbles, own =
 /// trailing), read receipt on the last own message, typing indicator,
-/// online/last-active in the header. Composer has a dedicated mic button
-/// (voice notes, Phase 3 item 1, #16) and gif button (Phase 3 item 2, #17)
-/// — deliberately two plain buttons rather than docs/07's single
-/// "attachment button reveals voice/photo/GIF" menu, since photo (#18)
-/// still isn't built; revisit as one combined menu once it is. Header
-/// overflow: Unmatch, Report,
+/// online/last-active in the header. Composer's single "+" button reveals a
+/// voice note (#16) / photo (#18) / GIF (#17) menu, per docs/07 — now that
+/// all three are built, matching the spec as written rather than the
+/// disclosed-simplification "separate always-visible buttons" this screen
+/// used while only some existed. Header overflow: Unmatch, Report,
 /// Block (item 10) — "View profile" isn't built, no such screen exists yet
 /// for viewing another user's full profile outside a match/discovery card.
 enum _ConversationMenuAction { unmatch, report, block }
+
+enum _AttachmentAction { voiceNote, photo, gif }
 
 class ConversationScreen extends ConsumerStatefulWidget {
   const ConversationScreen({required this.conversation, super.key});
@@ -48,6 +50,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _composerController = TextEditingController();
   final _scrollController = ScrollController();
   final _recorder = AudioRecorder();
+  final _imagePicker = ImagePicker();
 
   // Kept in sync manually with the backend's
   // config('media.max_voice_note_duration_seconds') default — there's no
@@ -68,6 +71,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   bool _recording = false;
   bool _sendingVoiceNote = false;
   bool _sendingGif = false;
+  bool _sendingPhoto = false;
   Duration _recordingElapsed = Duration.zero;
   bool _otherIsTyping = false;
   String? _error;
@@ -376,6 +380,101 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     }
   }
 
+  /// Phase 3 item 3 (photo sharing, open decision #18). Same camera/gallery
+  /// choice + `pickImage` constraints as `PhotosScreen._addPhoto` (profile
+  /// photos) — reused for consistency, not re-derived.
+  Future<void> _pickAndSendPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final file = await _imagePicker.pickImage(
+      source: source,
+      maxWidth: 2048,
+      maxHeight: 2048,
+      imageQuality: 90,
+    );
+    if (file == null || !mounted) return;
+
+    setState(() => _sendingPhoto = true);
+    try {
+      final message = await ref
+          .read(chatRepositoryProvider)
+          .sendPhoto(widget.conversation.id, file.path);
+      if (!mounted) return;
+      _appendMessageIfNew(message);
+      setState(() => _sendingPhoto = false);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _sendingPhoto = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Composer's single "+" button — docs/07's "attachment button reveals
+  /// voice/photo/GIF" menu, now that all three (#16/#17/#18) are built.
+  /// Kept as a bottom sheet rather than a popup/dropdown to match the
+  /// picker sheets' own presentation (gif picker, photo's camera/gallery
+  /// choice) — one consistent "sheet slides up from the bottom" idiom for
+  /// every composer-triggered choice in this screen.
+  Future<void> _showAttachmentMenu() async {
+    final action = await showModalBottomSheet<_AttachmentAction>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.mic_none),
+              title: const Text('Voice note'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, _AttachmentAction.voiceNote),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Photo'),
+              onTap: () => Navigator.pop(sheetContext, _AttachmentAction.photo),
+            ),
+            ListTile(
+              leading: const Icon(Icons.gif_box_outlined),
+              title: const Text('GIF'),
+              onTap: () => Navigator.pop(sheetContext, _AttachmentAction.gif),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+
+    switch (action) {
+      case _AttachmentAction.voiceNote:
+        await _startRecording();
+      case _AttachmentAction.photo:
+        await _pickAndSendPhoto();
+      case _AttachmentAction.gif:
+        await _pickAndSendGif();
+    }
+  }
+
   Future<void> _handleMenuAction(_ConversationMenuAction action) async {
     switch (action) {
       case _ConversationMenuAction.unmatch:
@@ -521,12 +620,11 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               _Composer(
                 controller: _composerController,
                 sending: _sending,
-                sendingVoiceNote: _sendingVoiceNote,
-                sendingGif: _sendingGif,
+                attachmentBusy:
+                    _sendingVoiceNote || _sendingGif || _sendingPhoto,
                 onChanged: _onComposerChanged,
                 onSend: _send,
-                onStartRecording: _startRecording,
-                onPickGif: _pickAndSendGif,
+                onAttachment: _showAttachmentMenu,
               ),
           ],
         ),
@@ -614,6 +712,12 @@ class _MessageBubble extends StatelessWidget {
   final bool isMine;
   final bool showReadReceipt;
 
+  String? _bubbleImageUrl() => switch (message.type) {
+    MessageType.gif => message.body,
+    MessageType.photo => message.attachment?.url,
+    _ => null,
+  };
+
   @override
   Widget build(BuildContext context) {
     return Align(
@@ -625,28 +729,33 @@ class _MessageBubble extends StatelessWidget {
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
-            if (message.type == MessageType.gif)
-              // No padding/colour fill for a gif — same bubble alignment
-              // and max-width as text/voice-note, but the image itself is
-              // the bubble (matches every other chat app's gif rendering;
-              // a coloured background behind a gif just reads as a border).
+            if (message.type == MessageType.gif ||
+                message.type == MessageType.photo)
+              // No padding/colour fill for a gif/photo — same bubble
+              // alignment and max-width as text/voice-note, but the image
+              // itself is the bubble (matches every other chat app's image
+              // rendering; a coloured background behind one just reads as a
+              // border). A gif's url lives in `body` (ChatController
+              // resolves it server-side, no attachment row — see its doc
+              // comment); a photo's lives in `attachment.url` (a private,
+              // signed URL — see MessageAttachmentResource).
               ConstrainedBox(
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.6,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: message.body == null
-                      ? const _GifUnavailable()
+                  child: _bubbleImageUrl() == null
+                      ? const _MediaUnavailable()
                       : Image.network(
-                          message.body!,
+                          _bubbleImageUrl()!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
-                              const _GifUnavailable(),
+                              const _MediaUnavailable(),
                           loadingBuilder: (context, child, progress) =>
                               progress == null
                               ? child
-                              : const _GifUnavailable(loading: true),
+                              : const _MediaUnavailable(loading: true),
                         ),
                 ),
               )
@@ -694,14 +803,15 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-/// Placeholder for a gif bubble that has no body (shouldn't happen —
-/// ChatController::sendMessage always resolves one before creating the
-/// message — but a defensive fallback beats a broken-image icon) or whose
-/// image failed to load (an expired/removed Giphy asset — third-party
-/// content, no guarantee it stays reachable forever), and the loading state
-/// in between.
-class _GifUnavailable extends StatelessWidget {
-  const _GifUnavailable({this.loading = false});
+/// Placeholder for a gif/photo bubble that has no image url to show
+/// (shouldn't happen — ChatController::sendMessage always resolves one
+/// before creating the message — but a defensive fallback beats a broken-
+/// image icon) or whose image failed to load (an expired/removed Giphy
+/// asset — third-party content, no guarantee it stays reachable forever —
+/// or a signed URL that expired before the bubble was scrolled back to),
+/// and the loading state in between.
+class _MediaUnavailable extends StatelessWidget {
+  const _MediaUnavailable({this.loading = false});
 
   final bool loading;
 
@@ -719,7 +829,7 @@ class _GifUnavailable extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(
-              Icons.gif_box_outlined,
+              Icons.image_not_supported_outlined,
               color: AppColors.textSecondaryLight,
             ),
     );
@@ -730,49 +840,35 @@ class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.sending,
-    required this.sendingVoiceNote,
-    required this.sendingGif,
+    required this.attachmentBusy,
     required this.onChanged,
     required this.onSend,
-    required this.onStartRecording,
-    required this.onPickGif,
+    required this.onAttachment,
   });
 
   final TextEditingController controller;
   final bool sending;
-  final bool sendingVoiceNote;
-  final bool sendingGif;
+  final bool attachmentBusy;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
-  final VoidCallback onStartRecording;
-  final VoidCallback onPickGif;
+  final VoidCallback onAttachment;
 
   @override
   Widget build(BuildContext context) {
-    final busy = sending || sendingVoiceNote || sendingGif;
+    final busy = sending || attachmentBusy;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Row(
         children: [
           IconButton(
-            onPressed: busy ? null : onStartRecording,
-            icon: sendingVoiceNote
+            onPressed: busy ? null : onAttachment,
+            icon: attachmentBusy
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.mic_none),
-          ),
-          IconButton(
-            onPressed: busy ? null : onPickGif,
-            icon: sendingGif
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.gif_box_outlined),
+                : const Icon(Icons.add_circle_outline),
           ),
           Expanded(
             child: TextField(

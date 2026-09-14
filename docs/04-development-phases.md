@@ -742,7 +742,18 @@ activates entitlements within a defined SLA (e.g. < 1 minute via webhook).
       external image, which rendered correctly. `GiphyGifProvider` itself
       stays "confirm before production," a stricter bar than #16's audio
       pipeline or #27's Stripe default — see its own doc comment.
-- [ ] Photo sharing in chat — if confirmed (open decision #18)
+- [x] Photo sharing in chat — if confirmed (open decision #18). Built and verified
+      live end-to-end: composer → camera/gallery picker → upload → private-disk
+      storage with the mandatory EXIF strip (reused `ImageProcessor` unchanged
+      from profile photos) → signed URL → bubble rendering, all confirmed on the
+      Android emulator with a real pushed-in gallery image, no `APP_URL`
+      workaround needed this time (confirmed live that the custom media route
+      resolves against the request's own Host header, not `APP_URL` — unlike
+      `storage.local`/profile photos — so this was never actually an issue for
+      any `message_attachments`-backed feature, just profile photos). Also used
+      this item to do the composer consolidation flagged as deferred in #16/#17:
+      voice note/photo/gif now share one "+" attachment menu instead of
+      separate always-visible buttons, matching docs/07 as written.
 - [ ] Voice calling (WebRTC/Agora) — subscriber-gated (spec §13)
 - [ ] Video calling — subscriber-gated
 

@@ -85,6 +85,29 @@ void main() {
       expect(message.attachment, isNull);
     });
 
+    test('parses a photo message with its attachment', () {
+      final message = Message.fromJson({
+        'id': 4,
+        'conversation_id': 5,
+        'sender_id': 9,
+        'body': null,
+        'type': 'photo',
+        'attachment': {
+          'url': 'https://cdn.test/chat-photos/1/a.jpg?signature=abc',
+          'mime_type': 'image/jpeg',
+          'duration_seconds': null,
+        },
+        'read_at': null,
+        'created_at': '2026-09-16T00:00:00.000000Z',
+      });
+
+      expect(message.type, MessageType.photo);
+      expect(message.body, isNull);
+      expect(message.attachment, isNotNull);
+      expect(message.attachment!.mimeType, 'image/jpeg');
+      expect(message.attachment!.durationSeconds, isNull);
+    });
+
     test('parses a read message with a read_at timestamp', () {
       final message = Message.fromJson({
         'id': 1,

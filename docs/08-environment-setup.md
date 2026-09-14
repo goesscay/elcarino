@@ -255,10 +255,11 @@ flutter test --dart-define-from-file=config/dev.json
   is `http://localhost:8000` — correct for a desktop browser hitting Filament,
   unreachable from the emulator's own network namespace. Confirmed live while building
   Phase 3 item 1 (voice notes) — `curl` from the host downloaded the file cleanly, only
-  the emulator's in-app fetch couldn't resolve the host. Not applicable to chat voice
-  notes any more (they get their own signed route on the `local` disk, generated
-  relative to the current request rather than `APP_URL` — see
-  `MessageAttachmentStreamController`), but still true for profile photos
+  the emulator's in-app fetch couldn't resolve the host. Not applicable to any
+  `message_attachments`-backed feature any more (chat voice notes, and — confirmed
+  live building Phase 3 item 3 — chat photos too: both get their own signed route on
+  the `local` disk, generated relative to the current request rather than `APP_URL` —
+  see `MessageAttachmentStreamController`), but still true for profile photos
   (`ProfilePhotoResource`, unchanged). No fix applied there — swapping `APP_URL` to
   `10.0.2.2` would break the desktop-browser Filament case instead. Workaround for a
   local emulator session that needs to see a real profile photo: temporarily set

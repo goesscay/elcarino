@@ -120,6 +120,21 @@ class ChatRepository {
     return Message.fromJson(response.data['message'] as Map<String, dynamic>);
   }
 
+  /// Phase 3 item 3 (photo sharing, open decision #18). Same
+  /// `FormData`/`MultipartFile.fromFile` pattern as `sendVoiceNote` above
+  /// and `ProfileRepository.uploadPhoto`.
+  Future<Message> sendPhoto(int conversationId, String filePath) async {
+    final form = FormData.fromMap({
+      'photo': await MultipartFile.fromFile(filePath),
+    });
+    final response = await _client.request(
+      '/chat/conversations/$conversationId/messages',
+      method: 'POST',
+      data: form,
+    );
+    return Message.fromJson(response.data['message'] as Map<String, dynamic>);
+  }
+
   Future<void> markRead(int conversationId) async {
     await _client.request(
       '/chat/conversations/$conversationId/read',
