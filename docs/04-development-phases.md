@@ -813,11 +813,27 @@ activates entitlements within a defined SLA (e.g. < 1 minute via webhook).
       no push notification for a missed call, this pass.
 - [x] Video calling — subscriber-gated. Same backend/signaling plumbing as voice
       (`type: video` differs only in media constraints and the `RTCVideoView`
-      local/remote renderer layer). Not independently live-verified this pass — the
-      shared signaling/ICE/lifecycle path was proven solid by two full voice-call
-      cycles (including both hang-up directions) after the fixes above, and the time
-      cost of standing up another full dual-emulator pass for the renderer-only delta
-      wasn't judged worth it here; flagged honestly rather than silently assumed.
+      local/remote renderer layer). A first live smoke test genuinely stalled —
+      "Connecting…" for 7+ minutes and never reached active, unlike voice's
+      consistent 5–15s — enough of a surprise to warrant digging in rather than
+      shrugging it off as more of the same host slowness already seen elsewhere in
+      this phase. Instrumented `WebRtcCallService`/`CallScreen` end to end
+      (`getUserMedia` → `createPeerConnection` → offer/answer/ICE exchange, every
+      peer-connection/ICE/signaling-state callback) and reran it: that pass connected
+      cleanly on both sides in ~33s (slower than voice — two more media tracks and
+      roughly double the ICE candidates to gather and check pairwise, consistent with
+      the extra cost being real, not a bug), with live two-way video rendering on both
+      the remote (full-screen) and local (picture-in-picture) `RTCVideoView`s, synced
+      elapsed timers, the camera-toggle button correctly disabling/re-enabling the
+      local track and propagating to the other side's remote view (verified: it went
+      black on the peer's screen while toggled off), and a clean hang-up on both ends
+      afterward (`status=ended`, `duration_seconds` a clean integer again). No code
+      changes were needed — the instrumented run is what fixed itself, meaning the
+      stuck first attempt is disclosed as an unreproduced, unattributed one-off (most
+      likely transient exhaustion on a host that had been running two full emulators
+      plus backend plus Reverb for several hours straight by that point) rather than a
+      located defect. If it recurs, the next step is the same instrumentation again —
+      it isolates the stall to an exact step within seconds of reproducing.
 
 **Gate:** partially met. A call *does* connect reliably now, verified across two
 genuinely independent devices (not just localhost/one emulator) — but only on the same
