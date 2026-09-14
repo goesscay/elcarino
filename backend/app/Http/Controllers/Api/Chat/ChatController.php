@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Chat;
 
+use App\Enums\MessageType;
 use App\Events\MessagesReadBroadcast;
 use App\Events\NewMessageBroadcast;
 use App\Http\Concerns\RespondsWithErrorEnvelope;
@@ -15,6 +16,8 @@ use App\Services\Notifications\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
@@ -78,6 +81,7 @@ class ChatController extends Controller
         // order for a fully-loaded conversation) — reorder() clears that so
         // this listing's own newest-first pagination isn't fighting it.
         $messages = $conversation->messages()
+            ->with('attachment')
             ->reorder('created_at', 'desc')
             ->paginate($perPage);
 
@@ -108,10 +112,33 @@ class ChatController extends Controller
             );
         }
 
+        $voiceNote = $request->file('voice_note');
+
         $message = $conversation->messages()->create([
             'sender_id' => $request->user()->id,
-            'body' => $request->string('body')->toString(),
+            // null body for a voice-note message — docs/02's schema note
+            // ("null if attachment-only"), matching the migration comment.
+            'body' => $voiceNote ? null : $request->string('body')->toString(),
+            'type' => $voiceNote ? MessageType::VoiceNote : MessageType::Text,
         ]);
+
+        if ($voiceNote) {
+            $path = Storage::disk(config('filesystems.default'))->putFileAs(
+                'voice-notes/'.$conversation->id,
+                $voiceNote,
+                Str::uuid().'.'.$voiceNote->extension(),
+            );
+
+            $message->setRelation('attachment', $message->attachment()->create([
+                'storage_path' => $path,
+                'mime_type' => $voiceNote->getMimeType(),
+                'duration_seconds' => $request->integer('duration_seconds'),
+            ]));
+        } else {
+            // Populate the relation so MessageResource::whenLoaded('attachment')
+            // resolves to null rather than being omitted entirely.
+            $message->setRelation('attachment', null);
+        }
 
         $conversation->forceFill(['last_message_at' => $message->created_at])->save();
 

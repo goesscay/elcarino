@@ -8,6 +8,7 @@ use App\Events\NewMessageBroadcast;
 use App\Models\Block;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\Profile;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -16,14 +17,22 @@ use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\Matching\SwipeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ChatTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Storage::disk('local')->deleteDirectory('voice-notes');
+        parent::tearDown();
+    }
 
     private function matchedPair(): array
     {
@@ -181,6 +190,75 @@ class ChatTest extends TestCase
         Sanctum::actingAs($userA);
         $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", ['body' => ''])
             ->assertStatus(422)->assertJsonValidationErrors('body');
+    }
+
+    /**
+     * Phase 3 item 1 (voice notes, open decision #16 — "in scope pending
+     * confirmation"): a voice_note upload with no body is a valid send, the
+     * mirror image of the text-only rule above (`body` is
+     * required_without:voice_note, not always required).
+     */
+    public function test_a_participant_can_send_a_voice_note(): void
+    {
+        Event::fake([NewMessageBroadcast::class]);
+        [$userA, $userB, $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $response = $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.m4a', 200, 'audio/mp4'),
+            'duration_seconds' => 12,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('message.type', 'voice_note');
+        $response->assertJsonPath('message.body', null);
+        $response->assertJsonPath('message.attachment.duration_seconds', 12);
+        $response->assertJsonPath('message.attachment.mime_type', 'audio/mp4');
+        $this->assertNotNull($response->json('message.attachment.url'));
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $userA->id,
+            'body' => null,
+            'type' => 'voice_note',
+        ]);
+        $attachment = MessageAttachment::query()->firstOrFail();
+        Storage::disk('local')->assertExists($attachment->storage_path);
+
+        Event::assertDispatched(NewMessageBroadcast::class);
+        $this->assertDatabaseHas('notifications', ['user_id' => $userB->id, 'type' => 'new_message']);
+    }
+
+    public function test_sending_a_voice_note_rejects_a_non_audio_file(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.txt', 10, 'text/plain'),
+            'duration_seconds' => 12,
+        ])->assertStatus(422)->assertJsonValidationErrors('voice_note');
+    }
+
+    public function test_sending_a_voice_note_rejects_an_oversized_file(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.m4a', config('media.max_voice_note_size_kb') + 1, 'audio/mp4'),
+            'duration_seconds' => 12,
+        ])->assertStatus(422)->assertJsonValidationErrors('voice_note');
+    }
+
+    public function test_sending_a_voice_note_requires_duration_seconds(): void
+    {
+        [$userA, , $conversation] = $this->matchedPair();
+
+        Sanctum::actingAs($userA);
+        $this->postJson("/api/v1/chat/conversations/{$conversation->id}/messages", [
+            'voice_note' => UploadedFile::fake()->create('note.m4a', 200, 'audio/mp4'),
+        ])->assertStatus(422)->assertJsonValidationErrors('duration_seconds');
     }
 
     public function test_a_blocked_participant_cannot_send_or_view(): void
