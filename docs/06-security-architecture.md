@@ -165,15 +165,18 @@ any subscription state change (webhook, cancel, expiry job).
   short expiry (minutes for chat media, longer but still bounded for profile photos).
 - `profile_photos.moderation_status` gates visibility: a `pending` photo is visible
   only to its owner until `approved`.
-- Chat attachments (`message_attachments`) inherit the conversation's authorization —
-  a signed URL is minted per request for a participant, never a stable public link. On
-  a cloud disk (`s3`, staging/prod) that's `Storage::temporaryUrl()` as usual. On the
-  `local` disk (dev) it's a dedicated signed route
+- Chat attachments (`message_attachments` — voice notes, Phase 3 item 1, and chat
+  photos, Phase 3 item 3) inherit the conversation's authorization — a signed URL is
+  minted per request for a participant, never a stable public link. On a cloud disk
+  (`s3`, staging/prod) that's `Storage::temporaryUrl()` as usual. On the `local` disk
+  (dev) it's a dedicated signed route
   (`media.message-attachments.show`/`MessageAttachmentStreamController`) instead of
   Laravel's built-in `storage.local` route — `signed` middleware is still the entire
   auth check, same model, but `storage.local` doesn't support `Range` requests and
   re-sniffs `Content-Type` in a way that broke voice-note playback on Android's native
   `MediaPlayer` (confirmed live); see the controller's doc comment for the full story.
+  A chat photo goes through the exact same mandatory re-encode/EXIF-strip
+  (`ImageProcessor::reencode`) as a profile photo — no separate/weaker path for chat.
 - Gif messages (Phase 3 item 2) don't go through any of the above — deliberately not a
   `message_attachments` row at all. A gif is already public, third-party-hosted content
   (Giphy's own CDN); there's nothing of ours to keep private or mint a signed URL for.

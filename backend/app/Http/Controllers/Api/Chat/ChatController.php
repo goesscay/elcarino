@@ -14,6 +14,8 @@ use App\Models\Block;
 use App\Models\Conversation;
 use App\Services\Gifs\GifProvider;
 use App\Services\Media\AudioMimeTypeResolver;
+use App\Services\Media\ImageProcessor;
+use App\Services\Media\InvalidImageException;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +31,7 @@ class ChatController extends Controller
         private readonly NotificationService $notifications,
         private readonly AudioMimeTypeResolver $audioMimeTypes,
         private readonly GifProvider $gifs,
+        private readonly ImageProcessor $images,
     ) {}
 
     /**
@@ -119,6 +122,7 @@ class ChatController extends Controller
         }
 
         $voiceNote = $request->file('voice_note');
+        $photo = $request->file('photo');
         $gifId = $request->string('gif_id')->toString();
 
         $gif = null;
@@ -129,23 +133,37 @@ class ChatController extends Controller
             }
         }
 
+        // Re-encoded up front, before the message row even exists — an
+        // InvalidImageException here (corrupt file, dimensions over
+        // media.max_photo_dimension) needs to fail with nothing created,
+        // same as ProfilePhotoController::store.
+        $photoBytes = null;
+        if ($photo) {
+            try {
+                $photoBytes = $this->images->reencode($photo);
+            } catch (InvalidImageException $e) {
+                return $this->errorResponse('invalid_image', $e->getMessage(), 422);
+            }
+        }
+
         $message = $conversation->messages()->create([
             'sender_id' => $request->user()->id,
-            // null body for a voice-note message — docs/02's schema note
-            // ("null if attachment-only"), matching the migration comment.
-            // A gif message stores the *resolved* (server-side, re-fetched —
-            // see SendMessageRequest's gif_id doc comment) url in body, the
-            // same field a text message uses — no message_attachments row:
-            // unlike a voice note or photo, a gif is already public,
-            // third-party-hosted content, nothing here to store privately or
-            // mint a signed URL for.
+            // null body for a voice-note/photo message — docs/02's schema
+            // note ("null if attachment-only"), matching the migration
+            // comment. A gif message stores the *resolved* (server-side,
+            // re-fetched — see SendMessageRequest's gif_id doc comment) url
+            // in body, the same field a text message uses — no
+            // message_attachments row: unlike a voice note or photo, a gif
+            // is already public, third-party-hosted content, nothing here
+            // to store privately or mint a signed URL for.
             'body' => match (true) {
-                $voiceNote !== null => null,
+                $voiceNote !== null, $photoBytes !== null => null,
                 $gif !== null => $gif->url,
                 default => $request->string('body')->toString(),
             },
             'type' => match (true) {
                 $voiceNote !== null => MessageType::VoiceNote,
+                $photoBytes !== null => MessageType::Photo,
                 $gif !== null => MessageType::Gif,
                 default => MessageType::Text,
             },
@@ -164,6 +182,18 @@ class ChatController extends Controller
                 'storage_path' => $path,
                 'mime_type' => $mimeType,
                 'duration_seconds' => $request->integer('duration_seconds'),
+            ]));
+        } elseif ($photoBytes !== null) {
+            // Always .jpg — ImageProcessor::reencode always outputs JPEG
+            // (re-encoding, the mandatory EXIF/GPS strip, is a decode-then-
+            // encode round trip regardless of the upload's original format).
+            $path = 'chat-photos/'.$conversation->id.'/'.Str::uuid().'.jpg';
+            Storage::disk(config('filesystems.default'))->put($path, $photoBytes);
+
+            $message->setRelation('attachment', $message->attachment()->create([
+                'storage_path' => $path,
+                'mime_type' => 'image/jpeg',
+                'duration_seconds' => null,
             ]));
         } else {
             // Populate the relation so MessageResource::whenLoaded('attachment')

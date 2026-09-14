@@ -14,13 +14,11 @@ class SendMessageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // `body` is required unless a voice_note or gif is attached —
-            // Phase 3 items 1/2 (open decisions #16/#17, both "in scope
-            // pending confirmation"). photo (#18) isn't built yet, so this
-            // stays an either/or/or rather than a fully generic "exactly one
-            // of N" rule for now.
+            // `body` is required unless a voice_note, gif, or photo is
+            // attached — Phase 3 items 1/2/3 (open decisions #16/#17/#18,
+            // all "in scope pending confirmation").
             'body' => [
-                'required_without_all:voice_note,gif_id',
+                'required_without_all:voice_note,gif_id,photo',
                 'nullable',
                 'string',
                 'min:1',
@@ -39,7 +37,7 @@ class SendMessageRequest extends FormRequest
                 // spec ("one attachment type picked at a time"), same
                 // constraint the message_attachments migration's
                 // message_id-unique index enforces on the voice-note side.
-                'prohibits:gif_id',
+                'prohibits:gif_id,photo',
             ],
 
             // Client-reported, not server-verified via audio parsing — a
@@ -59,7 +57,20 @@ class SendMessageRequest extends FormRequest
             // via GifProvider::find(), the same "never trust a client-
             // supplied external URL directly" reasoning as not letting the
             // client pick its own subscription plan price.
-            'gif_id' => ['sometimes', 'string', 'max:100', 'prohibits:voice_note'],
+            'gif_id' => ['sometimes', 'string', 'max:100', 'prohibits:voice_note,photo'],
+
+            // Phase 3 item 3 (open decision #18). Same shape-level-only
+            // validation and re-encode-server-side discipline as
+            // PhotoUploadRequest/ImageProcessor — reused as-is rather than
+            // a parallel set of chat-specific rules/limits, since nothing in
+            // docs distinguishes a chat photo from a profile photo.
+            'photo' => [
+                'sometimes',
+                'image',
+                'mimes:jpeg,png,webp',
+                'max:'.config('media.max_photo_size_kb'),
+                'prohibits:voice_note,gif_id',
+            ],
         ];
     }
 }
