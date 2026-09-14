@@ -49,6 +49,9 @@ dependencies:
   record: ^6.1.1
   audioplayers: ^6.5.1
   path_provider: ^2.1.5
+  # Phase 3 items 4/5 — voice/video calling (open decisions #19/#20,
+  # confirmed WebRTC).
+  flutter_webrtc: ^1.2.0
 
 dev_dependencies:
   flutter_test:

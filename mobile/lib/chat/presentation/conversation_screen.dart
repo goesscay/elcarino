@@ -9,6 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
+import '../../calls/domain/call.dart';
+import '../../calls/domain/call_type.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -61,6 +63,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   StreamSubscription<Message>? _newMessageSub;
   StreamSubscription<ReadReceipt>? _readReceiptSub;
   StreamSubscription<void>? _typingSub;
+  StreamSubscription<Call>? _callIncomingSub;
   Timer? _typingResetTimer;
   Timer? _recordingTicker;
   DateTime? _lastTypingWhisperAt;
@@ -203,6 +206,30 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _newMessageSub = channel.onNewMessage.listen(_handleIncomingMessage);
     _readReceiptSub = channel.onMessagesRead.listen(_handleReadReceipt);
     _typingSub = channel.onTyping.listen((_) => _handleTypingSignal());
+    // Phase 3 items 4/5 — this is the entire "does an incoming call reach
+    // the callee" mechanism (see CallController's doc comment): only fires
+    // while this screen is open and subscribed, same scope disclosed there.
+    _callIncomingSub = channel.onCallIncoming.listen(_handleIncomingCall);
+  }
+
+  /// The `call.incoming` broadcast reaches *both* participants on this
+  /// channel — including the caller's own other-open instance of this
+  /// screen (backgrounded under the `CallScreen` it just pushed itself, via
+  /// the composer's call buttons, a direct user action, not this listener).
+  /// Same "sent by the other participant" test `_handleIncomingMessage`
+  /// already uses for the identical reason: this device has no notion of
+  /// "my own user id" to compare against directly (`core/auth` deliberately
+  /// holds none), so "the caller is the other participant" is how it's
+  /// inferred instead.
+  void _handleIncomingCall(Call call) {
+    if (!mounted || call.caller.id != widget.conversation.otherUser.id) {
+      return;
+    }
+    context.push('/calls', extra: (widget.conversation, call.type, call));
+  }
+
+  void _startCall(CallType type) {
+    context.push('/calls', extra: (widget.conversation, type, null));
   }
 
   /// Prepends [message] unless it's already present. Needed on *both* paths
@@ -547,6 +574,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _newMessageSub?.cancel();
     _readReceiptSub?.cancel();
     _typingSub?.cancel();
+    _callIncomingSub?.cancel();
     _typingResetTimer?.cancel();
     _recordingTicker?.cancel();
     _recorder.dispose();
@@ -579,6 +607,21 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           ],
         ),
         actions: [
+          // Phase 3 items 4/5 — shown unconditionally; the actual active-
+          // match/subscriber gate is server-side (CallController), same
+          // "the UI never needs to pre-check" discipline as every other
+          // premium/entitlement gate in this app. `CallType` here is a
+          // `calls` feature type, not this one's — see
+          // `_handleIncomingCall`'s doc comment for why `chat` importing
+          // from `calls` (not the usual direction) is deliberate.
+          IconButton(
+            icon: const Icon(Icons.call_outlined),
+            onPressed: () => _startCall(CallType.voice),
+          ),
+          IconButton(
+            icon: const Icon(Icons.videocam_outlined),
+            onPressed: () => _startCall(CallType.video),
+          ),
           PopupMenuButton<_ConversationMenuAction>(
             onSelected: _handleMenuAction,
             itemBuilder: (context) => [

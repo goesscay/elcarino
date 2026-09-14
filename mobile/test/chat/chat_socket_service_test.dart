@@ -46,4 +46,21 @@ void main() {
       expect(receipt.readAt, DateTime.parse('2026-09-16T01:00:00.000000Z'));
     });
   });
+
+  group('parseCallEvent', () {
+    test('parses a call.incoming/answered/ended payload into a Call — same '
+        '{ call: CallResource } shape for all three', () {
+      final userJson =
+          '{"id":9,"display_name":"Jane","age":28,"bio":null,'
+          '"is_verified":true,"photos":[]}';
+      final call = parseCallEvent('''
+        {"call":{"id":1,"conversation_id":2,"type":"voice","status":"ringing",
+        "caller":$userJson,"callee":$userJson,"started_at":null,
+        "ended_at":null,"duration_seconds":null}}
+      ''');
+
+      expect(call.id, 1);
+      expect(call.status.apiValue, 'ringing');
+    });
+  });
 }

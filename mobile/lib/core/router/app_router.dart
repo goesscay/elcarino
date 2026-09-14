@@ -8,6 +8,9 @@ import '../../authentication/presentation/email_entry_screen.dart';
 import '../../authentication/presentation/otp_screen.dart';
 import '../../authentication/presentation/phone_entry_screen.dart';
 import '../../authentication/presentation/welcome_screen.dart';
+import '../../calls/domain/call.dart';
+import '../../calls/domain/call_type.dart';
+import '../../calls/presentation/call_screen.dart';
 import '../../chat/domain/conversation.dart';
 import '../../chat/presentation/conversation_loader_screen.dart';
 import '../../chat/presentation/conversation_screen.dart';
@@ -73,6 +76,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return ConversationLoaderScreen(
             conversationId: int.parse(state.pathParameters['id']!),
+          );
+        },
+      ),
+
+      // Phase 3 items 4/5 (open decisions #19/#20, confirmed WebRTC).
+      // `extra` is a (Conversation, CallType, Call?) record — the third
+      // element is non-null only when routed here as the callee answering
+      // an already-incoming call (see CallScreen's own doc comment).
+      GoRoute(
+        path: '/calls',
+        builder: (context, state) {
+          final (conversation, type, incomingCall) =
+              state.extra! as (Conversation, CallType, Call?);
+          return CallScreen(
+            conversation: conversation,
+            type: type,
+            incomingCall: incomingCall,
           );
         },
       ),

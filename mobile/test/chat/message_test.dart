@@ -44,30 +44,33 @@ void main() {
       expect(message.attachment!.durationSeconds, 12);
     });
 
-    test('a text message has no attachment whether the key is absent or null', () {
-      final withoutKey = Message.fromJson({
-        'id': 1,
-        'conversation_id': 5,
-        'sender_id': 9,
-        'body': 'hi',
-        'type': 'text',
-        'read_at': null,
-        'created_at': '2026-09-16T00:00:00.000000Z',
-      });
-      final withNullKey = Message.fromJson({
-        'id': 1,
-        'conversation_id': 5,
-        'sender_id': 9,
-        'body': 'hi',
-        'type': 'text',
-        'attachment': null,
-        'read_at': null,
-        'created_at': '2026-09-16T00:00:00.000000Z',
-      });
+    test(
+      'a text message has no attachment whether the key is absent or null',
+      () {
+        final withoutKey = Message.fromJson({
+          'id': 1,
+          'conversation_id': 5,
+          'sender_id': 9,
+          'body': 'hi',
+          'type': 'text',
+          'read_at': null,
+          'created_at': '2026-09-16T00:00:00.000000Z',
+        });
+        final withNullKey = Message.fromJson({
+          'id': 1,
+          'conversation_id': 5,
+          'sender_id': 9,
+          'body': 'hi',
+          'type': 'text',
+          'attachment': null,
+          'read_at': null,
+          'created_at': '2026-09-16T00:00:00.000000Z',
+        });
 
-      expect(withoutKey.attachment, isNull);
-      expect(withNullKey.attachment, isNull);
-    });
+        expect(withoutKey.attachment, isNull);
+        expect(withNullKey.attachment, isNull);
+      },
+    );
 
     test('parses a gif message (body holds the url directly)', () {
       final message = Message.fromJson({

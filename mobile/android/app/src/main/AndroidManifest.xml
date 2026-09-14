@@ -3,13 +3,18 @@
          explicitly now that the app does real networking, so release builds get
          it too. Location/camera/notifications back the onboarding flow's
          Photos, Location permission, and Notification permission screens.
-         RECORD_AUDIO backs Phase 3 item 1's voice-note composer button. -->
+         RECORD_AUDIO backs Phase 3 item 1's voice-note composer button, reused
+         (along with CAMERA) by items 4/5's WebRTC calling — same permission,
+         no new prompt for a user who's already granted it for voice notes.
+         MODIFY_AUDIO_SETTINGS is flutter_webrtc's own — it switches the audio
+         route (earpiece/speaker) during a call. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <application
         android:label="Elcarino"
         android:name="${applicationName}"

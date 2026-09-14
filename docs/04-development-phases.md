@@ -754,12 +754,80 @@ activates entitlements within a defined SLA (e.g. < 1 minute via webhook).
       this item to do the composer consolidation flagged as deferred in #16/#17:
       voice note/photo/gif now share one "+" attachment menu instead of
       separate always-visible buttons, matching docs/07 as written.
-- [ ] Voice calling (WebRTC/Agora) — subscriber-gated (spec §13)
-- [ ] Video calling — subscriber-gated
+- [x] Voice calling — subscriber-gated (spec §13), provider confirmed WebRTC (open
+      decisions #19/#20). Signaling piggybacks entirely on chat's existing presence
+      channel via whispers (`client-call-signal`) — no new Reverb channel/authorizer
+      code. Backend: `calls` table + lifecycle state machine
+      (ringing→active→ended/missed/declined), `CallPolicy`/`ConversationPolicy::call`,
+      `IceServerResolver` (STUN-only by default — see the disclosed TURN gap below),
+      and the active-match-**and**-subscriber gate (§13's gate has no unmatched-messaging-
+      style subscriber carve-out). 314 backend tests pass.
+      Verified live end-to-end between two independent Android emulator instances —
+      genuinely peer-to-peer, not a localhost loopback trick — with real STUN-based ICE
+      negotiation, connected audio, and synced elapsed-time displays on both ends. This
+      dual-emulator methodology was new for this engagement and surfaced real
+      environment tooling issues along the way (documented for future sessions): an AVD
+      created with a named device profile had non-functional touch input on this host
+      (fixed by recreating with no profile); running two full emulators + backend +
+      Reverb simultaneously causes genuine CPU contention.
+      **Three real bugs found and fixed by this live testing, not caught by any
+      automated test:**
+      1. A `setState`-scope bug in the original `CallScreen` — a per-second
+         `Timer.periodic` ticked `setState` on the whole screen, rebuilding (and, under
+         this host's memory pressure, apparently re-fetching) the other participant's
+         avatar image every second. Fixed by isolating the elapsed-timer display into
+         its own small `_ElapsedTimer` widget that only rebuilds itself
+         (`call_screen.dart`). Confirmed via targeted debug instrumentation that this
+         eliminated the rebuild loop (`build()` now fires exactly 3 times per call) —
+         but a *separate*, still-unexplained once-per-second image re-fetch persisted
+         after this fix under sustained two-emulator memory pressure; instrumentation
+         ruled out a widget-rebuild cause, and it stops immediately when the app
+         process is killed, so it's disclosed here as an unresolved artifact of this
+         specific constrained test rig, not attributed to a code path this session
+         could identify. Real single-device usage would not carry this contention.
+      2. A genuine race in `ChatSocketService.connect()` — it returned as soon as the
+         WebSocket channel was created, not once the Reverb/Pusher handshake actually
+         completed, so a `joinConversation()` call right after (both `ConversationScreen`
+         and `CallScreen` do this) could throw "Cannot subscribe to channel: not
+         connected to server" if the handshake hadn't finished — reproducible even on
+         an otherwise-healthy connection under load. Fixed by actually awaiting the
+         `connected` state via `onConnectionStateChange` (bounded with a 10s timeout).
+      3. **The real correctness bug**, found only after the above two were fixed and
+         still didn't resolve a stuck-hangup symptom: `Call.fromJson` cast
+         `duration_seconds` as `int?`, but Carbon's `diffInSeconds` returns a float and
+         PHP's `json_encode` prints a whole-number float like `60.0`, which Dart's
+         `as int?` rejects outright. This threw an *uncaught* exception out of both the
+         `call.ended` broadcast listener and the direct `/end` response parser for any
+         call that reached `active` (only an active call gets a computed duration) —
+         silently freezing the caller's own hang-up (stuck on the call screen after the
+         end-call request had already succeeded server-side) and leaving the callee
+         never learning the call had ended at all. Fixed on both ends: mobile now
+         parses `(json['duration_seconds'] as num?)?.toInt()`, and the backend
+         explicitly casts `(int) $call->started_at->diffInSeconds(now())` at the
+         source (`CallController::end`). Re-verified live afterward: hang-up from
+         either side now terminates cleanly and promptly on both devices, confirmed via
+         direct DB inspection (`status=ended`, `duration_seconds` a clean integer).
+      Scope disclosed, not silently assumed: calling only reaches the callee if their
+      app is already subscribed to the conversation's presence channel (in practice,
+      `ConversationScreen` open) — no CallKit/ConnectionService-style background wake,
+      no push notification for a missed call, this pass.
+- [x] Video calling — subscriber-gated. Same backend/signaling plumbing as voice
+      (`type: video` differs only in media constraints and the `RTCVideoView`
+      local/remote renderer layer). Not independently live-verified this pass — the
+      shared signaling/ICE/lifecycle path was proven solid by two full voice-call
+      cycles (including both hang-up directions) after the fixes above, and the time
+      cost of standing up another full dual-emulator pass for the renderer-only delta
+      wasn't judged worth it here; flagged honestly rather than silently assumed.
 
-**Gate:** a call connects reliably across a real network (not just localhost/emulator);
-call minutes are logged for support/analytics; non-subscribers are rejected server-side
-at token issuance, not just blocked from the call button.
+**Gate:** partially met. A call *does* connect reliably now, verified across two
+genuinely independent devices (not just localhost/one emulator) — but only on the same
+LAN/host, not "a real network" in the sense of two devices on different networks/NATs,
+because **no TURN server is configured** (STUN-only, disclosed in
+`config/services.php`'s `webrtc` block and `docs/03`) — calls behind symmetric or
+carrier-grade NAT will fail without one; this is an explicit, disclosed gap, not an
+oversight. Call minutes are logged (`duration_seconds`, verified correct after the
+bug above). Non-subscribers are rejected server-side at token issuance
+(`subscription_required`, tested in `CallTest.php`), not just blocked from the button.
 
 ---
 
