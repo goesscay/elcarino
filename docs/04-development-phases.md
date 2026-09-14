@@ -709,18 +709,23 @@ activates entitlements within a defined SLA (e.g. < 1 minute via webhook).
 
 ## Phase 3 — Communication (~2–3 weeks)
 
-- [ ] Voice notes — if confirmed in scope (open decision #16). Built and mostly
-      verified live (record → upload → store → send/receive over the socket →
-      render in the bubble, including catching and fixing a real duplicate-
-      message race — `conversation_screen.dart`'s `_appendMessageIfNew`). One
-      gap: actual audio *playback* on the Android emulator couldn't be
-      confirmed — Android's native `MediaPlayer` errored fetching the signed
-      URL (`NuCachedSource2: source returned error -1`) even though the URL
-      itself checks out independently via `curl`. Suspected cause: Laravel's
-      local-disk temporary-URL route doesn't support `Range` requests, and
-      AAC-in-MP4 mime-sniffs ambiguously as `video/mp4`. Not fixed — likely
-      needs a dedicated streaming route rather than `Storage::temporaryUrl`,
-      out of this pass's scope. See `_VoiceNotePlayer`'s doc comment.
+- [x] Voice notes — if confirmed in scope (open decision #16). Built and verified
+      live end-to-end (record → upload → store → send/receive over the socket →
+      render in the bubble → play back with visible progress and clean
+      completion), including catching and fixing two real bugs found only by
+      testing live rather than trusting automated tests: a duplicate-message
+      race (`conversation_screen.dart`'s `_appendMessageIfNew`), and — the
+      bigger one — playback failing on the Android emulator, which turned out
+      to be three stacked issues: (1) no Android Network Security Config
+      exception for the dev backend's plain-`http` host, which blocked the
+      native media layer's connection before it left the device while every
+      *other* network call kept working fine (Dart's own HTTP client doesn't
+      consult that policy) — `mobile/android/app/src/debug/res/xml/network_security_config.xml`;
+      (2) Laravel's built-in local-disk temporary-URL route not supporting
+      `Range` requests — `MessageAttachmentStreamController` + a dedicated
+      signed route; (3) AAC-in-MP4 mime-sniffing ambiguously as `video/mp4` —
+      `AudioMimeTypeResolver`. See those three files' doc comments for the
+      full story.
 - [ ] GIFs — if confirmed (open decision #17)
 - [ ] Photo sharing in chat — if confirmed (open decision #18)
 - [ ] Voice calling (WebRTC/Agora) — subscriber-gated (spec §13)

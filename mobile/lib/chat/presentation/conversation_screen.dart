@@ -753,25 +753,19 @@ class _RecordingIndicator extends StatelessWidget {
 /// ([_MessageBubble]'s key) so its [AudioPlayer] and playback position stay
 /// tied to the right message as the list is prepended to.
 ///
-/// KNOWN GAP, disclosed rather than silently assumed working: recording,
-/// upload, storage and this bubble's UI were all verified live end-to-end on
-/// the Android emulator (including catching and fixing a real duplicate-
-/// message bug — see `_appendMessageIfNew`'s doc). Actual `_toggle()`
-/// playback over the signed URL could not be confirmed there — `adb logcat`
-/// showed `NuCachedSource2: source returned error -1` from Android's native
-/// `MediaPlayer`. The backend side checked out independently (`curl`
-/// downloaded the exact signed URL cleanly, 200 OK, correct bytes), and a
-/// `Range: bytes=0-` probe against the same URL came back `200` with no
-/// `Accept-Ranges` — Laravel's built-in local-disk temporary-URL route
-/// doesn't support range requests, which combined with AAC-in-MP4
-/// inherently mime-sniffing as `video/mp4` (confirmed via
-/// `MessageAttachment::mime_type` — `finfo` can't tell an audio-only MP4
-/// box from a video one) is a plausible cause for native `MediaPlayer`
-/// specifically, but this wasn't isolated further. Not fixed here: a real
-/// fix likely means a dedicated streaming route for attachments (Range
-/// support + an explicit Content-Type) rather than reusing
-/// `Storage::temporaryUrl`, which is a bigger change than this pass's scope.
-/// Flagging for the next session rather than claiming this is verified.
+/// Playback over the signed URL is verified live on the Android emulator —
+/// it wasn't on the first pass (`adb logcat` showed
+/// `NuCachedSource2: source returned error -1`), which turned out to be
+/// three stacked issues, not one: (1) no `network_security_config.xml`
+/// exception meant Android's native networking layer (what `audioplayers`'
+/// underlying `MediaPlayer` goes through) silently refused the plain-`http`
+/// connection to the dev backend before it ever left the device — Dart's own
+/// `dart:io` HTTP client (what the JSON API calls use) doesn't consult that
+/// policy at all, so every other network call in the app kept working the
+/// whole time, which is what made this confusing to isolate; see
+/// `android/app/src/debug/res/xml/network_security_config.xml`. (2) and (3)
+/// were server-side — see `MessageAttachmentStreamController`'s and
+/// `AudioMimeTypeResolver`'s doc comments.
 class _VoiceNotePlayer extends StatefulWidget {
   const _VoiceNotePlayer({required this.attachment, required this.isMine});
 
