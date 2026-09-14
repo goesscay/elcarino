@@ -636,7 +636,43 @@ suspend a user and it takes effect immediately.
       subscription and reopening it brought the banner back with a working
       Upgrade button; subscribing again and returning via the back button
       dropped the banner and restored the composer in place.
-- [ ] Subscription management in admin panel (plans, payments, status)
+- [x] Subscription management in admin panel (plans, payments, status). Extends
+      Phase 1 item 11's Filament panel with three new resources, all admin-only
+      (docs/06 §3.3: "Moderators: ... cannot touch subscription/payment data, cannot
+      change plans") via three new Policies, verified live (a moderator session
+      wasn't re-driven through the TOTP flow a second time to prove it — the Gate
+      unit tests are the actual control either way, same call made for Phase 1 item
+      11's ban/delete gating).
+      `SubscriptionPlans`: full CRUD — the first real admin-facing place pricing
+      (open decision #12, still unanswered as a *business* figure) and entitlements
+      get set, closing the gap item 1 explicitly flagged ("real plan management ...
+      is Phase 2's separate item, not this one"). The entitlements form is four
+      fixed fields, not a generic key-value editor — those are the only keys
+      anything in this app actually reads, and a generic editor would've let an
+      admin type a fifth key the app would silently never look at.
+      No delete action (a plan with existing subscriptions can't be — no cascade on
+      `plan_id`, by design); `is_active` is the real retire-a-plan mechanism.
+      `Subscriptions`: list + a "Cancel" action, reusing the exact
+      `SubscriptionService::cancel()` the user's own self-service mobile flow uses —
+      audit-logged at the admin-action call site instead of inside that shared
+      service, so an ordinary user cancelling their own subscription is never
+      mistakenly logged as an admin action.
+      `Payments`: list-only, no actions at all — no refund API exists to wire one to.
+      Dashboard gained the "Premium users"/"Revenue" cards Phase 1 item 11 explicitly
+      deferred ("no `subscriptions` table yet ... revisit when Phase 2 lands").
+      Revenue sums every succeeded payment's cents across all currencies — correct
+      only because every plan so far is USD, flagged rather than silently wrong for
+      a hypothetical multi-currency future.
+      One real bug caught live, not by a test: `TextInput::uppercase()` doesn't exist
+      on this Filament version (`BadMethodCallException`, 500 on the create-plan
+      page) — normalized the currency code on save instead
+      (`dehydrateStateUsing(strtoupper(...))`). Verified the rest live too: created a
+      plan through the real form, confirmed the entitlements round-trip (form ->
+      JSON -> form) came back exactly as entered, cancelled a real subscription from
+      the panel and confirmed both the status change and its `audit_log` row.
+      12 new backend tests (255 -> 267: the three new Policies' admin/moderator/
+      owner truth tables, plus the entitlements transform's expand/collapse/round-trip),
+      Pint + `composer audit` clean.
 - [ ] Super Like / Rewind — **only if approved**, open decision #11
 
 **Gate:** a non-subscriber is blocked (403, with a clean upgrade prompt) from every

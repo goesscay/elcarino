@@ -369,6 +369,25 @@ currently in scope).
 (docs/06 §3.3) — `Users` (search/view/suspend/reinstate/ban/delete) and `Reports`
 (reports queue: mark actioned/dismiss, plus a combined "suspend reported user"
 action) resources, and a dashboard with total/active/new-user, match, message, and
-pending-report counts. Premium-user/revenue dashboard stats are deferred to Phase 2
-(no `subscriptions` table yet). Subscription management in admin (spec §19's fourth
-bullet) is Phase 2 scope, not this item's.
+pending-report counts.
+
+**Built (Phase 2 item 5):** `SubscriptionPlans` (full CRUD — the only admin-facing
+place `subscription_plans.price_cents`/`entitlements` are ever set; open decision #12
+still isn't answered by this, it's just no longer only seedable) — the entitlements
+form is four fixed fields (`unlimited_likes`/`advanced_filters`/`unmatched_messaging`
+booleans, `boosts_per_month` integer), not a generic key-value editor, since those are
+the only keys anything in this app actually reads
+(`App\Filament\Resources\SubscriptionPlans\Concerns\TransformsEntitlements`'s own doc
+comment). No delete action — a plan with existing subscriptions can't be deleted
+(`plan_id` has no cascade); `is_active` is the real "retire this plan" mechanism.
+`Subscriptions` (list + a "Cancel" action, audit-logged — reuses the same
+`SubscriptionService::cancel()` the mobile self-service path uses, but the audit
+write happens at the admin-action call site, not inside that shared service, so a
+user cancelling their own subscription never gets logged as an "admin action").
+`Payments` (list only, no actions at all — no refund API wired). All three are
+admin-only (`SubscriptionPlanPolicy`/`SubscriptionPolicy`/`PaymentPolicy`) — docs/06
+§3.3: "Moderators: ... cannot touch subscription/payment data, cannot change plans."
+Dashboard gained "Premium users" (distinct users with a currently-active subscription)
+and "Revenue" (sum of every succeeded payment's `amount_cents` — correct only because
+every plan so far uses USD; a genuinely multi-currency deployment would need
+per-currency totals, flagged in `DashboardStats`' own doc comment).
