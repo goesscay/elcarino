@@ -166,7 +166,14 @@ any subscription state change (webhook, cancel, expiry job).
 - `profile_photos.moderation_status` gates visibility: a `pending` photo is visible
   only to its owner until `approved`.
 - Chat attachments (`message_attachments`) inherit the conversation's authorization —
-  a signed URL is minted per request for a participant, never a stable public link.
+  a signed URL is minted per request for a participant, never a stable public link. On
+  a cloud disk (`s3`, staging/prod) that's `Storage::temporaryUrl()` as usual. On the
+  `local` disk (dev) it's a dedicated signed route
+  (`media.message-attachments.show`/`MessageAttachmentStreamController`) instead of
+  Laravel's built-in `storage.local` route — `signed` middleware is still the entire
+  auth check, same model, but `storage.local` doesn't support `Range` requests and
+  re-sniffs `Content-Type` in a way that broke voice-note playback on Android's native
+  `MediaPlayer` (confirmed live); see the controller's doc comment for the full story.
 
 ---
 

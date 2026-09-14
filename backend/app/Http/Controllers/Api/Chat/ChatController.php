@@ -12,6 +12,7 @@ use App\Http\Resources\Chat\ConversationResource;
 use App\Http\Resources\Chat\MessageResource;
 use App\Models\Block;
 use App\Models\Conversation;
+use App\Services\Media\AudioMimeTypeResolver;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +24,10 @@ class ChatController extends Controller
 {
     use RespondsWithErrorEnvelope;
 
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly AudioMimeTypeResolver $audioMimeTypes,
+    ) {}
 
     /**
      * GET /api/v1/chat/conversations — inbox, most-recently-active first.
@@ -129,9 +133,11 @@ class ChatController extends Controller
                 Str::uuid().'.'.$voiceNote->extension(),
             );
 
+            $mimeType = $this->audioMimeTypes->resolve($voiceNote->extension(), $voiceNote->getMimeType());
+
             $message->setRelation('attachment', $message->attachment()->create([
                 'storage_path' => $path,
-                'mime_type' => $voiceNote->getMimeType(),
+                'mime_type' => $mimeType,
                 'duration_seconds' => $request->integer('duration_seconds'),
             ]));
         } else {

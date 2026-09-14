@@ -244,6 +244,18 @@ extra HTTP round-trip to Reverb per message, the right trade here.
 first reader/writer — `MessageAttachment` model, `MessageAttachmentResource`. GIFs/photo
 sharing (#17/#18) still unbuilt; revisit this table once those are confirmed.
 
+## Media — `GET /media/message-attachments/{attachment}` — **outside `/api/v1`**
+
+Signed (`media.chat_media_signed_url_ttl_minutes`), not Sanctum-guarded — same model as
+the built-in `storage.local` route profile photos use, and outside `/api` for the same
+reason (`bootstrap/app.php`'s `broadcasting/auth` comment): a native media player
+fetching this URL carries no bearer token, only the signature. Only used on the `local`
+disk (dev); a cloud disk (`s3`, staging/prod) keeps using `Storage::temporaryUrl()`
+directly, unchanged. Exists instead of reusing `storage.local` because that route
+doesn't support `Range` requests and re-sniffs `Content-Type` via `finfo`, which reports
+an AAC-in-MP4 voice note as `video/mp4` — both broke playback on Android's native
+`MediaPlayer`, confirmed live. See `MessageAttachmentStreamController`'s doc comment.
+
 ## Calls — `/api/v1/calls` — **[PROPOSED]**, subscriber-only
 
 | Method | Path | Notes |
