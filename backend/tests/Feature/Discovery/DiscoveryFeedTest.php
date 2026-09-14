@@ -3,6 +3,7 @@
 namespace Tests\Feature\Discovery;
 
 use App\Models\Block;
+use App\Models\Boost;
 use App\Models\Interest;
 use App\Models\Profile;
 use App\Models\Subscription;
@@ -317,5 +318,40 @@ class DiscoveryFeedTest extends TestCase
 
         $ids = collect($response->json('candidates'))->pluck('id');
         $this->assertTrue($ids->contains($nonMatching->id));
+    }
+
+    /**
+     * Phase 2 item 3 / open decision #14's "visibility window" boost
+     * mechanic: an active boost outranks even a much better interest/
+     * distance match.
+     */
+    public function test_a_boosted_candidate_is_ranked_first(): void
+    {
+        $hiking = Interest::factory()->create(['name' => 'Hiking']);
+        $viewer = $this->setViewer(maxDistanceKm: 200);
+        $viewer->interests()->attach($hiking->id);
+
+        $farBoosted = $this->makeCandidate(latOffset: 0.5);
+        Boost::factory()->for($farBoosted)->create();
+
+        $nearWithOverlap = $this->makeCandidate(latOffset: 0.01);
+        $nearWithOverlap->interests()->attach($hiking->id);
+
+        $response = $this->getJson('/api/v1/discovery/feed')->assertOk();
+
+        $response->assertJsonPath('candidates.0.id', $farBoosted->id);
+        $response->assertJsonPath('candidates.1.id', $nearWithOverlap->id);
+    }
+
+    public function test_an_expired_boost_no_longer_affects_ranking(): void
+    {
+        $this->setViewer();
+        $formerlyBoosted = $this->makeCandidate(latOffset: 0.5);
+        Boost::factory()->for($formerlyBoosted)->expired()->create();
+        $closer = $this->makeCandidate(latOffset: 0.01);
+
+        $response = $this->getJson('/api/v1/discovery/feed')->assertOk();
+
+        $response->assertJsonPath('candidates.0.id', $closer->id);
     }
 }

@@ -162,8 +162,8 @@ table list) — supports phone/OTP login per spec §5.
 |---|---|---|
 | id | bigint PK | |
 | user_id | FK → users | |
-| starts_at / ends_at | timestamp | |
-| source | enum: purchase, subscription_perk | |
+| starts_at / ends_at | timestamp | the "visibility window" (open decision #14) — `config('discovery.boost_duration_minutes')`, currently 30 |
+| source | enum: purchase, subscription_perk | built (Phase 2 item 3): `subscription_perk`, spending one of the plan's monthly `boosts_per_month` allotment. `purchase` (a standalone a-la-carte boost) has no writer yet — flagged, not silently dropped |
 
 ## Messaging
 

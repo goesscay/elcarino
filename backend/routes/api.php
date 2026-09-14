@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Chat\ChatController;
+use App\Http\Controllers\Api\Discovery\BoostController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
 use App\Http\Controllers\Api\Matches\MatchController;
 use App\Http\Controllers\Api\Notifications\NotificationController;
@@ -74,6 +75,8 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('discovery')->group(function () {
             Route::get('feed', [DiscoveryController::class, 'feed'])->middleware('throttle:discovery-feed');
+            Route::get('boost', [BoostController::class, 'status']);
+            Route::post('boost', [BoostController::class, 'store']);
         });
 
         Route::post('swipes', [SwipeController::class, 'store'])->middleware('throttle:swipes');

@@ -35,7 +35,7 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 | 11 | Number of subscription plans | Assume 1 free + 1 premium tier for MVP; schema supports N via `subscription_plans` | 🔴 |
 | 12 | Pricing | Not set — no figures in any client-facing material yet | 🔴 |
 | 13 | Premium benefits | Per proposal: unlimited likes, advanced filters, boost, unmatched messaging, voice/video calling | 🟡 |
-| 14 | Boost system | One boost mechanic assumed (visibility window); frequency/limits TBD | 🔴 |
+| 14 | Boost system | Visibility-window mechanic built (Phase 2 item 3): an active boost ranks a candidate first in others' discovery feeds for `config('discovery.boost_duration_minutes')` (30, an implementation default, not confirmed with the client). "Frequency" is the real, plan-configurable `entitlements.boosts_per_month` — no specific number is confirmed as a business figure | 🔴 |
 | 15 | Unmatched-messaging rules | Subscriber-only, enforced server-side (spec §12) | 🟢 |
 
 ## Communication

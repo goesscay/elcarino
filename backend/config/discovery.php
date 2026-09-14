@@ -12,4 +12,15 @@ return [
     // request can't force an unbounded table scan as the user base grows).
     'candidate_scan_limit' => 500,
 
+    // Phase 2 item 3 / open decision #14 ("one boost mechanic assumed —
+    // visibility window; frequency/limits TBD"): this is the "visibility
+    // window" length. Nothing in /docs states a duration — 30 minutes
+    // matches the common industry convention (documented here, not asked
+    // about, same tier as OTP_TTL_SECONDS/signed-URL TTLs elsewhere in this
+    // app: an implementation default, not a business figure like pricing).
+    // *How many* boosts a plan grants per month is a genuine entitlement
+    // value (`subscription_plans.entitlements.boosts_per_month`), not this
+    // constant.
+    'boost_duration_minutes' => 30,
+
 ];

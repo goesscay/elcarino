@@ -248,6 +248,26 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         return $this->hasMany(Payment::class);
     }
 
+    public function boosts(): HasMany
+    {
+        return $this->hasMany(Boost::class);
+    }
+
+    /**
+     * Phase 2 item 3. A plain query, same "not cached" reasoning as
+     * currentSubscription() — this is read on every discovery feed request
+     * (DiscoveryFeedService), correctness matters more than shaving one
+     * query, and there's no Redis locally to cache it safely against.
+     */
+    public function activeBoost(): ?Boost
+    {
+        return $this->boosts()
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>', now())
+            ->latest('ends_at')
+            ->first();
+    }
+
     public function devices(): HasMany
     {
         return $this->hasMany(UserDevice::class);

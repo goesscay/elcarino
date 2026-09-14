@@ -140,7 +140,8 @@ stale data from a lapsed subscription is never actually applied either way.
 
 ## Discovery — `/api/v1/discovery`
 
-**Implemented (Phase 1 items 5 + 7; Phase 2 item 2 adds religion/politics).** Inclusion
+**Implemented (Phase 1 items 5 + 7; Phase 2 items 2 and 3 add religion/politics and
+boost).** Inclusion
 filters are the *viewer's own* preferences (gender, age range, distance, relationship
 goal, and — subscribers only — religion/politics) — one-directional; mutual matching
 stays out of scope (nothing here requires the target to want the viewer back, only that
@@ -148,8 +149,9 @@ the viewer's stated preferences match the target). A candidate who hasn't stated
 own religion/politics is excluded by that filter rather than treated as a wildcard
 match. Neither field is ever returned in the candidate response shape below — see
 Profiles above on why. Ranking layers item 7
-(Matching engine v1) on top: candidates are ordered by `shared_interests_count`
-(descending) first, then by `distance_km` (ascending), then by id. Per
+(Matching engine v1) on top: candidates are ordered by an active boost first
+(item 3's "visibility window" — `POST /discovery/boost` below), then by
+`shared_interests_count` (descending), then by `distance_km` (ascending), then by id. Per
 `docs/01-technical-specification.md` §10, this is deliberately **not** a compatibility
 score — "do not hardcode a scoring algorithm in Phase 1" — so `shared_interests_count`/
 `shared_interests` are a plain, transparent count and name list, never blended into one
@@ -164,6 +166,8 @@ no feed cache yet for it to bust.
 |---|---|---|
 | GET | `/feed` | paginated candidate profiles — applies preferences, radius, and excludes already-swiped/blocked users |
 | GET | `/feed?refresh=1` | force a fresh batch (e.g. after boost activation) — currently a no-op, see above |
+| GET | `/boost` | *(added — Phase 2 item 3)* `{ "active", "ends_at", "used_this_month", "limit" }` — `limit` is `false` for a non-subscriber (never `0` as a stand-in for "no access") |
+| POST | `/boost` | *(added)* activate a boost using one of the plan's monthly `boosts_per_month` allotment. `201 { "starts_at", "ends_at" }` on success. `403 upgrade_required` (not a subscriber, or the plan grants none), `409 boost_already_active`, or `403 boost_limit_reached` |
 
 Response includes only the rounded/bucketed distance (`distance_km`) — **never raw
 coordinates** (spec §9). Per docs/06-security-architecture.md §4, `distance_km: 0` is

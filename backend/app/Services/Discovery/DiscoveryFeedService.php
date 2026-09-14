@@ -4,6 +4,7 @@ namespace App\Services\Discovery;
 
 use App\Enums\UserStatus;
 use App\Models\Block;
+use App\Models\Boost;
 use App\Models\Swipe;
 use App\Models\User;
 use App\Models\UserLocation;
@@ -12,8 +13,9 @@ use App\Services\Geo\Haversine;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 1 items 5 + 7's combined job. Item 5: candidates matching the
- * viewer's own filters (age, distance, gender, relationship goal), excluding
+ * Phase 1 items 5 + 7, plus Phase 2 item 3's boost ranking, combined.
+ * Item 5: candidates matching the viewer's own filters (age, distance,
+ * gender, relationship goal), excluding
  * self/already-swiped/blocked-either-direction. Item 7 (Matching engine v1)
  * adds the ranking on top: "rule-based — preferences + interests overlap"
  * per docs/04-development-phases.md, deliberately **not** a compatibility
@@ -96,8 +98,19 @@ class DiscoveryFeedService
             ->limit(config('discovery.candidate_scan_limit'))
             ->get();
 
+        // Phase 2 item 3 / open decision #14's "visibility window" boost
+        // mechanic: a currently-active boost moves a candidate to the front
+        // of the queue. One bulk query for the whole scanned batch, not one
+        // per candidate.
+        $boostedUserIds = Boost::query()
+            ->whereIn('user_id', $candidates->pluck('id'))
+            ->where('starts_at', '<=', $today)
+            ->where('ends_at', '>', $today)
+            ->pluck('user_id')
+            ->all();
+
         $withinRadius = $candidates
-            ->map(function (User $candidate) use ($viewerLocation, $viewerInterestIds) {
+            ->map(function (User $candidate) use ($viewerLocation, $viewerInterestIds, $boostedUserIds) {
                 $km = Haversine::kilometers(
                     $viewerLocation->latitude,
                     $viewerLocation->longitude,
@@ -111,14 +124,16 @@ class DiscoveryFeedService
                 $candidate->setAttribute('shared_interests_count', $shared->count());
                 $candidate->setAttribute('shared_interest_names', $shared->pluck('name')->values());
 
+                $candidate->setAttribute('is_boosted', in_array($candidate->id, $boostedUserIds, true));
+
                 return $candidate;
             })
             ->filter(fn (User $candidate) => $candidate->raw_distance_km <= $preferences->max_distance_km)
-            // Rule-based ranking (item 7): more shared interests first, then
-            // nearer (bucketed) first, then id as a stable, non-leaking
-            // tiebreaker so pagination doesn't reshuffle between requests —
-            // never the raw distance float, see class doc.
-            ->sortBy([['shared_interests_count', 'desc'], ['distance_km', 'asc'], ['id', 'asc']])
+            // Rule-based ranking (item 7): boosted first (item 3), then more
+            // shared interests, then nearer (bucketed), then id as a stable,
+            // non-leaking tiebreaker so pagination doesn't reshuffle between
+            // requests — never the raw distance float, see class doc.
+            ->sortBy([['is_boosted', 'desc'], ['shared_interests_count', 'desc'], ['distance_km', 'asc'], ['id', 'asc']])
             ->values();
 
         $paged = $withinRadius->slice(($page - 1) * $perPage, $perPage)->values();

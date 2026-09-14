@@ -558,7 +558,51 @@ suspend a user and it takes effect immediately.
       2 new mobile tests for the repository-level data contract instead. All
       other mobile suites still green, `flutter analyze` + `dart format`
       clean, `flutter build apk --debug` verified.
-- [ ] Unlimited likes, profile boost
+- [x] Unlimited likes, profile boost. **Unlimited likes** was effectively
+      already done by Phase 1's own design: `RateLimiter::for('swipes', ...)`
+      has branched on `isSubscriber()` (300/hour vs 100/hour — "unlimited" is
+      still a hard ceiling regardless of tier, docs/06 §7, "to blunt scripted
+      scraping") since before `isSubscriber()` even had a real implementation
+      to branch on; item 1 flipping that stub to real logic was the whole
+      integration, nothing here to add. Not addressed: a throttled request
+      still gets Laravel's bare default 429 shape, not this app's
+      `{"error":{"code","message"}}` envelope — docs/07's dedicated "Out of
+      likes" screen has nothing to key off of, and no mobile screen consumes
+      it. That's a cross-cutting gap spanning every throttled endpoint (login,
+      OTP, chat, discovery, reports, not just swipes), not a boost-shaped
+      problem — flagged, not silently fixed as a side effect of this item.
+      **Profile boost** is genuinely new: docs/02's `boosts` table was
+      schema-only, already shaped with two sources (`purchase` / an a-la-
+      carte boost bought standalone — no writer yet, flagged, same treatment
+      as `subscriptions.provider`'s `other`; `subscription_perk` — built
+      here, spends one of the plan's monthly `entitlements.boosts_per_month`
+      allotment). Open decision #14 ("one boost mechanic assumed — visibility
+      window; frequency/limits TBD"): the window's *duration* is
+      `config('discovery.boost_duration_minutes')` (30 — an implementation
+      default in the same tier as OTP/signed-URL TTLs elsewhere in this app,
+      not a business figure the client confirmed); the *frequency* is the
+      real, already-existing `boosts_per_month` entitlement value, not
+      invented here. **Backend:** `BoostService::activate()` fails closed
+      three ways — `403 upgrade_required` (no entitlement at all),
+      `409 boost_already_active` (one already running — no stacking),
+      `403 boost_limit_reached` (this month's allotment spent, counted from
+      `created_at` so a boost from a previous calendar month never counts
+      against the current one). `DiscoveryFeedService` ranks an active boost
+      first, ahead of even interest-overlap/distance — one bulk query for the
+      whole scanned candidate batch, not one query per candidate. A real bug
+      caught live via tinker before any test masked it: promoting the
+      exception's constructor param as `public readonly string $code`
+      fatals at class-load time, because PHP's own `Exception` already
+      declares a non-readonly `$code` — renamed to `$errorCode`. 16 new
+      backend tests (236 -> 252), Pint + `composer audit` clean.
+      **Mobile:** `DiscoverFeedScreen` gained a boost icon (docs/07 §3.2's
+      "boost icon [PROPOSED]") opening a bottom sheet with the current
+      status and an activate action — a non-subscriber sees an upgrade
+      prompt straight to PremiumScreen instead of docs/07's more elaborate
+      generic paywall-modal concept, the same disclosed simplification
+      item 2's advanced-filters lock already uses. 7 new mobile tests
+      (59 -> 66), `flutter analyze` + `dart format` clean, `flutter build
+      apk --debug` verified.
 - [ ] Unmatched messaging — **server-side gate is Phase-1 code**; this phase adds the
       subscriber check and the upgrade-prompt UX around it (spec §12)
 - [ ] Subscription management in admin panel (plans, payments, status)
