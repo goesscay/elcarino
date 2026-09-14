@@ -94,4 +94,50 @@ void main() {
       expect(page.hasMore, isTrue);
     });
   });
+
+  group('DiscoveryRepository boost (Phase 2 item 3)', () {
+    test('getBoostStatus maps an active boost', () async {
+      final (repository, _) = _repositoryReturning({
+        '/discovery/boost': {
+          'active': true,
+          'ends_at': '2026-01-01T12:30:00Z',
+          'used_this_month': 1,
+          'limit': 1,
+        },
+      });
+
+      final status = await repository.getBoostStatus();
+
+      expect(status.active, isTrue);
+      expect(status.endsAt, DateTime.parse('2026-01-01T12:30:00Z'));
+      expect(status.limit, 1);
+      expect(status.canActivateAnother, isFalse);
+    });
+
+    test('getBoostStatus maps a non-subscriber (limit: false)', () async {
+      final (repository, _) = _repositoryReturning({
+        '/discovery/boost': {
+          'active': false,
+          'ends_at': null,
+          'used_this_month': 0,
+          'limit': false,
+        },
+      });
+
+      final status = await repository.getBoostStatus();
+
+      expect(status.isEntitled, isFalse);
+      expect(status.limit, isNull);
+      expect(status.canActivateAnother, isFalse);
+    });
+
+    test('activateBoost posts to /discovery/boost', () async {
+      final (repository, adapter) = _repositoryReturning({});
+
+      await repository.activateBoost();
+
+      expect(adapter.lastRequest!.method, 'POST');
+      expect(adapter.lastRequest!.path, '/discovery/boost');
+    });
+  });
 }

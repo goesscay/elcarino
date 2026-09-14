@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
+import '../domain/boost_status.dart';
 import '../domain/candidate.dart';
 
 class DiscoveryFeedPage {
@@ -50,6 +51,19 @@ class DiscoveryRepository {
           .toList(),
       hasMore: meta['has_more'] as bool,
     );
+  }
+
+  /// Phase 2 item 3.
+  Future<BoostStatus> getBoostStatus() async {
+    final response = await _client.request('/discovery/boost', method: 'GET');
+    return BoostStatus.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// Throws [ApiException] with `code` `upgrade_required` (not a
+  /// subscriber, or the plan grants none), `boost_already_active`, or
+  /// `boost_limit_reached` — see BoostUnavailableException on the backend.
+  Future<void> activateBoost() async {
+    await _client.request('/discovery/boost', method: 'POST');
   }
 }
 

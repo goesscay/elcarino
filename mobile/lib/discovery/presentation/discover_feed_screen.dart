@@ -13,14 +13,17 @@ import '../../matching/domain/swipe_direction.dart';
 import '../../matching/presentation/match_celebration_dialog.dart';
 import '../../matching/presentation/swipeable_card.dart';
 import '../data/discovery_repository.dart';
+import '../domain/boost_status.dart';
 import '../domain/candidate.dart';
 
 /// docs/07-ui-ux-design.md §3.2 "Card stack" — now that Phase 1 item 6
 /// (POST /swipes) exists, this replaced item 5's plain paginated list with
-/// the real swipe-gesture stack. Boost icon [PROPOSED] isn't shown — it's a
-/// Phase 2 mechanic with nothing behind it yet; the filter icon reuses the
-/// existing Edit preferences screen rather than a second, parallel filters
-/// UI.
+/// the real swipe-gesture stack. The filter icon reuses the existing Edit
+/// preferences screen rather than a second, parallel filters UI. The boost
+/// icon [PROPOSED] now opens a bottom sheet (Phase 2 item 3) rather than
+/// docs/07's more elaborate dedicated paywall-modal treatment for the
+/// free-user case — a disclosed simplification, same one PremiumScreen's
+/// own doc comment already uses elsewhere in this phase.
 class DiscoverFeedScreen extends ConsumerStatefulWidget {
   const DiscoverFeedScreen({super.key});
 
@@ -143,12 +146,29 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     }
   }
 
+  Future<void> _openBoost() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => _BoostSheet(
+        onActivated: () {
+          if (mounted) _load();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discover'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bolt_outlined),
+            tooltip: 'Boost',
+            onPressed: _openBoost,
+          ),
           IconButton(
             icon: const Icon(Icons.tune),
             tooltip: 'Filters',
@@ -298,6 +318,155 @@ class _ActionButton extends StatelessWidget {
         onPressed: onPressed,
       ),
     );
+  }
+}
+
+/// Phase 2 item 3. A bottom sheet rather than docs/07's more elaborate
+/// generic paywall-modal concept for the non-subscriber case — same
+/// disclosed simplification PremiumScreen and the advanced-filters lock
+/// (item 2) already use.
+class _BoostSheet extends ConsumerStatefulWidget {
+  const _BoostSheet({required this.onActivated});
+
+  final VoidCallback onActivated;
+
+  @override
+  ConsumerState<_BoostSheet> createState() => _BoostSheetState();
+}
+
+class _BoostSheetState extends ConsumerState<_BoostSheet> {
+  bool _loading = true;
+  bool _activating = false;
+  String? _error;
+  BoostStatus? _status;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final status = await ref
+          .read(discoveryRepositoryProvider)
+          .getBoostStatus();
+      if (!mounted) return;
+      setState(() {
+        _status = status;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _activate() async {
+    setState(() => _activating = true);
+    try {
+      await ref.read(discoveryRepositoryProvider).activateBoost();
+      if (!mounted) return;
+      widget.onActivated();
+      Navigator.of(context).pop();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _activating = false;
+        _error = e.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_loading) {
+      return const SizedBox(
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final status = _status;
+    if (status == null || _error != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_error ?? 'Something went wrong.', textAlign: TextAlign.center),
+          const SizedBox(height: AppSpacing.md),
+          FilledButton(onPressed: _load, child: const Text('Retry')),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Icon(Icons.bolt, size: 40),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          'Boost',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(_statusMessage(status), textAlign: TextAlign.center),
+        const SizedBox(height: AppSpacing.lg),
+        if (!status.isEntitled)
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.push('/settings/subscription');
+            },
+            child: const Text('Upgrade to Premium'),
+          )
+        else if (status.canActivateAnother)
+          FilledButton(
+            onPressed: _activating ? null : _activate,
+            child: _activating
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Activate boost'),
+          ),
+      ],
+    );
+  }
+
+  String _statusMessage(BoostStatus status) {
+    if (status.active) {
+      final ends = status.endsAt!;
+      final time =
+          '${ends.hour.toString().padLeft(2, '0')}:${ends.minute.toString().padLeft(2, '0')}';
+      return "You're boosted until $time.";
+    }
+    if (!status.isEntitled) {
+      return 'Get priority placement in the discovery feed with Premium.';
+    }
+    if (!status.canActivateAnother) {
+      return "You've used all your boosts for this month.";
+    }
+    return 'You have ${status.limit! - status.usedThisMonth} of ${status.limit} '
+        'boosts left this month.';
   }
 }
 
