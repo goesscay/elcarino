@@ -673,7 +673,33 @@ suspend a user and it takes effect immediately.
       12 new backend tests (255 -> 267: the three new Policies' admin/moderator/
       owner truth tables, plus the entitlements transform's expand/collapse/round-trip),
       Pint + `composer audit` clean.
-- [ ] Super Like / Rewind — **only if approved**, open decision #11
+- [ ] Super Like / Rewind — **blocked, not skipped**: open decision #11 ("not
+      mandatory MVP unless approved," docs/01 §10) has not been approved. Building it
+      now would mean guessing at scope the client hasn't confirmed — exactly what
+      CLAUDE.md's open-decisions handling says to flag and ask about, not invent.
+      `direction: super` has sat reserved in the `swipes` schema enum since Phase 1
+      item 6 for exactly this, and `POST /swipes` already accepts it and can trigger
+      a match — what's still missing is everything *extra* Super Like/Rewind would
+      need beyond a normal swipe (a distinct celebration, a rewind-the-last-swipe
+      endpoint, any limit/cooldown), none of which has an approved shape to build
+      against. Revisit if/when #11 is answered — no code changes needed to start,
+      the reserved enum value and pass-through swipe endpoint are already there.
+
+**Phase 2 status: functionally complete pending item 6.** Items 1–5 are built, tested,
+and CI-green. Assessed against this phase's own gate:
+- "A non-subscriber is blocked (403, with a clean upgrade prompt) from every premium
+  action at the API layer, not just in the UI" — **met**. Every premium-gated
+  endpoint (advanced filters, boost, unmatched messaging) fails closed server-side
+  first (`entitlement()`/`isSubscriber()` checks, never a client-trusted flag), and
+  each has a real mobile upgrade prompt (items 2/3/4), not silent 403s.
+- "A real (sandboxed) purchase activates entitlements within a defined SLA (e.g. < 1
+  minute via webhook)" — **met mechanically, unverified against a live account**. The
+  log-driven gateway activates instantly (proven live, repeatedly, throughout items
+  1–5); the real `StripePaymentGateway` + `POST /webhooks/stripe` path is fully
+  implemented and unit-tested (request shape, signature verification, idempotent
+  activation) but — same disclosed status as `TwilioSmsSender`/`FcmPushSender` since
+  Phase 1 — has never been exercised against an actual Stripe account, because none
+  is configured on this machine. Confirm before relying on it in production.
 
 **Gate:** a non-subscriber is blocked (403, with a clean upgrade prompt) from every
 premium action at the API layer, not just in the UI; a real (sandboxed) purchase
