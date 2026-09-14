@@ -56,6 +56,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   bool _hasMore = false;
   DateTime? _otherReadUpTo;
 
+  /// Phase 2 item 4: mutable, not `widget.conversation.requiresSubscriptionToMessage`
+  /// directly — after the user subscribes from the banner below and comes
+  /// back, this needs to flip without a full navigation round-trip back
+  /// through `InboxScreen`/`ConversationLoaderScreen` to get a fresh
+  /// `Conversation`. Everything else this screen reads off
+  /// `widget.conversation` is immutable for the life of a conversation
+  /// (participants, match id), so only this one field needs its own state.
+  late bool _requiresSubscriptionToMessage =
+      widget.conversation.requiresSubscriptionToMessage;
+
   @override
   void initState() {
     super.initState();
@@ -129,6 +139,34 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     } on ApiException {
       // Best-effort — an unread badge staying lit is a cosmetic miss, not
       // worth surfacing an error for.
+    }
+  }
+
+  /// Phase 2 item 4. Called after the user returns from the Premium screen
+  /// via the banner's "Upgrade" button — there's no `GET
+  /// /chat/conversations/{id}` (docs/03), so this reuses the same "list +
+  /// find by id" approach ConversationLoaderScreen already uses, rather
+  /// than adding a single-resource endpoint just for this refresh.
+  Future<void> _refreshSubscriptionRequirement() async {
+    try {
+      final conversations = await ref
+          .read(chatRepositoryProvider)
+          .getConversations();
+      Conversation? refreshed;
+      for (final c in conversations) {
+        if (c.id == widget.conversation.id) {
+          refreshed = c;
+          break;
+        }
+      }
+      if (!mounted || refreshed == null) return;
+      final stillRequiresSubscription = refreshed.requiresSubscriptionToMessage;
+      setState(
+        () => _requiresSubscriptionToMessage = stillRequiresSubscription,
+      );
+    } on ApiException {
+      // Best-effort — worst case the banner just stays up until the next
+      // natural reload (e.g. reopening the conversation).
     }
   }
 
@@ -335,8 +373,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         child: Column(
           children: [
             Expanded(child: _buildMessageList()),
-            if (widget.conversation.requiresSubscriptionToMessage)
-              _SubscriptionRequiredBanner()
+            if (_requiresSubscriptionToMessage)
+              _SubscriptionRequiredBanner(
+                onUpgrade: () async {
+                  await context.push('/settings/subscription');
+                  await _refreshSubscriptionRequirement();
+                },
+              )
             else
               _Composer(
                 controller: _composerController,
@@ -523,11 +566,16 @@ class _Composer extends StatelessWidget {
 }
 
 /// docs/07 §3.3 "Unmatched-conversation banner": composer disabled, inline
-/// banner. Doesn't link to a paywall — that's Phase 2 (subscriptions aren't
-/// built yet, so nobody in Phase 1 can actually be a subscriber; this flag
-/// is effectively always a hard stop for now, not a soft upsell).
+/// banner. Phase 1 left it as inert text — subscriptions didn't exist yet,
+/// so the flag was effectively always a hard stop, not a soft upsell.
+/// Phase 2 item 4 ("adds ... the upgrade-prompt UX around it") makes it
+/// tappable, straight to PremiumScreen — the same disclosed simplification
+/// item 2's advanced-filters lock and item 3's boost sheet already use
+/// instead of docs/07's more elaborate generic paywall-modal concept.
 class _SubscriptionRequiredBanner extends StatelessWidget {
-  const _SubscriptionRequiredBanner();
+  const _SubscriptionRequiredBanner({required this.onUpgrade});
+
+  final Future<void> Function() onUpgrade;
 
   @override
   Widget build(BuildContext context) {
@@ -535,9 +583,15 @@ class _SubscriptionRequiredBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
       color: AppColors.surfaceLight,
-      child: const Text(
-        "Subscribe to message people you haven't matched with.",
-        textAlign: TextAlign.center,
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              "Subscribe to message people you haven't matched with.",
+            ),
+          ),
+          TextButton(onPressed: onUpgrade, child: const Text('Upgrade')),
+        ],
       ),
     );
   }
