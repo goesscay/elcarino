@@ -10,6 +10,7 @@ import '../../core/network/api_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_logo.dart';
+import '../../core/widgets/state_message.dart';
 import '../../matching/data/matching_repository.dart';
 import '../../matching/domain/swipe_direction.dart';
 import '../../matching/presentation/match_celebration_dialog.dart';
@@ -227,7 +228,7 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     }
 
     if (_errorCode == 'location_required') {
-      return _Guidance(
+      return StateMessage(
         icon: Icons.location_off_outlined,
         message: 'Turn on location to see people nearby.',
         actionLabel: 'Set location',
@@ -237,7 +238,7 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     }
 
     if (_errorCode == 'preferences_required') {
-      return _Guidance(
+      return StateMessage(
         icon: Icons.tune,
         message: 'Set your discovery preferences to get started.',
         actionLabel: 'Set preferences',
@@ -247,7 +248,7 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     }
 
     if (_errorCode != null) {
-      return _Guidance(
+      return StateMessage(
         icon: Icons.error_outline,
         message: _errorMessage ?? 'Something went wrong.',
         actionLabel: 'Retry',
@@ -256,7 +257,7 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     }
 
     if (_candidates.isEmpty) {
-      return _Guidance(
+      return StateMessage(
         icon: Icons.search_off,
         message: 'No one new nearby right now. Check back later, or widen your preferences.',
         actionLabel: 'Refresh',
@@ -577,55 +578,5 @@ class _BoostSheetState extends ConsumerState<_BoostSheet> {
     }
     return 'You have ${status.limit! - status.usedThisMonth} of ${status.limit} '
         'boosts left this month.';
-  }
-}
-
-class _Guidance extends StatelessWidget {
-  const _Guidance({
-    required this.icon,
-    required this.message,
-    required this.actionLabel,
-    required this.onAction,
-  });
-
-  final IconData icon;
-  final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 320),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: p.fill,
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Icon(icon, size: 36, color: p.textSecondary),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              FilledButton(onPressed: onAction, child: Text(actionLabel)),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

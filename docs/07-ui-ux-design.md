@@ -123,7 +123,7 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 | Screen | Spec |
 |---|---|
-| **Matches + inbox** | Top row: new matches with no messages yet (horizontal avatars). Below: conversation list — avatar, name, last message preview, timestamp, unread dot. Empty state: "No matches yet — keep discovering." |
+| **Matches + inbox** | **Built (UI redesign) as the "Chats" tab.** Large "Chats" title. *New matches*: a horizontal row of avatars with a brand-red ring (no messages yet). *Messages*: rows of avatar, name, one-line preview, timestamp (time today · "Yesterday" · weekday · M/D) and a red **unread count badge** (99+ cap; unread rows get a bold name/preview and a red time), with hairline dividers aligned to the text. Unmatch is a long-press (and a screen-reader custom action) rather than a per-row icon; it is also in the conversation overflow. First load shows skeleton rows; later reloads refresh in place. Empty: "No matches yet" + `Keep discovering` (goes to Discover). *Not built:* the search field — there is no conversation-search API. |
 | **Conversation** | Message list (bubbles, own = trailing), date separators, read receipt on last own message, typing indicator, online/last-active in header. Composer: text field, send; attachment button reveals voice note / photo / GIF **only if those are in scope** [TBD-16/17/18] and, for unmatched conversations, only for subscribers (server-enforced — spec §12). Header overflow: View profile, Unmatch, Report, Block. |
 | **Unmatched-conversation banner** (free user) | Inline banner in the composer area: "Subscribe to message people you haven't matched with" → paywall. Composer disabled. |
 | **Report from chat** | See §3.7. |
