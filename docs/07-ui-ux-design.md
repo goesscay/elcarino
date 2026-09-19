@@ -161,7 +161,7 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 | **Report — category** | List: Harassment, Fake profile, Spam, Inappropriate content, Scam, Other (from `report-categories` endpoint). |
 | **Report — detail** | Free-text (optional), option to also block, option to attach which messages/photos. `Submit`. |
 | **Report — confirmation** | "Thanks — our team will review this." No status promises beyond what moderation SLA allows. |
-| **Blocked users** (Settings child) | List with unblock. |
+| **Blocked users** (Settings child) | **Redesigned.** A list of avatar + name with a compact `Unblock` button per row; empty and error states use the shared `StateMessage`. |
 
 ### 3.8 Subscription — **[PROPOSED]**
 
@@ -173,12 +173,20 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 ### 3.9 Settings
 
-Account (email/phone, password, connected accounts) · Notifications (per-type toggles:
-matches, messages, likes, system) · Privacy & Safety (blocked users, show/hide
-distance, discovery on/off, read receipts toggle [decide]) · Subscription · Help &
-Support (ticket/contact — tool is a cost-deck line item) · Legal (ToS, Privacy —
-placeholder links [TBD]) · Log out · Delete account (confirmation + consequences + data
-export offer, per security doc §9 and §11).
+**Redesigned (UI redesign).** A large "Settings" title over grouped cards (the shared
+`SectionCard`/`SectionRow`), each row a tinted icon + title (+ description): **Account**
+(Account, Profile preferences, Notifications) · **Privacy & safety** (Blocked users) ·
+**Subscription** · **Support** (Help & support, Legal, About Elcarino). **Log out** and
+**Delete account** sit apart in their own card at the bottom, Delete in danger red.
+
+*Real today:* Profile preferences (the Edit preferences screen), Blocked users,
+Subscription, About (wordmark, tagline and Flutter's built-in open-source licences page),
+Log out (confirms first). *Not built yet* — shown with a "Soon" label and a "Coming soon"
+notice rather than a dead navigation: Account (email/phone, password, connected accounts),
+Notifications (per-type toggles need a preferences table that doesn't exist), Help &
+Support, Legal (ToS/Privacy — placeholder links [TBD]) and Delete account (confirmation +
+consequences + data export offer, per security doc §9 and §11). Show/hide distance,
+discovery on/off and a read-receipts toggle are likewise not built.
 
 ### 3.10 Admin panel (Filament, web — not part of the Flutter app)
 

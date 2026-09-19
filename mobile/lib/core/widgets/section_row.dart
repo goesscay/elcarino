@@ -40,6 +40,7 @@ class SectionRow extends StatelessWidget {
     this.subtitle,
     this.destructive = false,
     this.showChevron = true,
+    this.trailingLabel,
     super.key,
   });
 
@@ -49,6 +50,10 @@ class SectionRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool destructive;
   final bool showChevron;
+
+  /// Short text shown in place of the chevron (e.g. "Soon") for a row that
+  /// isn't available yet.
+  final String? trailingLabel;
 
   /// Where the title text starts (padding + icon circle + gap) — the divider
   /// insets to here.
@@ -104,7 +109,9 @@ class SectionRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (showChevron)
+              if (trailingLabel != null)
+                Text(trailingLabel!, style: text.bodySmall)
+              else if (showChevron)
                 Icon(Icons.chevron_right_rounded, color: p.textSecondary),
             ],
           ),
