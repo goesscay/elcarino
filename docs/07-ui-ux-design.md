@@ -32,13 +32,18 @@ provisional; the token *names* and component structure stay as branding fills in
 
 ### 2.1 Top-level navigation (authenticated)
 
-Bottom tab bar, 4 tabs:
+Bottom tab bar. **Built (UI redesign, `MainShell`): Discover · Chats · Profile.**
+Explore and Likes are part of the target design but are not tabs yet — neither has a
+screen or an API behind it (`GET /who-liked-me` is `[PROPOSED]`), and they join the bar
+as two more destinations when they do. Each tab keeps its own stack and state; the
+Chats tab reloads whenever it is (re)selected.
 
 | Tab | Screen | Notes |
 |---|---|---|
 | **Discover** | Card stack | Default tab on launch |
-| **Matches** | Matches + inbox | Badge = unread conversations |
-| **Likes** | Who liked me | Premium — shows blurred grid + paywall for free users |
+| **Chats** | Matches + inbox | Badge = unread conversations *(not built — needs a shared unread source)* |
+| **Likes** *(not built)* | Who liked me | Premium — shows blurred grid + paywall for free users |
+| **Explore** *(not built)* | Interest categories | Needs a categories/member-count endpoint |
 | **Profile** | Own profile + entry to Edit / Verification / Settings | |
 
 Modal / pushed flows (not tabs): Onboarding, Filters, Profile detail, Match

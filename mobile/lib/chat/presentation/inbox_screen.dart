@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/network/api_exception.dart';
+import '../../core/router/tab_refresh.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../matching/data/matching_repository.dart';
@@ -98,6 +99,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The tab shell keeps this screen alive across tab switches, so reload
+    // whenever the Chats tab is (re)selected — see ChatsTabRefresh.
+    ref.listen(chatsTabRefreshProvider, (previous, next) => _load());
+
     return Scaffold(
       appBar: AppBar(title: const Text('Matches')),
       body: SafeArea(child: _buildBody()),

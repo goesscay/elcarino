@@ -812,7 +812,7 @@ class _MessageBubble extends StatelessWidget {
                   vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: isMine ? AppColors.primary : AppColors.surfaceLight,
+                  color: isMine ? AppColors.primary : context.palette.fill,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: message.type == MessageType.voiceNote
@@ -863,7 +863,7 @@ class _MediaUnavailable extends StatelessWidget {
     return Container(
       width: 150,
       height: 100,
-      color: AppColors.surfaceLight,
+      color: context.palette.fill,
       alignment: Alignment.center,
       child: loading
           ? const SizedBox(
@@ -1135,7 +1135,7 @@ class _SubscriptionRequiredBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
-      color: AppColors.surfaceLight,
+      color: context.palette.fill,
       child: Row(
         children: [
           const Expanded(

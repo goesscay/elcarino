@@ -23,7 +23,6 @@ import '../../onboarding/presentation/photos_screen.dart';
 import '../../onboarding/presentation/preferences_screen.dart';
 import '../../onboarding/presentation/profile_basics_screen.dart';
 import '../../onboarding/presentation/prompts_screen.dart';
-import '../../placeholder_home.dart';
 import '../../profile/presentation/edit_basics_screen.dart';
 import '../../profile/presentation/edit_interests_screen.dart';
 import '../../profile/presentation/edit_profile_screen.dart';
@@ -33,6 +32,7 @@ import '../../safety/presentation/blocked_users_screen.dart';
 import '../../safety/presentation/report_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../subscriptions/presentation/premium_screen.dart';
+import '../widgets/main_shell.dart';
 import '../widgets/splash_screen.dart';
 
 /// App router, per the navigation map in `docs/07-ui-ux-design.md` §2.2:
@@ -42,26 +42,49 @@ import '../widgets/splash_screen.dart';
 /// simpler to reason about, and this app has no automatic session-loss event
 /// yet that would need a global redirect to react to.
 ///
-/// Main tabs (Discover/Matches/Likes/Profile) as a real bottom-nav shell
-/// don't exist yet — `/home` is still the Phase 0 placeholder, now linking to
-/// both `/discover` (item 5) and `/profile` (item 3) as separate pushed
-/// routes rather than tabs.
+/// Main tabs (Discover / Chats / Profile) are a real bottom-nav shell —
+/// [MainShell]. Explore and Likes join it once they have screens and APIs.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const PlaceholderHome(),
-      ),
-      GoRoute(
-        path: '/discover',
-        builder: (context, state) => const DiscoverFeedScreen(),
-      ),
-      GoRoute(
-        path: '/matches',
-        builder: (context, state) => const InboxScreen(),
+      // Authenticated entry point. There used to be a Phase 0 placeholder
+      // here; the tab shell below replaced it, so anything that still says
+      // "go home" lands on the first tab.
+      GoRoute(path: '/home', redirect: (context, state) => '/discover'),
+
+      // The main tab shell — see MainShell. Tab roots only; everything
+      // full-screen is a top-level route below and opens over the bar.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/discover',
+                builder: (context, state) => const DiscoverFeedScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/matches',
+                builder: (context, state) => const InboxScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (context, state) => const MyProfileScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/chat/:id',
@@ -157,10 +180,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       // docs/07 §3.5 describes it differently from onboarding's picker
       // (reorder/swap/edit an already-answered set, not "pick 3 from
       // scratch") — see edit_prompts_screen.dart.
-      GoRoute(
-        path: '/profile',
-        builder: (context, state) => const MyProfileScreen(),
-      ),
       GoRoute(
         path: '/profile/edit',
         builder: (context, state) => const EditProfileScreen(),
