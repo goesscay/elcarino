@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +13,8 @@ import '../../calls/domain/call_type.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/network_photo.dart';
+import '../../core/widgets/state_message.dart';
 import '../../matching/data/matching_repository.dart';
 import '../../matching/presentation/unmatch_confirm_dialog.dart';
 import '../../safety/data/safety_repository.dart';
@@ -22,9 +23,10 @@ import '../data/chat_repository.dart';
 import '../data/chat_socket_service.dart';
 import '../domain/conversation.dart';
 import '../domain/message.dart';
-import '../domain/message_type.dart';
 import '../domain/read_receipt.dart';
+import 'chat_formatting.dart';
 import 'gif_picker_sheet.dart';
+import 'message_widgets.dart';
 
 /// docs/07-ui-ux-design.md §3.3 "Conversation": message list (bubbles, own =
 /// trailing), read receipt on the last own message, typing indicator,
@@ -593,16 +595,60 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         _channel?.onlineMembers.any((m) => m.id == otherUser.id.toString()) ??
         false;
 
+    final p = context.palette;
+    final text = Theme.of(context).textTheme;
+    final photos = otherUser.photos;
+
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        // A hairline under the header separates it from the conversation.
+        shape: Border(bottom: BorderSide(color: p.border)),
+        titleSpacing: 0,
+        title: Row(
           children: [
-            Text(otherUser.displayName),
-            Text(
-              _otherIsTyping ? 'Typing…' : (isOnline ? 'Online' : ''),
-              style: Theme.of(context).textTheme.labelSmall,
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: ClipOval(
+                child: photos.isEmpty
+                    ? const PhotoPlaceholder(iconSize: 22)
+                    : NetworkPhoto(photos.first.url),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    otherUser.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.titleMedium,
+                  ),
+                  if (_otherIsTyping)
+                    Text(
+                      'Typing…',
+                      style: text.labelSmall?.copyWith(
+                        color: AppColors.primary,
+                      ),
+                    )
+                  else if (isOnline)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.circle,
+                          size: 8,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text('Online', style: text.labelSmall),
+                      ],
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -616,10 +662,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           // from `calls` (not the usual direction) is deliberate.
           IconButton(
             icon: const Icon(Icons.call_outlined),
+            tooltip: 'Voice call',
             onPressed: () => _startCall(CallType.voice),
           ),
           IconButton(
             icon: const Icon(Icons.videocam_outlined),
+            tooltip: 'Video call',
             onPressed: () => _startCall(CallType.video),
           ),
           PopupMenuButton<_ConversationMenuAction>(
@@ -643,24 +691,25 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             Expanded(child: _buildMessageList()),
             if (_requiresSubscriptionToMessage)
-              _SubscriptionRequiredBanner(
+              SubscriptionRequiredBanner(
                 onUpgrade: () async {
                   await context.push('/settings/subscription');
                   await _refreshSubscriptionRequirement();
                 },
               )
             else if (_recording)
-              _RecordingIndicator(
+              RecordingBar(
                 elapsed: _recordingElapsed,
                 onCancel: _cancelRecording,
                 onStop: _stopAndSendRecording,
               )
             else
-              _Composer(
+              MessageComposer(
                 controller: _composerController,
                 sending: _sending,
                 attachmentBusy:
@@ -680,25 +729,19 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.md),
-              FilledButton(
-                onPressed: _loadFirstPage,
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+      return StateMessage(
+        icon: Icons.error_outline,
+        message: _error!,
+        actionLabel: 'Retry',
+        onAction: _loadFirstPage,
       );
     }
     if (_messages.isEmpty) {
-      return const Center(child: Text('You matched — say hi!'));
+      return StateMessage(
+        icon: Icons.waving_hand_outlined,
+        title: 'You matched!',
+        message: 'Say hi to ${widget.conversation.otherUser.displayName}.',
+      );
     }
 
     final lastOwnMessageId = _messages
@@ -711,7 +754,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     return ListView.builder(
       controller: _scrollController,
       reverse: true,
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screen,
+        vertical: AppSpacing.md,
+      ),
       itemCount: _messages.length + (_loadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= _messages.length) {
@@ -727,425 +773,33 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             message.id == lastOwnMessageId &&
             _otherReadUpTo != null &&
             !message.createdAt.isAfter(_otherReadUpTo!);
-        return _MessageBubble(
+
+        // The list is newest-first: index - 1 is the *newer* neighbour (below
+        // on screen), index + 1 the *older* one (above).
+        final newer = index > 0 ? _messages[index - 1] : null;
+        final older = index + 1 < _messages.length
+            ? _messages[index + 1]
+            : null;
+        final startsRun = older == null || !messagesGroup(message, older);
+        final endsRun = newer == null || !messagesGroup(message, newer);
+        final startsDay =
+            older == null || !isSameDay(older.createdAt, message.createdAt);
+
+        return MessageBubble(
           // The list prepends new messages (`_handleIncomingMessage`/`_send`),
           // which shifts every existing bubble's builder index — a stable key
-          // keeps _VoiceNotePlayer's per-message AudioPlayer state (and
+          // keeps VoiceNotePlayer's per-message AudioPlayer state (and
           // playback position) from getting reassigned to the wrong message
           // across a rebuild.
           key: ValueKey(message.id),
           message: message,
           isMine: isMine,
           showReadReceipt: showReadReceipt,
+          showTime: endsRun,
+          topGap: startsRun ? AppSpacing.md : 2,
+          dateLabel: startsDay ? formatDateSeparator(message.createdAt) : null,
         );
       },
-    );
-  }
-}
-
-class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.message,
-    required this.isMine,
-    required this.showReadReceipt,
-    super.key,
-  });
-
-  final Message message;
-  final bool isMine;
-  final bool showReadReceipt;
-
-  String? _bubbleImageUrl() => switch (message.type) {
-    MessageType.gif => message.body,
-    MessageType.photo => message.attachment?.url,
-    _ => null,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-        child: Column(
-          crossAxisAlignment: isMine
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
-          children: [
-            if (message.type == MessageType.gif ||
-                message.type == MessageType.photo)
-              // No padding/colour fill for a gif/photo — same bubble
-              // alignment and max-width as text/voice-note, but the image
-              // itself is the bubble (matches every other chat app's image
-              // rendering; a coloured background behind one just reads as a
-              // border). A gif's url lives in `body` (ChatController
-              // resolves it server-side, no attachment row — see its doc
-              // comment); a photo's lives in `attachment.url` (a private,
-              // signed URL — see MessageAttachmentResource).
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.6,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: _bubbleImageUrl() == null
-                      ? const _MediaUnavailable()
-                      : Image.network(
-                          _bubbleImageUrl()!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const _MediaUnavailable(),
-                          loadingBuilder: (context, child, progress) =>
-                              progress == null
-                              ? child
-                              : const _MediaUnavailable(loading: true),
-                        ),
-                ),
-              )
-            else
-              Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.75,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: isMine ? AppColors.primary : context.palette.fill,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-                child: message.type == MessageType.voiceNote
-                    ? (message.attachment == null
-                          ? const Text('Voice note unavailable')
-                          : _VoiceNotePlayer(
-                              attachment: message.attachment!,
-                              isMine: isMine,
-                            ))
-                    : Text(
-                        message.body ?? '',
-                        style: TextStyle(
-                          color: isMine
-                              ? AppColors.onPrimary
-                              : AppColors.textPrimaryLight,
-                        ),
-                      ),
-              ),
-            if (showReadReceipt)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: Text(
-                  'Read',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Placeholder for a gif/photo bubble that has no image url to show
-/// (shouldn't happen — ChatController::sendMessage always resolves one
-/// before creating the message — but a defensive fallback beats a broken-
-/// image icon) or whose image failed to load (an expired/removed Giphy
-/// asset — third-party content, no guarantee it stays reachable forever —
-/// or a signed URL that expired before the bubble was scrolled back to),
-/// and the loading state in between.
-class _MediaUnavailable extends StatelessWidget {
-  const _MediaUnavailable({this.loading = false});
-
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      height: 100,
-      color: context.palette.fill,
-      alignment: Alignment.center,
-      child: loading
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(
-              Icons.image_not_supported_outlined,
-              color: AppColors.textSecondaryLight,
-            ),
-    );
-  }
-}
-
-class _Composer extends StatelessWidget {
-  const _Composer({
-    required this.controller,
-    required this.sending,
-    required this.attachmentBusy,
-    required this.onChanged,
-    required this.onSend,
-    required this.onAttachment,
-  });
-
-  final TextEditingController controller;
-  final bool sending;
-  final bool attachmentBusy;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onSend;
-  final VoidCallback onAttachment;
-
-  @override
-  Widget build(BuildContext context) {
-    final busy = sending || attachmentBusy;
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: busy ? null : onAttachment,
-            icon: attachmentBusy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add_circle_outline),
-          ),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              onChanged: onChanged,
-              minLines: 1,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: 'Message…',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(AppRadius.pill),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton.filled(
-            onPressed: busy ? null : onSend,
-            icon: sending
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Shown in place of [_Composer] while recording — tap the stop button to
-/// send, the trash button to discard. Tap-to-start/tap-to-stop, not
-/// press-and-hold (see [_ConversationScreenState._startRecording]'s doc).
-class _RecordingIndicator extends StatelessWidget {
-  const _RecordingIndicator({
-    required this.elapsed,
-    required this.onCancel,
-    required this.onStop,
-  });
-
-  final Duration elapsed;
-  final VoidCallback onCancel;
-  final VoidCallback onStop;
-
-  @override
-  Widget build(BuildContext context) {
-    final minutes = elapsed.inMinutes;
-    final seconds = elapsed.inSeconds % 60;
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onCancel,
-            icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-          ),
-          const Icon(
-            Icons.fiber_manual_record,
-            color: AppColors.danger,
-            size: 14,
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: Text(
-              'Recording… $minutes:${seconds.toString().padLeft(2, '0')}',
-            ),
-          ),
-          IconButton.filled(onPressed: onStop, icon: const Icon(Icons.stop)),
-        ],
-      ),
-    );
-  }
-}
-
-/// A message bubble's inline voice-note player. Keyed per-message
-/// ([_MessageBubble]'s key) so its [AudioPlayer] and playback position stay
-/// tied to the right message as the list is prepended to.
-///
-/// Playback over the signed URL is verified live on the Android emulator —
-/// it wasn't on the first pass (`adb logcat` showed
-/// `NuCachedSource2: source returned error -1`), which turned out to be
-/// three stacked issues, not one: (1) no `network_security_config.xml`
-/// exception meant Android's native networking layer (what `audioplayers`'
-/// underlying `MediaPlayer` goes through) silently refused the plain-`http`
-/// connection to the dev backend before it ever left the device — Dart's own
-/// `dart:io` HTTP client (what the JSON API calls use) doesn't consult that
-/// policy at all, so every other network call in the app kept working the
-/// whole time, which is what made this confusing to isolate; see
-/// `android/app/src/debug/res/xml/network_security_config.xml`. (2) and (3)
-/// were server-side — see `MessageAttachmentStreamController`'s and
-/// `AudioMimeTypeResolver`'s doc comments.
-class _VoiceNotePlayer extends StatefulWidget {
-  const _VoiceNotePlayer({required this.attachment, required this.isMine});
-
-  final MessageAttachment attachment;
-  final bool isMine;
-
-  @override
-  State<_VoiceNotePlayer> createState() => _VoiceNotePlayerState();
-}
-
-class _VoiceNotePlayerState extends State<_VoiceNotePlayer> {
-  final _player = AudioPlayer();
-  bool _playing = false;
-  Duration _position = Duration.zero;
-  Duration? _duration;
-  StreamSubscription<Duration>? _positionSub;
-  StreamSubscription<Duration>? _durationSub;
-  StreamSubscription<void>? _completeSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _duration = widget.attachment.durationSeconds == null
-        ? null
-        : Duration(seconds: widget.attachment.durationSeconds!);
-    _positionSub = _player.onPositionChanged.listen((p) {
-      if (mounted) setState(() => _position = p);
-    });
-    _durationSub = _player.onDurationChanged.listen((d) {
-      if (mounted) setState(() => _duration = d);
-    });
-    _completeSub = _player.onPlayerComplete.listen((_) {
-      if (!mounted) return;
-      setState(() {
-        _playing = false;
-        _position = Duration.zero;
-      });
-    });
-  }
-
-  /// The attachment's `url` is a short-lived signed URL
-  /// (`media.chat_media_signed_url_ttl_minutes`) resolved once when this
-  /// [Message] was fetched/received — not cached or refreshed here, so a
-  /// bubble scrolled back to long after the link expired will fail to play.
-  /// No retry/refetch exists yet for that edge case (there's no single-
-  /// message refetch endpoint — see `_refreshSubscriptionRequirement`'s doc
-  /// for the same "list + find by id" limitation elsewhere in this screen).
-  Future<void> _toggle() async {
-    if (_playing) {
-      await _player.pause();
-    } else {
-      await _player.play(UrlSource(widget.attachment.url));
-    }
-    if (mounted) setState(() => _playing = !_playing);
-  }
-
-  @override
-  void dispose() {
-    _positionSub?.cancel();
-    _durationSub?.cancel();
-    _completeSub?.cancel();
-    _player.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = widget.isMine
-        ? AppColors.onPrimary
-        : AppColors.textPrimaryLight;
-    final total = _duration ?? Duration.zero;
-    final progress = total.inMilliseconds == 0
-        ? 0.0
-        : _position.inMilliseconds / total.inMilliseconds;
-    final minutes = total.inMinutes;
-    final seconds = total.inSeconds % 60;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          onPressed: _toggle,
-          icon: Icon(
-            _playing ? Icons.pause_circle_filled : Icons.play_circle_fill,
-            color: color,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        SizedBox(
-          width: 100,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
-              color: color,
-              backgroundColor: color.withValues(alpha: 0.3),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        Text(
-          '$minutes:${seconds.toString().padLeft(2, '0')}',
-          style: TextStyle(color: color, fontSize: 12),
-        ),
-      ],
-    );
-  }
-}
-
-/// docs/07 §3.3 "Unmatched-conversation banner": composer disabled, inline
-/// banner. Phase 1 left it as inert text — subscriptions didn't exist yet,
-/// so the flag was effectively always a hard stop, not a soft upsell.
-/// Phase 2 item 4 ("adds ... the upgrade-prompt UX around it") makes it
-/// tappable, straight to PremiumScreen — the same disclosed simplification
-/// item 2's advanced-filters lock and item 3's boost sheet already use
-/// instead of docs/07's more elaborate generic paywall-modal concept.
-class _SubscriptionRequiredBanner extends StatelessWidget {
-  const _SubscriptionRequiredBanner({required this.onUpgrade});
-
-  final Future<void> Function() onUpgrade;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      color: context.palette.fill,
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              "Subscribe to message people you haven't matched with.",
-            ),
-          ),
-          TextButton(onPressed: onUpgrade, child: const Text('Upgrade')),
-        ],
-      ),
     );
   }
 }
