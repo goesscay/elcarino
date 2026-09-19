@@ -14,6 +14,7 @@ import '../../matching/data/matching_repository.dart';
 import '../../matching/domain/swipe_direction.dart';
 import '../../matching/presentation/match_celebration_dialog.dart';
 import '../../matching/presentation/swipeable_card.dart';
+import '../../profile/data/profile_repository.dart';
 import '../data/discovery_repository.dart';
 import '../domain/boost_status.dart';
 import '../domain/candidate.dart';
@@ -119,12 +120,18 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
           .read(matchingRepositoryProvider)
           .swipe(targetId: candidate.id, direction: direction);
       if (result.matched && mounted) {
-        final conversation = await _findConversation(result.matchId);
+        // The chat to open and the viewer's own photo (for the two-photo
+        // celebration) are independent reads — fetch them together.
+        final (conversation, myPhotoUrl) = await (
+          _findConversation(result.matchId),
+          _findMyPhotoUrl(),
+        ).wait;
         if (!mounted) return;
         await showMatchCelebration(
           context,
           candidate,
           conversation: conversation,
+          myPhotoUrl: myPhotoUrl,
         );
       }
     } on ApiException catch (e) {
@@ -154,6 +161,19 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
         if (conversation.matchId == matchId) return conversation;
       }
       return null;
+    } on ApiException {
+      return null;
+    }
+  }
+
+  /// The viewer's own primary photo, for the match celebration. Best-effort:
+  /// a failure just means the celebration shows a placeholder for it rather
+  /// than delaying or blocking the moment.
+  Future<String?> _findMyPhotoUrl() async {
+    try {
+      final profile = await ref.read(profileRepositoryProvider).getProfile();
+      final photos = profile?.photos ?? const [];
+      return photos.isEmpty ? null : photos.first.url;
     } on ApiException {
       return null;
     }
