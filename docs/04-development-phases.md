@@ -685,7 +685,44 @@ suspend a user and it takes effect immediately.
       against. Revisit if/when #11 is answered — no code changes needed to start,
       the reserved enum value and pass-through swipe endpoint are already there.
 
-**Phase 2 status: functionally complete pending item 6.** Items 1–5 are built, tested,
+- [x] Likes tab — "who liked me" (premium, [PROPOSED]) and "people you like" (free).
+      Added after the UI redesign, from the target layout's Likes screen; docs/07 §3.4.
+      **Backend:** `GET /likes/received` and `GET /likes/sent` (docs/03 "Likes" — this
+      supersedes the old `GET /matches/who-liked-me` sketch), reading the `likes` table
+      Phase 1 item 6 has been filling since day one, so no migration. The decision that
+      matters: for a non-subscriber `received` returns **`{locked: true, total, likes: []}`
+      — a 200 carrying the count and no people at all**, not a 403 and not real photos to
+      blur client-side. The tab still needs the count and the upgrade prompt, and a
+      server that never sends the identity can't be scraped for it (same
+      no-derivative-signal rule as the `like` push, which names no one). The gate is
+      `Gate::define('view-who-liked-me')` → `isSubscriber()`, [TBD-13] — the docs never
+      say which plan benefit this is, so it is gated on "any subscriber", not a new
+      entitlement key (which would have changed the admin plan form). Both lists drop
+      inactive, blocked (either direction) and already-matched people; `received` also
+      drops anyone the viewer has swiped on, so answering a like removes it. A
+      `CandidateAnnotator` service was extracted from `DiscoveryFeedService` so the
+      feed, both Likes lists and (next) Explore all describe a person identically and
+      share the one bucketed-distance rule; `distance_km` became nullable (a liker who
+      never shared a location), and `interests`/`liked_at` were added to the candidate
+      shape. New `likes-list` limiter (120/h). 12 new backend tests (314 → 326),
+      including that a free response contains no `display_name`/`photos` and that no
+      raw coordinates are ever serialised.
+      **Mobile:** fourth tab (Discover · Likes · Chats · Profile), `LikesScreen` with two
+      tabs, a locked state (count, blurred *placeholder* mosaic, `See who likes you` →
+      Subscription, reloads on return so subscribing unlocks in place), and a shared
+      **profile-detail screen** (docs/07 §3.2 "Profile detail", the first place another
+      person's full profile is shown). Its Like/Pass reuse a new `submitSwipe` helper
+      extracted from the Discover deck, so a like from anywhere plays the same match
+      celebration. A `like` push now opens the Likes tab instead of the inbox. 27 new
+      mobile tests (179 → 206). Verified live on the Android emulator: subscriber grid,
+      detail, like-back → match celebration, list update and badge, People you like
+      (including a person with no photo or location), the free paywall, the upgrade →
+      subscribe → back loop, and dark mode. Not built: the reference layout's "Recently
+      liked you" strip (it would show identities), Discover-card-tap → detail.
+- [ ] Explore — interest categories with member counts (docs/07 §2.1). **Not started.**
+      Reuses the candidate shape, `CandidateAnnotator` and the profile-detail screen.
+
+**Phase 2 status: functionally complete pending item 6.** Items 1–5 (and the Likes tab) are built, tested,
 and CI-green. Assessed against this phase's own gate:
 - "A non-subscriber is blocked (403, with a clean upgrade prompt) from every premium
   action at the API layer, not just in the UI" — **met**. Every premium-gated

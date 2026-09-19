@@ -57,7 +57,7 @@ rather than a copy of any existing dating app.
 | 05 | Photo setup | ✅ Built | Upload, remove, reorder with left/right controls (no drag-and-drop yet), "Main" badge, "In review" state |
 | 06 | Discover (swipe) | ✅ Redesigned | Swipe card stack with a live drag peek, Pass / Like / Boost row, Filters entry. **No** Undo, Super Like, verified badge or location line |
 | 07 | Explore | ⛔ Not built | Needs an interest-category API that doesn't exist |
-| 08 | Likes | ⛔ Not built | "Who liked me" is premium-gated and deliberately not exposed yet (see [Roadmap](#roadmap)) |
+| 08 | Likes | ✅ Built | Two tabs. **People who like you** is premium: a free user gets the *count* and an upgrade prompt, and the API sends no people at all. **People you like** is free. Tap a person → full profile with Like / Pass. No "Recently liked you" strip |
 | 09 | Match | ✅ Redesigned | Dark celebration screen, animated overlapping photos, **Send a message** / **Keep discovering** |
 | 10 | Chat list | ✅ Redesigned | New-matches row and conversations. **No** search, **no** unread badge |
 | 11 | Chat | ✅ Redesigned | Bubbles, date separators, read receipts, typing indicator, voice notes, photos, GIFs, voice and video calls |
@@ -66,8 +66,8 @@ rather than a copy of any existing dating app.
 | 14 | Filters | ✅ Redesigned | "Show people" / "Reset", age and distance sliders, looking-for and goal chips |
 | 15 | Settings | ✅ Redesigned | Grouped cards; Log out and Delete account set apart at the bottom |
 
-Bottom navigation is **three tabs** (Discover, Chats, Profile). The layout shows five;
-Explore and Likes join when their APIs exist. Everything in the "not built" rows is
+Bottom navigation is **four tabs** (Discover, Likes, Chats, Profile). The layout shows
+five; Explore joins when its API exists. Everything in the "not built" rows is
 recorded, with the reason, in [`docs/07-ui-ux-design.md`](docs/07-ui-ux-design.md).
 
 ---
@@ -79,9 +79,10 @@ recorded, with the reason, in [`docs/07-ui-ux-design.md`](docs/07-ui-ux-design.m
 
 | | |
 |---|---|
-| Backend tests | **314 passing** (875 assertions) |
-| Mobile tests | **179 passing**, `flutter analyze` clean, `dart format` clean |
+| Backend tests | **326 passing** (930 assertions) |
+| Mobile tests | **206 passing**, `flutter analyze` clean, `dart format` clean |
 | UI redesign | Merged ([#2](https://github.com/goesscay/elcarino/pull/2)) — theme, tab shell and nine screens |
+| Likes tab | Built — premium "who liked me" enforced by the API, plus "people you like" and a shared profile-detail screen |
 | Verified live | Two-emulator voice and video calls, real-time chat, voice notes, photos, GIF picker states, admin panel with TOTP |
 | Not verified live | Stripe, Firebase push, Twilio SMS, Giphy, iOS (no credentials or toolchain on the dev machine) — see [Known gaps](#known-gaps-and-unverified-integrations) |
 
@@ -108,6 +109,13 @@ recorded, with the reason, in [`docs/07-ui-ux-design.md`](docs/07-ui-ux-design.m
 - Swipe like / pass with a gesture card stack and accessible buttons; a mutual like creates a match and a conversation
 - Excludes swiped, blocked, suspended and banned users
 - **Profile boost** (subscriber perk): an active boost ranks a candidate first for a configurable window
+
+### Likes
+- **Who liked me** (subscriber): a grid of everyone waiting on a reply, newest first; tap for their full profile and **Like / Pass**. A mutual like plays the match celebration and the person leaves the grid
+- **Free users see a count, not people.** The API returns `locked: true` and no identities, photos or ids, so there is nothing to blur client-side or scrape. Subscribing from the prompt unlocks the tab in place
+- **People you like** (free): your pending likes, read-only
+- Both lists hide inactive, blocked and already-matched people
+- A push for a new like opens this tab (and names no one)
 
 ### Chat
 - Real-time messaging over **Laravel Reverb** (WebSockets): typing indicator, online status, read receipts
@@ -181,7 +189,7 @@ in services:
 
 ```
 Services/
-  Auth · Discovery · Matching · Geo · Media · Safety
+  Auth · Discovery · Likes · Matching · Geo · Media · Safety
   Calls · Gifs · Notifications · Push · Sms
   Subscriptions · Payments · Admin
 Filament/        admin resources, widgets and the panel provider
@@ -200,7 +208,7 @@ Feature-first Clean Architecture: each feature has `presentation/`, `domain/` an
 
 ```
 lib/
-  authentication · onboarding · profile · discovery · matching
+  authentication · onboarding · profile · discovery · matching · likes
   chat · calls · safety · settings · subscriptions · notifications
   core/
     theme/     AppColors, AppPalette, AppTypography, AppSpacing, AppTheme
@@ -290,12 +298,12 @@ Mobile builds pick their environment with `--dart-define-from-file=config/{dev,s
 ## Testing and CI
 
 ```powershell
-# Backend: 314 tests
+# Backend: 326 tests
 cd backend
 php artisan test
 ./vendor/bin/pint --test
 
-# Mobile: 179 tests. The dart-define file is required: AppConfig fails loudly without it.
+# Mobile: 206 tests. The dart-define file is required: AppConfig fails loudly without it.
 cd mobile
 flutter test --dart-define-from-file=config/dev.json
 flutter analyze
@@ -351,6 +359,7 @@ response shapes is in [`docs/03-api-specification.md`](docs/03-api-specification
 | Auth | `register`, `login`, `logout`, `otp/request`, `otp/verify`, `password/forgot`, `password/reset`, `oauth/google`, `oauth/apple` |
 | Profile | `profiles/me` (+ `photos`, `photos/order`), `prompts` and `prompts/me`, `interests` and `interests/me`, `preferences/me`, `users/me`, `users/me/location` |
 | Discovery | `discovery/feed`, `discovery/boost`, `swipes` |
+| Likes | `likes/received` (subscriber-gated, count-only for free users), `likes/sent` |
 | Matches | `matches`, `matches/{id}` (show, unmatch) |
 | Chat | `chat/conversations`, `.../messages`, `.../read`, `gifs/search` |
 | Calls | `calls/token`, `calls/{id}/answer`, `.../decline`, `.../end` |
@@ -372,6 +381,8 @@ Real-time events travel over presence channels `presence-conversation.{id}`.
 | **2** Premium | Plans and purchase, advanced filters, boost, unmatched messaging, admin billing | ✅ Done, except Super Like / Rewind |
 | **3** Communication | Voice notes, GIFs, photo sharing, voice calls, video calls | ✅ Done, with a TURN gap |
 | **UI redesign** | Theme, tab shell, nine screens | ✅ Done and merged |
+| **Likes** tab | "Who liked me" (premium) and "people you like", plus profile detail | ✅ Done |
+| **Explore** tab | Interest categories with member counts | ⬜ Next |
 | **4** AI | Selfie verification, compatibility scoring, recommendations, icebreakers | ⏸ Paused on client decisions #21–25 |
 | **5** Production | Security audit, load testing, store submission, deployment, monitoring, backups | ⬜ Not started |
 
@@ -395,7 +406,7 @@ Stated plainly, so nobody assumes they work:
 - **Stripe renewals:** `invoice.payment_succeeded` doesn't yet extend `ends_at` on renewal.
 - **iOS** hasn't been built or run. Only Android was exercised.
 - **Feed gating on photos:** candidates need at least one photo of *any* moderation status, because nothing can be approved until a moderation UI exists. Tighten to approved-only before real users.
-- **Not built:** Explore, Likes, Undo / Super Like, other-user profile detail, chat search, tab unread badge, notification centre, per-type notification toggles, account deletion UX, Help & Legal content, drag-and-drop photo reorder, report evidence attachments, verification review.
+- **Not built:** Explore, Undo / Super Like, opening a profile from a Discover card tap, the Likes "Recently liked you" strip, chat search, tab unread badge, notification centre, per-type notification toggles, account deletion UX, Help & Legal content, drag-and-drop photo reorder, report evidence attachments, verification review.
 - **Throttled requests** return Laravel's default 429 body, not the app's error envelope.
 
 ---

@@ -25,7 +25,7 @@ void main() {
     test('like routes to the inbox, replacing not pushed', () {
       final route = routeForNotificationData({'type': 'like'});
 
-      expect(route!.path, '/matches');
+      expect(route!.path, '/likes');
       expect(route.mode, NotificationNavMode.go);
     });
 

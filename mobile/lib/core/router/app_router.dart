@@ -15,7 +15,10 @@ import '../../chat/domain/conversation.dart';
 import '../../chat/presentation/conversation_loader_screen.dart';
 import '../../chat/presentation/conversation_screen.dart';
 import '../../chat/presentation/inbox_screen.dart';
+import '../../discovery/domain/candidate.dart';
+import '../../discovery/presentation/candidate_detail_screen.dart';
 import '../../discovery/presentation/discover_feed_screen.dart';
+import '../../likes/presentation/likes_screen.dart';
 import '../../onboarding/presentation/location_permission_screen.dart';
 import '../../onboarding/presentation/notification_permission_screen.dart';
 import '../../onboarding/presentation/onboarding_complete_screen.dart';
@@ -42,7 +45,7 @@ import '../widgets/splash_screen.dart';
 /// simpler to reason about, and this app has no automatic session-loss event
 /// yet that would need a global redirect to react to.
 ///
-/// Main tabs (Discover / Chats / Profile) are a real bottom-nav shell —
+/// Main tabs (Discover / Likes / Chats / Profile) are a real bottom-nav shell —
 /// [MainShell]. Explore and Likes join it once they have screens and APIs.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -65,6 +68,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/discover',
                 builder: (context, state) => const DiscoverFeedScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/likes',
+                builder: (context, state) => const LikesScreen(),
               ),
             ],
           ),
@@ -239,6 +250,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/subscription',
         builder: (context, state) => const PremiumScreen(),
+      ),
+      // Another person's profile, over the tab bar. `extra` is a
+      // (DiscoveryCandidate, canRespond) record; the screen pops `true` once
+      // the person has been answered or blocked (docs/07 §3.2 "Profile detail").
+      GoRoute(
+        path: '/profile/candidate',
+        builder: (context, state) {
+          final (candidate, canRespond) =
+              state.extra! as (DiscoveryCandidate, bool);
+          return CandidateDetailScreen(
+            candidate: candidate,
+            canRespond: canRespond,
+          );
+        },
       ),
       // `extra` is a (userId, displayName) record — from ConversationScreen's
       // header overflow, the only entry point into reporting someone today.

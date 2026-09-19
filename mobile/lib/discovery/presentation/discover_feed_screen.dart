@@ -4,18 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../chat/data/chat_repository.dart';
-import '../../chat/domain/conversation.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_logo.dart';
 import '../../core/widgets/state_message.dart';
-import '../../matching/data/matching_repository.dart';
 import '../../matching/domain/swipe_direction.dart';
-import '../../matching/presentation/match_celebration_dialog.dart';
+import '../../matching/presentation/swipe_flow.dart';
 import '../../matching/presentation/swipeable_card.dart';
-import '../../profile/data/profile_repository.dart';
 import '../data/discovery_repository.dart';
 import '../domain/boost_status.dart';
 import '../domain/candidate.dart';
@@ -117,67 +113,17 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     });
 
     try {
-      final result = await ref
-          .read(matchingRepositoryProvider)
-          .swipe(targetId: candidate.id, direction: direction);
-      if (result.matched && mounted) {
-        // The chat to open and the viewer's own photo (for the two-photo
-        // celebration) are independent reads — fetch them together.
-        final (conversation, myPhotoUrl) = await (
-          _findConversation(result.matchId),
-          _findMyPhotoUrl(),
-        ).wait;
-        if (!mounted) return;
-        await showMatchCelebration(
-          context,
-          candidate,
-          conversation: conversation,
-          myPhotoUrl: myPhotoUrl,
-        );
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      await submitSwipe(
+        context: context,
+        ref: ref,
+        candidate: candidate,
+        direction: direction,
+      );
     } finally {
       if (mounted) setState(() => _swiping = false);
     }
 
     unawaited(_maybeLoadMore());
-  }
-
-  /// `SwipeService` (item 6) creates a `Conversation` alongside every
-  /// `UserMatch` in the same request, so it's already there to look up by
-  /// the time the swipe response comes back — no extra wait, just an extra
-  /// `GET /chat/conversations` round-trip so the celebration dialog's "Send
-  /// a message" button has somewhere real to go.
-  Future<Conversation?> _findConversation(int? matchId) async {
-    if (matchId == null) return null;
-    try {
-      final conversations = await ref
-          .read(chatRepositoryProvider)
-          .getConversations();
-      for (final conversation in conversations) {
-        if (conversation.matchId == matchId) return conversation;
-      }
-      return null;
-    } on ApiException {
-      return null;
-    }
-  }
-
-  /// The viewer's own primary photo, for the match celebration. Best-effort:
-  /// a failure just means the celebration shows a placeholder for it rather
-  /// than delaying or blocking the moment.
-  Future<String?> _findMyPhotoUrl() async {
-    try {
-      final profile = await ref.read(profileRepositoryProvider).getProfile();
-      final photos = profile?.photos ?? const [];
-      return photos.isEmpty ? null : photos.first.url;
-    } on ApiException {
-      return null;
-    }
   }
 
   Future<void> _openBoost() async {

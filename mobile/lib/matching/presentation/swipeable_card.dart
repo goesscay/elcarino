@@ -286,23 +286,24 @@ class _CardFace extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          color: AppColors.onPhotoMuted,
-                          size: 16,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          candidate.distanceLabel,
-                          style: text.bodySmall?.copyWith(
+                    if (candidate.distanceLabel != null)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
                             color: AppColors.onPhotoMuted,
-                            fontSize: 14,
+                            size: 16,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            candidate.distanceLabel!,
+                            style: text.bodySmall?.copyWith(
+                              color: AppColors.onPhotoMuted,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     if (bio != null && bio.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.sm),
                       Text(

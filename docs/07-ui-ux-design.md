@@ -32,17 +32,17 @@ provisional; the token *names* and component structure stay as branding fills in
 
 ### 2.1 Top-level navigation (authenticated)
 
-Bottom tab bar. **Built (UI redesign, `MainShell`): Discover · Chats · Profile.**
-Explore and Likes are part of the target design but are not tabs yet — neither has a
-screen or an API behind it (`GET /who-liked-me` is `[PROPOSED]`), and they join the bar
-as two more destinations when they do. Each tab keeps its own stack and state; the
-Chats tab reloads whenever it is (re)selected.
+Bottom tab bar. **Built (`MainShell`): Discover · Likes · Chats · Profile.**
+Explore is part of the target design (it sits between Discover and Likes) but is not a
+tab yet — it has no screen or API behind it — and it joins the bar as one more
+destination when it does. Each tab keeps its own stack and state; the Likes and Chats
+tabs reload whenever they are (re)selected.
 
 | Tab | Screen | Notes |
 |---|---|---|
 | **Discover** | Card stack | Default tab on launch |
 | **Chats** | Matches + inbox | Badge = unread conversations *(not built — needs a shared unread source)* |
-| **Likes** *(not built)* | Who liked me | Premium — shows blurred grid + paywall for free users |
+| **Likes** | Who liked me / people you like | **Built.** "People who like you" is premium; a free user gets the count and a paywall, never the people (§3.4) |
 | **Explore** *(not built)* | Interest categories | Needs a categories/member-count endpoint |
 | **Profile** | Own profile + entry to Edit / Verification / Settings | |
 
@@ -113,7 +113,7 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 | Screen | Spec |
 |---|---|
 | **Card stack** | **Built (UI redesign).** One large photo-first card (24 px corners, soft lift — the only shadow in the app): primary photo, name + age + verified badge, approximate distance, bio (2 lines) and up to three *shared* interests as translucent chips, on a short bottom fade. Drag left = pass, right = like: the card tilts, a LIKE/PASS stamp fades in with the drag, a light haptic marks the commit line, and the next card grows into place behind it; a short drag springs back. Action row under the card: **Pass · Like · Boost** (circular; Like is the solid-red primary). Header: wordmark + filter icon. *Not built:* swipe-up Super Like and **Undo** (rewind) — no API for either yet ([PROPOSED, TBD-11]); they join the action row when they exist. *Not built:* tap card → Profile detail (below). |
-| **Profile detail** | Scrollable: photo carousel interleaved with prompt answers, bio, interests (chips), relationship goal, distance. Sticky footer pass/like. Overflow menu: Report, Block. |
+| **Profile detail** | **Built (with Likes).** One vertical scroll: the main photo full-bleed under a translucent back button and `⋯` menu, then name + age + verified badge, distance, relationship-goal chip, bio, **Interests** (a shared interest is picked out in the brand tint, with "you have N in common"), then the remaining photos interleaved with prompt answers (prompt, photo, prompt, photo…, dropping neither). Pinned footer **Pass** / **Like** when it's opened from someone who liked you; none when read-only (People you like). Like uses the same swipe flow as the Discover deck, so a mutual like plays the match celebration; the screen pops `true` once someone is answered or blocked so the list can drop them. `⋯` → Report, Block. It renders a candidate the list already fetched — there is no "get any user's profile" endpoint. *Not built:* opening it from a Discover card tap (the card is still swipe-only). |
 | **Filters** | **Redesigned (UI redesign); a full screen at `/discover/filters` (Discover's filter icon), not a sheet.** The same form as onboarding's Preferences step and Edit preferences (`Save`): *Interested in* chips, an *Age range* slider and a *Distance* slider with their live values in brand red, and a collapsible *Advanced filters* card (religion, politics — premium-gated in Phase 2 [TBD-13]; a non-subscriber sees a `Premium` pill, an Upgrade row and locked inputs, and can still remove a lapsed value). Primary action `Show people` is pinned at the bottom: it saves and returns to the feed, which reloads. `Reset` (app bar) appears only once the form has unsaved changes and reverts them to what was loaded — it never clears saved preferences and defines no "default" filter values. *Not built:* filters by interests, relationship goals and lifestyle — the form has no such fields today (the API accepts a relationship-goal filter, but no UI sets it). |
 | **Match celebration** | **Built (UI redesign).** Full-screen and always dark (a moment, not a page): the viewer's and the match's portraits overlap as circles with a heart badge between them, on a soft red glow. Photos slide together, the heart pops, the text fades up, then it's still — no confetti or heart shower; honours reduce-motion. "It's a Match!" / "You both liked each other." · `Send a message` (opens the conversation) / `Keep discovering`. The viewer's own photo is a best-effort profile read; if it fails or there's no photo the celebration shows a placeholder rather than waiting on it. |
 | **Out of likes** (free) | Replaces stack when the free daily like limit is hit [TBD-11/13]: countdown to reset + `Get unlimited likes` (paywall). |
@@ -130,9 +130,20 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 ### 3.4 Likes (premium)
 
+**Built.** A tab with a large "Likes" title and a red count badge (people who like you),
+over two text tabs with a brand-red underline. Both lists stay alive when you switch, and
+both reload when the Likes tab is re-selected (a like that arrived while you were elsewhere
+is there when you come back). Pull to refresh.
+
 | Screen | Spec |
 |---|---|
-| **Who liked me** | Grid of profile thumbnails. Free: blurred + count ("7 people like you") + `See who likes you` paywall. Premium: unblurred, tap → Profile detail with quick like/pass. |
+| **People who like you** | Grid of photo tiles (name + age, distance, on a soft bottom fade), newest first. **Subscriber:** tap → Profile detail with **Like / Pass**; answering someone removes them from the grid and decrements the badge. **Free:** the API returns the *count* and `locked: true` and **no people at all** (`GET /likes/received`, docs/03) — the screen shows "N people like you", a blurred mosaic of *placeholder* tiles, and `See who likes you` → Subscription; on return it reloads, so subscribing there unlocks the grid in place. There is nothing real behind the blur to reveal or scrape. With no likes it's an ordinary empty state ("No likes yet"), not a paywall. |
+| **People you like** | Free, read-only: the same grid of people you've liked who haven't matched with you yet; tap → Profile detail **without** Like / Pass. Empty: "Nothing waiting" + `Keep discovering`. |
+
+*Not built:* the reference layout's "Recently liked you" strip on the free tab (it would
+show identities, which is the paywalled data) and a Likes-tab unread badge on the bar.
+The paywall's benefit list is plan data, so it only mentions "see who likes you" if the
+plan's copy does.
 
 ### 3.5 Profile (own)
 

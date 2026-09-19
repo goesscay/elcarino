@@ -17,3 +17,16 @@ class ChatsTabRefresh extends Notifier<int> {
 final chatsTabRefreshProvider = NotifierProvider<ChatsTabRefresh, int>(
   ChatsTabRefresh.new,
 );
+
+/// Same idea for the Likes tab: a like that arrived (or a subscription bought)
+/// while on another tab is there when you come back.
+class LikesTabRefresh extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
+final likesTabRefreshProvider = NotifierProvider<LikesTabRefresh, int>(
+  LikesTabRefresh.new,
+);
