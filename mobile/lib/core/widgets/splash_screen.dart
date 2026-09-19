@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../onboarding/data/onboarding_gate.dart';
 import '../../onboarding/domain/onboarding_step.dart';
 import '../auth/auth_controller.dart';
-import '../theme/app_colors.dart';
+import 'app_logo.dart';
 
 /// docs/07-ui-ux-design.md §3.1 "Splash": "Logo centred; decides authed vs
 /// not; <= 1.5s then routes." [AuthController] resolves the token
@@ -33,18 +33,7 @@ class SplashScreen extends ConsumerWidget {
       });
     }
 
-    return const Scaffold(
-      body: Center(
-        child: Text(
-          'Elcarino',
-          style: TextStyle(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w800,
-            fontSize: 32,
-          ),
-        ),
-      ),
-    );
+    return const Scaffold(body: Center(child: AppLogo(width: 200)));
   }
 
   Future<void> _resolveAndGo(

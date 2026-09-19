@@ -187,45 +187,60 @@ Payments (read + plan CRUD), Dashboard (metrics per spec §19), Audit log (read-
 
 ### 4.1 Colour tokens
 
-Values are provisional (neutral, brand-agnostic). Semantic names are stable.
+Confirmed direction (UI/UX redesign, 2026-09): premium, clean, warm, photo-first.
+Roughly **70% neutral · 20% white surface · 10% Elcarino red** — red marks the
+important action (like, send, primary CTA, the selected tab), never large fills; the
+user's photos are the most important thing on any screen.
 
-| Token | Placeholder value | Use |
+| Token | Light / Dark | Use |
 |---|---|---|
-| `color.bg` | `#FFFFFF` / dark `#121317` | screen background |
-| `color.surface` | `#F5F5F7` / dark `#1E1F24` | cards, sheets |
-| `color.text.primary` | `#1B1B1F` / dark `#ECECEE` | body text |
-| `color.text.secondary` | `#6B6B72` | captions, metadata |
-| `color.primary` | `#DC2626` (confirmed — Elcarino brand red, decision #2) | primary actions, like |
+| `color.bg` | `#FAFAFA` / `#111111` | screen background |
+| `color.surface` | `#FFFFFF` / `#1C1C1E` | cards, sheets, nav bar |
+| `color.fill` | `#F1F1F3` / `#2A2A2D` | quiet fill on surfaces: chips, incoming bubble, inputs |
+| `color.text.primary` | `#111111` / `#FFFFFF` | body text |
+| `color.text.secondary` | `#6B6B6B` / `#A1A1AA` | captions, metadata |
+| `color.border` | `#E5E5E5` / `#2C2C2E` | hairlines, dividers |
+| `color.primary` | `#DC2626` (Elcarino brand red, decision #2) | primary actions, like, selected tab |
+| `color.primary.dark` | `#B91C1C` | pressed / emphasis on light |
+| `color.primary.tint` | `#FEE2E2` / `#3B1414` | selected chip fill, soft highlights |
 | `color.on-primary` | `#FFFFFF` | text/icons on primary |
 | `color.pass` | `#8A8A8E` | pass action |
 | `color.success` | `#2E9C68` | verified, confirmations |
 | `color.warning` | `#D9832A` | caution states |
 | `color.danger` | `#D64545` | destructive, block, errors |
-| `color.border` | `#E4E4E9` / dark `#33343A` | dividers |
+| `color.on-photo` (+ muted / faint / scrim / control) | white / black-alpha | text and controls over a user's photo — white in both themes, since a photo isn't themed |
 
-Dark mode is **required** (system-driven). Every token has a light and dark value; no
-hard-coded colours in widgets.
+Dark mode is **required** (system-driven) and is designed, not inverted. Every token has
+a light and dark value; no hard-coded colours in widgets — read `AppColors.*` or, for
+anything that changes with brightness, `context.palette.*`.
 
 ### 4.2 Typography
 
-Single family (system default until brand type is chosen). Scale:
+One family — the platform's own (SF on iOS, Roboto on Android; Inter is not bundled).
+Three weights only (400 / 600 / 700); hierarchy comes from size. Scale:
 
-| Style | Size / weight |
+| Role | Size / weight |
 |---|---|
-| Display | 32 / 700 |
-| Title | 22 / 700 |
-| Headline | 18 / 600 |
-| Body | 16 / 400 |
-| Callout | 14 / 400 |
+| Hero | 32 / 700 |
+| Screen title | 28 / 700 |
+| Section title | 22 / 600 |
+| Card title | 22 / 700 |
+| Row title | 17 / 600 |
+| Body | 16 / 400 (dense 15) |
+| Secondary | 13 / 400 |
+| Button | 16 / 600 |
+| Chip / label | 13 / 600 |
 | Caption | 12 / 400 |
 
 All sizes scale with the OS dynamic-type setting.
 
 ### 4.3 Spacing & radius
 
-4 pt base grid: `xs 4 · sm 8 · md 12 · lg 16 · xl 24 · 2xl 32`. Corner radius:
-`sm 8 · md 12 · lg 20 · pill 999`. Card elevation via subtle shadow or 1 px border
-(theme-dependent), never both.
+Spacing: `xs 4 · sm 8 · md 12 · lg 16 · screen 20 · xl 24 · xxl 32 · huge 40`; default
+horizontal screen padding **20**. Corner radius: `sm 8 · md 12 · lg 16 · card 20 ·
+profile-card 24 · button 16 · pill 999` — pills only for avatars, circular actions and
+small chips; rounding is a hierarchy. Card separation by a 1 px border, not shadow
+(never both).
 
 ### 4.4 Component library (Phase 1 build order roughly follows this)
 
