@@ -247,7 +247,7 @@ class _CardFace extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x00000000), AppColors.photoScrim],
+                  colors: [AppColors.photoScrimClear, AppColors.photoScrim],
                 ),
               ),
               child: Padding(

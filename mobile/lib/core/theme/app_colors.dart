@@ -51,6 +51,7 @@ abstract final class AppColors {
   static const onPhoto = Color(0xFFFFFFFF);
   static const onPhotoMuted = Color(0xE6FFFFFF); // secondary text on a photo
   static const onPhotoFaint = Color(0x3DFFFFFF); // placeholder fill on a scrim
+  static const photoScrimClear = Color(0x00000000); // gradient start (clear)
   static const photoScrim = Color(0xD9000000); // bottom-of-card gradient end
   static const photoControl = Color(0x73000000); // small control on a photo
   static const modalBarrier = Color(0xE6000000); // full-screen celebration
