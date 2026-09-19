@@ -138,7 +138,7 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 | Screen | Spec |
 |---|---|
-| **My profile** | Preview as others see it; completion meter (gamification — spec §17); `Edit profile`; verification status chip (`Verify` CTA if unverified); gear → Settings. |
+| **My profile** | **Redesigned (UI redesign), as the Profile tab.** Large title + settings gear. A circular portrait (green verified badge when verified), "Name, age", a Verified / Not verified pill, a **Profile completeness** card (percentage + bar — gamification, spec §17), then the CTAs: solid-red `Edit profile` and outlined `Edit preferences`. Below, the profile as others see it: *About me*, *Interests* (chips) and *Prompts* (cards) — sections are omitted when empty. Interests and prompts are best-effort reads of the existing edit-screen endpoints; if either fails the rest still shows. First load shows a skeleton; refreshes update in place; a load error has Retry. *Not built:* a `Verify` CTA (no verification flow yet — Phase 4) and a location line (the API deliberately exposes no location to the client — spec §9). |
 | **Edit profile** | Sections: photos, prompts, bio, basics, relationship goal, interests. Each opens a focused editor. Autosave or explicit save [decide — recommend explicit save per section]. |
 | **Edit photos** | Same grid as onboarding; reorder; delete; moderation status per photo. |
 | **Edit prompts** | Reorder answered prompts; swap a prompt; edit an answer. |
