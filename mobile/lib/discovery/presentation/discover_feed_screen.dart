@@ -7,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../../chat/data/chat_repository.dart';
 import '../../chat/domain/conversation.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_logo.dart';
 import '../../matching/data/matching_repository.dart';
 import '../../matching/domain/swipe_direction.dart';
 import '../../matching/presentation/match_celebration_dialog.dart';
@@ -41,10 +43,20 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
   bool _hasMore = false;
   int _page = 1;
 
+  /// How far the top card has been dragged toward committing (0 -> 1); the
+  /// card behind it grows into place as this rises.
+  final _dragProgress = ValueNotifier<double>(0);
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _dragProgress.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -99,6 +111,7 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
     setState(() {
       _swiping = true;
       _candidates = _candidates.skip(1).toList();
+      _dragProgress.value = 0;
     });
 
     try {
@@ -149,6 +162,8 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
   Future<void> _openBoost() async {
     await showModalBottomSheet<void>(
       context: context,
+      // Over the tab bar, not clipped above it.
+      useRootNavigator: true,
       isScrollControlled: true,
       builder: (sheetContext) => _BoostSheet(
         onActivated: () {
@@ -162,19 +177,24 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Discover'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bolt_outlined),
-            tooltip: 'Boost',
-            onPressed: _openBoost,
+        // The wordmark stands in for a "Discover" title: the tab bar already
+        // says where you are, and the logo is what a dating app's home leads
+        // with.
+        title: const Padding(
+          padding: EdgeInsets.only(left: AppSpacing.xs),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: AppLogo(width: 112),
           ),
+        ),
+        actions: [
           IconButton(
             icon: const Icon(Icons.tune),
             tooltip: 'Filters',
             onPressed: () =>
                 context.push('/profile/preferences').then((_) => _load()),
           ),
+          const SizedBox(width: AppSpacing.sm),
         ],
       ),
       body: SafeArea(child: _buildBody()),
@@ -228,23 +248,36 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
       children: [
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.sm,
+              AppSpacing.screen,
+              0,
+            ),
             child: Stack(
               children: [
                 // A non-interactive card peeking out behind the top one, for
-                // visual depth only — never receives gestures.
+                // depth only - never receives gestures. It grows to full size
+                // as the top card is dragged away.
                 if (_candidates.length > 1)
                   Positioned.fill(
-                    top: 8,
-                    child: Transform.scale(
-                      scale: 0.96,
-                      child: IgnorePointer(child: _peek(_candidates[1])),
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: _dragProgress,
+                      builder: (context, progress, child) => Transform.scale(
+                        scale: 0.94 + 0.06 * progress,
+                        alignment: Alignment.bottomCenter,
+                        child: child,
+                      ),
+                      child: IgnorePointer(
+                        child: SwipePeekCard(candidate: _candidates[1]),
+                      ),
                     ),
                   ),
                 Positioned.fill(
                   child: SwipeableCard(
                     key: ValueKey(_candidates.first.id),
                     candidate: _candidates.first,
+                    dragProgress: _dragProgress,
                     onSwiped: (direction) => _performSwipe(direction),
                   ),
                 ),
@@ -253,23 +286,42 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            AppSpacing.lg,
+            AppSpacing.screen,
+            AppSpacing.lg,
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _ActionButton(
-                icon: Icons.close,
-                color: Colors.red,
+                icon: Icons.close_rounded,
+                label: 'Pass',
+                size: 60,
+                iconColor: AppColors.pass,
                 onPressed: _swiping
                     ? null
                     : () => _performSwipe(SwipeDirection.left),
               ),
+              const SizedBox(width: AppSpacing.xl),
               _ActionButton(
-                icon: Icons.favorite,
-                color: Colors.green,
+                icon: Icons.favorite_rounded,
+                label: 'Like',
+                size: 72,
+                filled: true,
                 onPressed: _swiping
                     ? null
                     : () => _performSwipe(SwipeDirection.right),
+              ),
+              const SizedBox(width: AppSpacing.xl),
+              _ActionButton(
+                icon: Icons.bolt_rounded,
+                label: 'Boost',
+                size: 60,
+                iconColor: AppColors.primary,
+                onPressed: _openBoost,
               ),
             ],
           ),
@@ -277,45 +329,57 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
       ],
     );
   }
-
-  Widget _peek(DiscoveryCandidate candidate) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: candidate.photos.isEmpty
-          ? Container(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            )
-          : Image.network(
-              candidate.photos.first.url,
-              fit: BoxFit.cover,
-              width: double.infinity,
-            ),
-    );
-  }
 }
 
+/// A circular action under the card. [filled] is the one primary action (Like:
+/// solid brand red); the rest are quiet white circles with a hairline.
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.icon,
-    required this.color,
+    required this.label,
+    required this.size,
     required this.onPressed,
+    this.filled = false,
+    this.iconColor,
   });
 
   final IconData icon;
-  final Color color;
+  final String label;
+  final double size;
+  final bool filled;
+  final Color? iconColor;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      shape: const CircleBorder(),
-      elevation: 2,
-      child: IconButton(
-        icon: Icon(icon, color: color, size: 32),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        onPressed: onPressed,
+    final p = context.palette;
+    final enabled = onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      excludeSemantics: true,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.5,
+        child: Material(
+          color: filled ? AppColors.primary : p.surface,
+          shape: CircleBorder(
+            side: filled ? BorderSide.none : BorderSide(color: p.border),
+          ),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onPressed,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Icon(
+                icon,
+                size: size * 0.46,
+                color: filled ? AppColors.onPrimary : iconColor,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -419,7 +483,22 @@ class _BoostSheetState extends ConsumerState<_BoostSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(Icons.bolt, size: 40),
+        Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: context.palette.primaryTint,
+              shape: BoxShape.circle,
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: Icon(
+                Icons.bolt_rounded,
+                size: 32,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: AppSpacing.md),
         Text(
           'Boost',
@@ -427,7 +506,12 @@ class _BoostSheetState extends ConsumerState<_BoostSheet> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(_statusMessage(status), textAlign: TextAlign.center),
+        Text(
+          _statusMessage(status),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: context.palette.textSecondary),
+        ),
         const SizedBox(height: AppSpacing.lg),
         if (!status.isEntitled)
           FilledButton(
@@ -491,18 +575,35 @@ class _Guidance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48),
-            const SizedBox(height: AppSpacing.md),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: AppSpacing.lg),
-            FilledButton(onPressed: onAction, child: Text(actionLabel)),
-          ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: p.fill,
+                  shape: BoxShape.circle,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Icon(icon, size: 36, color: p.textSecondary),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              FilledButton(onPressed: onAction, child: Text(actionLabel)),
+            ],
+          ),
         ),
       ),
     );

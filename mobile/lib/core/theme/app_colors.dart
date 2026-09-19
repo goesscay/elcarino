@@ -54,6 +54,10 @@ abstract final class AppColors {
   static const photoScrim = Color(0xD9000000); // bottom-of-card gradient end
   static const photoControl = Color(0x73000000); // small control on a photo
   static const modalBarrier = Color(0xE6000000); // full-screen celebration
+
+  /// The soft lift under the large photo card — the one place a shadow is
+  /// used; everything else separates by hairline border.
+  static const cardShadow = Color(0x1F000000);
 }
 
 /// The brightness-aware half of the palette, as a [ThemeExtension] so a

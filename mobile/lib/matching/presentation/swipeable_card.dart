@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/network_photo.dart';
 import '../../discovery/domain/candidate.dart';
 import '../domain/swipe_direction.dart';
 
@@ -11,15 +14,21 @@ import '../domain/swipe_direction.dart';
 /// *animates itself* here; the actual API call happens in the parent
 /// (DiscoverFeedScreen) once [onSwiped] fires, so this widget has no
 /// networking of its own.
+///
+/// [dragProgress] (0 → 1 as the card nears the commit threshold) lets the
+/// parent animate the card *behind* this one growing into place as it's
+/// dragged away, which is most of what makes a stack feel alive.
 class SwipeableCard extends StatefulWidget {
   const SwipeableCard({
     required this.candidate,
     required this.onSwiped,
+    this.dragProgress,
     super.key,
   });
 
   final DiscoveryCandidate candidate;
   final ValueChanged<SwipeDirection> onSwiped;
+  final ValueNotifier<double>? dragProgress;
 
   @override
   State<SwipeableCard> createState() => SwipeableCardState();
@@ -32,6 +41,7 @@ class SwipeableCardState extends State<SwipeableCard>
   late final AnimationController _controller;
   Animation<Offset>? _animation;
   Offset _dragOffset = Offset.zero;
+  bool _committedHaptic = false;
 
   @override
   void initState() {
@@ -39,10 +49,13 @@ class SwipeableCardState extends State<SwipeableCard>
     _controller =
         AnimationController(
           vsync: this,
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 260),
         )..addListener(() {
           final animation = _animation;
-          if (animation != null) setState(() => _dragOffset = animation.value);
+          if (animation != null) {
+            setState(() => _dragOffset = animation.value);
+            _reportProgress();
+          }
         });
   }
 
@@ -52,18 +65,33 @@ class SwipeableCardState extends State<SwipeableCard>
     super.dispose();
   }
 
-  void _onPanUpdate(DragUpdateDetails details) =>
-      setState(() => _dragOffset += details.delta);
+  void _reportProgress() {
+    widget.dragProgress?.value = (_dragOffset.dx.abs() / _swipeThreshold).clamp(
+      0.0,
+      1.0,
+    );
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() => _dragOffset += details.delta);
+    _reportProgress();
+    // A light tick the moment the drag crosses the commit line, so the user
+    // feels where "let go now and it counts" starts (docs/07 §4.5).
+    final past = _dragOffset.dx.abs() > _swipeThreshold;
+    if (past && !_committedHaptic) HapticFeedback.selectionClick();
+    _committedHaptic = past;
+  }
 
   void _onPanEnd(DragEndDetails details) {
     if (_dragOffset.dx.abs() > _swipeThreshold) {
       _flyAway(_dragOffset.dx > 0 ? SwipeDirection.right : SwipeDirection.left);
     } else {
-      _animateTo(Offset.zero, Curves.easeOut);
+      _animateTo(Offset.zero, Curves.easeOutBack);
     }
   }
 
   void _flyAway(SwipeDirection direction) {
+    HapticFeedback.lightImpact();
     final screenWidth = MediaQuery.of(context).size.width;
     final endX = direction == SwipeDirection.right
         ? screenWidth * 1.5
@@ -85,6 +113,12 @@ class SwipeableCardState extends State<SwipeableCard>
   @override
   Widget build(BuildContext context) {
     final angle = (_dragOffset.dx / 300).clamp(-0.4, 0.4);
+    // 0 at the start of the drag, 1 at the commit threshold — drives how
+    // strongly the LIKE/PASS stamp shows through.
+    final stamp = ((_dragOffset.dx.abs() - 16) / (_swipeThreshold - 16)).clamp(
+      0.0,
+      1.0,
+    );
 
     return GestureDetector(
       onPanUpdate: _onPanUpdate,
@@ -96,23 +130,93 @@ class SwipeableCardState extends State<SwipeableCard>
           child: Stack(
             children: [
               _CardFace(candidate: widget.candidate),
-              if (_dragOffset.dx > 20)
-                const Positioned(
-                  top: 24,
+              if (_dragOffset.dx > 0)
+                Positioned(
+                  top: 28,
                   left: 24,
-                  child: _Stamp(label: 'LIKE', color: Colors.green),
+                  child: _Stamp(
+                    label: 'LIKE',
+                    fill: AppColors.primary,
+                    color: AppColors.onPrimary,
+                    opacity: stamp,
+                    turns: -0.035,
+                  ),
                 ),
-              if (_dragOffset.dx < -20)
-                const Positioned(
-                  top: 24,
+              if (_dragOffset.dx < 0)
+                Positioned(
+                  top: 28,
                   right: 24,
-                  child: _Stamp(label: 'PASS', color: Colors.red),
+                  child: _Stamp(
+                    label: 'PASS',
+                    fill: AppColors.photoControl,
+                    color: AppColors.onPhoto,
+                    opacity: stamp,
+                    turns: 0.035,
+                  ),
                 ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+/// The card behind the top one — the next candidate's photo only, rounded and
+/// lifted the same way so the stack reads as one object. Non-interactive.
+class SwipePeekCard extends StatelessWidget {
+  const SwipePeekCard({required this.candidate, super.key});
+
+  final DiscoveryCandidate candidate;
+
+  @override
+  Widget build(BuildContext context) {
+    return _CardShell(child: _CardPhoto(candidate: candidate));
+  }
+}
+
+/// Rounded clip + the soft lift. The large photo card is the one element in
+/// the app that gets a shadow; everything else uses a hairline border.
+class _CardShell extends StatelessWidget {
+  const _CardShell({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(AppRadius.profileCard));
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        borderRadius: radius,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: SizedBox.expand(child: child),
+      ),
+    );
+  }
+}
+
+class _CardPhoto extends StatelessWidget {
+  const _CardPhoto({required this.candidate});
+
+  final DiscoveryCandidate candidate;
+
+  @override
+  Widget build(BuildContext context) {
+    if (candidate.photos.isEmpty) {
+      // A photo card always carries a dark scrim, so its empty state is dark
+      // in both themes rather than the themed light fill.
+      return const PhotoPlaceholder(fill: AppColors.surfaceDark);
+    }
+    return NetworkPhoto(candidate.photos.first.url);
   }
 }
 
@@ -123,33 +227,35 @@ class _CardFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: SizedBox.expand(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            candidate.photos.isEmpty
-                ? Container(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest,
-                    child: const Icon(Icons.person, size: 96),
-                  )
-                : Image.network(candidate.photos.first.url, fit: BoxFit.cover),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black87],
-                  ),
+    final text = Theme.of(context).textTheme;
+    final interests = candidate.sharedInterests.take(3).toList();
+    final bio = candidate.bio;
+
+    return _CardShell(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _CardPhoto(candidate: candidate),
+          // Information sits on a short, soft fade at the bottom — enough for
+          // legibility, not a heavy band that eats the photo.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x00000000), AppColors.photoScrim],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  56,
+                  AppSpacing.screen,
+                  AppSpacing.screen,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,43 +263,101 @@ class _CardFace extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          '${candidate.displayName}, ${candidate.age}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Text(
+                            '${candidate.displayName}, ${candidate.age}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.titleLarge?.copyWith(
+                              color: AppColors.onPhoto,
+                              fontSize: 26,
+                            ),
                           ),
                         ),
                         if (candidate.isVerified) ...[
-                          const SizedBox(width: AppSpacing.xs),
+                          const SizedBox(width: AppSpacing.sm),
                           const Icon(
                             Icons.verified,
-                            color: Colors.white,
-                            size: 18,
+                            color: AppColors.onPhoto,
+                            size: 20,
+                            semanticLabel: 'Verified',
                           ),
                         ],
                       ],
                     ),
-                    Text(
-                      candidate.distanceLabel,
-                      style: const TextStyle(color: Colors.white70),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          color: AppColors.onPhotoMuted,
+                          size: 16,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          candidate.distanceLabel,
+                          style: text.bodySmall?.copyWith(
+                            color: AppColors.onPhotoMuted,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
-                    if (candidate.bio != null && candidate.bio!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.xs),
-                        child: Text(
-                          candidate.bio!,
-                          style: const TextStyle(color: Colors.white),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                    if (bio != null && bio.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        bio,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.bodyMedium?.copyWith(
+                          color: AppColors.onPhoto,
                         ),
                       ),
+                    ],
+                    if (interests.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [
+                          for (final interest in interests)
+                            _PhotoChip(label: interest),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A small translucent pill for text that sits on a photo.
+class _PhotoChip extends StatelessWidget {
+  const _PhotoChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.onPhotoFaint,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 6,
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(color: AppColors.onPhoto),
         ),
       ),
     );
@@ -201,28 +365,46 @@ class _CardFace extends StatelessWidget {
 }
 
 class _Stamp extends StatelessWidget {
-  const _Stamp({required this.label, required this.color});
+  const _Stamp({
+    required this.label,
+    required this.fill,
+    required this.color,
+    required this.opacity,
+    required this.turns,
+  });
 
   final String label;
+  final Color fill;
   final Color color;
+  final double opacity;
+  final double turns;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        border: Border.all(color: color, width: 3),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 28,
-          fontWeight: FontWeight.w900,
+    return Opacity(
+      opacity: opacity,
+      child: Transform.rotate(
+        angle: turns * 6.2831853,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: fill,
+            border: Border.all(color: color, width: 2.5),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
         ),
       ),
     );
