@@ -213,7 +213,7 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
             icon: const Icon(Icons.tune),
             tooltip: 'Filters',
             onPressed: () =>
-                context.push('/profile/preferences').then((_) => _load()),
+                context.push('/discover/filters').then((_) => _load()),
           ),
           const SizedBox(width: AppSpacing.sm),
         ],
@@ -242,8 +242,7 @@ class _DiscoverFeedScreenState extends ConsumerState<DiscoverFeedScreen> {
         icon: Icons.tune,
         message: 'Set your discovery preferences to get started.',
         actionLabel: 'Set preferences',
-        onAction: () =>
-            context.push('/profile/preferences').then((_) => _load()),
+        onAction: () => context.push('/discover/filters').then((_) => _load()),
       );
     }
 

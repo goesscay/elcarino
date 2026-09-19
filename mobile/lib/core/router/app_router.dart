@@ -208,7 +208,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile/preferences',
         builder: (context, state) => PreferencesScreen(
           step: null,
-          continueLabel: 'Done',
+          continueLabel: 'Save',
+          onDone: () => Navigator.of(context).pop(),
+        ),
+      ),
+      // Discover's Filters entry — the same form as Edit preferences, opened
+      // over the tab bar, whose primary action reads "Show people": it saves
+      // and returns to the feed, which reloads with the new filters.
+      GoRoute(
+        path: '/discover/filters',
+        builder: (context, state) => PreferencesScreen(
+          step: null,
+          title: 'Filters',
+          continueLabel: 'Show people',
           onDone: () => Navigator.of(context).pop(),
         ),
       ),
