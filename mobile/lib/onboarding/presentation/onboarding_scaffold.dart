@@ -12,6 +12,7 @@ class OnboardingScaffold extends StatelessWidget {
     required this.title,
     required this.child,
     this.step,
+    this.actions,
     super.key,
   });
 
@@ -21,11 +22,15 @@ class OnboardingScaffold extends StatelessWidget {
   final int? step;
   final Widget child;
 
+  /// Optional AppBar actions (e.g. Preferences' "Reset").
+  final List<Widget>? actions;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
+        actions: actions,
         bottom: step == null
             ? null
             : PreferredSize(
@@ -35,7 +40,12 @@ class OnboardingScaffold extends StatelessWidget {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            AppSpacing.md,
+            AppSpacing.screen,
+            AppSpacing.lg,
+          ),
           child: child,
         ),
       ),

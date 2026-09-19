@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_exception.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/section_row.dart';
 import '../data/profile_repository.dart';
 import '../domain/interest.dart';
 
@@ -76,6 +78,8 @@ class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final text = Theme.of(context).textTheme;
     final byCategory = <String, List<Interest>>{};
     for (final interest in _catalogue) {
       byCategory
@@ -88,65 +92,92 @@ class _EditInterestsScreenState extends ConsumerState<EditInterestsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          for (final category in byCategory.keys) ...[
-                            Text(
-                              category,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            Wrap(
-                              spacing: AppSpacing.sm,
-                              runSpacing: AppSpacing.sm,
-                              children: [
-                                for (final interest in byCategory[category]!)
-                                  FilterChip(
-                                    label: Text(interest.name),
-                                    selected: _selectedIds.contains(
-                                      interest.id,
-                                    ),
-                                    onSelected: (selected) => setState(
-                                      () => selected
-                                          ? _selectedIds.add(interest.id)
-                                          : _selectedIds.remove(interest.id),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                          ],
-                        ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.screen,
+                        AppSpacing.sm,
+                        AppSpacing.screen,
+                        AppSpacing.lg,
                       ),
-                    ),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
+                      children: [
+                        Text(
+                          'Pick what you enjoy — it helps us show you people '
+                          'you have things in common with.',
+                          style: text.bodyMedium?.copyWith(
+                            color: p.textSecondary,
                           ),
                         ),
-                      ),
-                    FilledButton(
-                      onPressed: _submitting ? null : _submit,
-                      child: _submitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Save'),
+                        for (final category in byCategory.keys) ...[
+                          SectionHeading(category),
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            // Chips already carry their own 48pt tap-target
+                            // padding, which provides the row spacing.
+                            runSpacing: 0,
+                            children: [
+                              for (final interest in byCategory[category]!)
+                                FilterChip(
+                                  label: Text(interest.name),
+                                  selected: _selectedIds.contains(interest.id),
+                                  onSelected: (selected) => setState(
+                                    () => selected
+                                        ? _selectedIds.add(interest.id)
+                                        : _selectedIds.remove(interest.id),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screen,
+                      AppSpacing.sm,
+                      AppSpacing.screen,
+                      AppSpacing.lg,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.sm,
+                            ),
+                            child: Text(
+                              _error!,
+                              style: text.bodyMedium?.copyWith(
+                                color: AppColors.danger,
+                              ),
+                            ),
+                          ),
+                        FilledButton(
+                          onPressed: _submitting ? null : _submit,
+                          child: _submitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.onPrimary,
+                                  ),
+                                )
+                              : Text(
+                                  _selectedIds.isEmpty
+                                      ? 'Save'
+                                      : 'Save (${_selectedIds.length} selected)',
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
     );

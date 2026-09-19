@@ -197,7 +197,7 @@ class _GifPickerSheetState extends ConsumerState<_GifPickerSheet> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: Ink(
-                color: AppColors.surfaceLight,
+                color: context.palette.fill,
                 child: AspectRatio(
                   aspectRatio: gif.height > 0 ? gif.width / gif.height : 1,
                   child: Image.network(gif.previewUrl, fit: BoxFit.cover),

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/network_photo.dart';
+import '../../core/widgets/state_message.dart';
 import '../data/safety_repository.dart';
 import '../domain/blocked_user.dart';
 
@@ -80,40 +82,68 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.md),
-              FilledButton(onPressed: _load, child: const Text('Retry')),
-            ],
-          ),
-        ),
+      return StateMessage(
+        icon: Icons.error_outline,
+        message: _error!,
+        actionLabel: 'Retry',
+        onAction: _load,
       );
     }
 
     if (_blockedUsers.isEmpty) {
-      return const Center(child: Text("You haven't blocked anyone."));
+      return const StateMessage(
+        icon: Icons.block_rounded,
+        title: 'No blocked users',
+        message: "People you block won't be able to see or message you.",
+      );
     }
 
-    return ListView.builder(
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       itemCount: _blockedUsers.length,
+      separatorBuilder: (context, _) =>
+          const Divider(indent: AppSpacing.screen + 48 + AppSpacing.lg),
       itemBuilder: (context, index) {
         final user = _blockedUsers[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundImage: user.photo == null
-                ? null
-                : NetworkImage(user.photo!.url),
-            child: user.photo == null ? const Icon(Icons.person) : null,
+        return Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.screen,
+            vertical: AppSpacing.md,
           ),
-          title: Text(user.displayName ?? 'Deactivated user'),
-          trailing: OutlinedButton(
-            onPressed: () => _unblock(user),
-            child: const Text('Unblock'),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: ClipOval(
+                  child: user.photo == null
+                      ? const PhotoPlaceholder(iconSize: 24)
+                      : NetworkPhoto(user.photo!.url),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Text(
+                  user.displayName ?? 'Deactivated user',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              // Not full-width: the app's outlined-button theme is, so a
+              // button in a Row states its own compact size.
+              OutlinedButton(
+                onPressed: () => _unblock(user),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                ),
+                child: const Text('Unblock'),
+              ),
+            ],
           ),
         );
       },

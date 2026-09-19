@@ -32,13 +32,18 @@ provisional; the token *names* and component structure stay as branding fills in
 
 ### 2.1 Top-level navigation (authenticated)
 
-Bottom tab bar, 4 tabs:
+Bottom tab bar. **Built (UI redesign, `MainShell`): Discover · Chats · Profile.**
+Explore and Likes are part of the target design but are not tabs yet — neither has a
+screen or an API behind it (`GET /who-liked-me` is `[PROPOSED]`), and they join the bar
+as two more destinations when they do. Each tab keeps its own stack and state; the
+Chats tab reloads whenever it is (re)selected.
 
 | Tab | Screen | Notes |
 |---|---|---|
 | **Discover** | Card stack | Default tab on launch |
-| **Matches** | Matches + inbox | Badge = unread conversations |
-| **Likes** | Who liked me | Premium — shows blurred grid + paywall for free users |
+| **Chats** | Matches + inbox | Badge = unread conversations *(not built — needs a shared unread source)* |
+| **Likes** *(not built)* | Who liked me | Premium — shows blurred grid + paywall for free users |
+| **Explore** *(not built)* | Interest categories | Needs a categories/member-count endpoint |
 | **Profile** | Own profile + entry to Edit / Verification / Settings | |
 
 Modal / pushed flows (not tabs): Onboarding, Filters, Profile detail, Match
@@ -107,10 +112,10 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 | Screen | Spec |
 |---|---|
-| **Card stack** | One profile card at a time: primary photo, name, age, approximate distance, verified badge if applicable, first prompt teaser. Gestures: swipe left = pass, right = like, up = Super Like [PROPOSED, TBD-11]. Buttons mirror gestures for accessibility. Tap card → Profile detail. Header: filter icon, boost icon [PROPOSED]. |
+| **Card stack** | **Built (UI redesign).** One large photo-first card (24 px corners, soft lift — the only shadow in the app): primary photo, name + age + verified badge, approximate distance, bio (2 lines) and up to three *shared* interests as translucent chips, on a short bottom fade. Drag left = pass, right = like: the card tilts, a LIKE/PASS stamp fades in with the drag, a light haptic marks the commit line, and the next card grows into place behind it; a short drag springs back. Action row under the card: **Pass · Like · Boost** (circular; Like is the solid-red primary). Header: wordmark + filter icon. *Not built:* swipe-up Super Like and **Undo** (rewind) — no API for either yet ([PROPOSED, TBD-11]); they join the action row when they exist. *Not built:* tap card → Profile detail (below). |
 | **Profile detail** | Scrollable: photo carousel interleaved with prompt answers, bio, interests (chips), relationship goal, distance. Sticky footer pass/like. Overflow menu: Report, Block. |
-| **Filters sheet** | Bottom sheet: age, distance, interests, relationship goals (free); religion, politics, "additional preferences" (advanced — gated to premium in Phase 2 [TBD-13]). `Apply` / `Reset`. |
-| **Match celebration** | Full-screen modal on mutual like: both photos, "It's a match!", `Send a message` / `Keep swiping`. |
+| **Filters** | **Redesigned (UI redesign); a full screen at `/discover/filters` (Discover's filter icon), not a sheet.** The same form as onboarding's Preferences step and Edit preferences (`Save`): *Interested in* chips, an *Age range* slider and a *Distance* slider with their live values in brand red, and a collapsible *Advanced filters* card (religion, politics — premium-gated in Phase 2 [TBD-13]; a non-subscriber sees a `Premium` pill, an Upgrade row and locked inputs, and can still remove a lapsed value). Primary action `Show people` is pinned at the bottom: it saves and returns to the feed, which reloads. `Reset` (app bar) appears only once the form has unsaved changes and reverts them to what was loaded — it never clears saved preferences and defines no "default" filter values. *Not built:* filters by interests, relationship goals and lifestyle — the form has no such fields today (the API accepts a relationship-goal filter, but no UI sets it). |
+| **Match celebration** | **Built (UI redesign).** Full-screen and always dark (a moment, not a page): the viewer's and the match's portraits overlap as circles with a heart badge between them, on a soft red glow. Photos slide together, the heart pops, the text fades up, then it's still — no confetti or heart shower; honours reduce-motion. "It's a Match!" / "You both liked each other." · `Send a message` (opens the conversation) / `Keep discovering`. The viewer's own photo is a best-effort profile read; if it fails or there's no photo the celebration shows a placeholder rather than waiting on it. |
 | **Out of likes** (free) | Replaces stack when the free daily like limit is hit [TBD-11/13]: countdown to reset + `Get unlimited likes` (paywall). |
 | **Empty feed** | No candidates in range: illustration + `Widen your filters` / `Increase distance`. |
 
@@ -118,8 +123,8 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 | Screen | Spec |
 |---|---|
-| **Matches + inbox** | Top row: new matches with no messages yet (horizontal avatars). Below: conversation list — avatar, name, last message preview, timestamp, unread dot. Empty state: "No matches yet — keep discovering." |
-| **Conversation** | Message list (bubbles, own = trailing), date separators, read receipt on last own message, typing indicator, online/last-active in header. Composer: text field, send; attachment button reveals voice note / photo / GIF **only if those are in scope** [TBD-16/17/18] and, for unmatched conversations, only for subscribers (server-enforced — spec §12). Header overflow: View profile, Unmatch, Report, Block. |
+| **Matches + inbox** | **Built (UI redesign) as the "Chats" tab.** Large "Chats" title. *New matches*: a horizontal row of avatars with a brand-red ring (no messages yet). *Messages*: rows of avatar, name, one-line preview, timestamp (time today · "Yesterday" · weekday · M/D) and a red **unread count badge** (99+ cap; unread rows get a bold name/preview and a red time), with hairline dividers aligned to the text. Unmatch is a long-press (and a screen-reader custom action) rather than a per-row icon; it is also in the conversation overflow. First load shows skeleton rows; later reloads refresh in place. Empty: "No matches yet" + `Keep discovering` (goes to Discover). *Not built:* the search field — there is no conversation-search API. |
+| **Conversation** | **Redesigned (UI redesign).** Header: back, the other person's photo, name, a status line ("Online" with a green dot / "Typing…" in brand red), voice + video call icons, overflow (Unmatch, Report, Block) — under a hairline. Messages: **own = solid brand-red bubble, white text; incoming = neutral fill, theme text** (legible in dark mode); runs of consecutive messages from one person (within 5 min) sit tight and only the run's last bubble has the small tail corner and the time; "Read" is appended to the last own message's time when read; **day dividers** ("Today", "Yesterday", weekday, "Sep 1"). Voice notes: circular play button + progress + duration; GIF/photo: the image is the bubble. Composer: "+" (voice note / photo / GIF sheet — **only if those are in scope** [TBD-16/17/18]; for unmatched conversations only for subscribers, server-enforced — spec §12), a soft rounded field, and a send button that turns brand red once there's text. Empty: "You matched! Say hi to X." *Not built:* "View profile" in the overflow (no other-user profile screen exists). |
 | **Unmatched-conversation banner** (free user) | Inline banner in the composer area: "Subscribe to message people you haven't matched with" → paywall. Composer disabled. |
 | **Report from chat** | See §3.7. |
 
@@ -133,10 +138,10 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 | Screen | Spec |
 |---|---|
-| **My profile** | Preview as others see it; completion meter (gamification — spec §17); `Edit profile`; verification status chip (`Verify` CTA if unverified); gear → Settings. |
-| **Edit profile** | Sections: photos, prompts, bio, basics, relationship goal, interests. Each opens a focused editor. Autosave or explicit save [decide — recommend explicit save per section]. |
-| **Edit photos** | Same grid as onboarding; reorder; delete; moderation status per photo. |
-| **Edit prompts** | Reorder answered prompts; swap a prompt; edit an answer. |
+| **My profile** | **Redesigned (UI redesign), as the Profile tab.** Large title + settings gear. A circular portrait (green verified badge when verified), "Name, age", a Verified / Not verified pill, a **Profile completeness** card (percentage + bar — gamification, spec §17), then the CTAs: solid-red `Edit profile` and outlined `Edit preferences`. Below, the profile as others see it: *About me*, *Interests* (chips) and *Prompts* (cards) — sections are omitted when empty. Interests and prompts are best-effort reads of the existing edit-screen endpoints; if either fails the rest still shows. First load shows a skeleton; refreshes update in place; a load error has Retry. *Not built:* a `Verify` CTA (no verification flow yet — Phase 4) and a location line (the API deliberately exposes no location to the client — spec §9). |
+| **Edit profile** | **Redesigned (UI redesign).** A grouped card of section rows (tinted icon, title, one-line description, chevron — the reusable `SectionCard`/`SectionRow`, which Settings also uses): **Photos · Basics & bio · Interests · Prompts**, each opening a focused editor with an explicit `Save`. *Not built as separate sections:* relationship goal and about-me live inside "Basics & bio" (one `PUT /profiles/me`, a disclosed simplification); there is no "Lifestyle" data in the schema. |
+| **Edit photos** | **Redesigned; same screen as onboarding's Photos step.** A 3-column grid of 6 portrait slots: photos with a `Main` badge on the first and `In review` while moderation is pending, a remove (×) button (confirms first) and earlier/later arrows (dimmed at the ends; reorder stays buttons, not drag); empty slots are quiet, and only the next one is a highlighted `Add photo` (camera / gallery). Basics, Interests and Prompts editors: labelled form sections, chip-style gender / interests (with a live "Save (N selected)"), a pinned Save button, and prompts as cards with drag-to-reorder (press and hold), edit-on-tap and delete. |
+| **Edit prompts** | Reorder answered prompts; swap a prompt; edit an answer — see above. |
 | **Edit preferences** | Age, distance, interested-in, advanced filters. |
 
 ### 3.6 Verification — **[PROPOSED]**
@@ -156,7 +161,7 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 | **Report — category** | List: Harassment, Fake profile, Spam, Inappropriate content, Scam, Other (from `report-categories` endpoint). |
 | **Report — detail** | Free-text (optional), option to also block, option to attach which messages/photos. `Submit`. |
 | **Report — confirmation** | "Thanks — our team will review this." No status promises beyond what moderation SLA allows. |
-| **Blocked users** (Settings child) | List with unblock. |
+| **Blocked users** (Settings child) | **Redesigned.** A list of avatar + name with a compact `Unblock` button per row; empty and error states use the shared `StateMessage`. |
 
 ### 3.8 Subscription — **[PROPOSED]**
 
@@ -168,12 +173,20 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 ### 3.9 Settings
 
-Account (email/phone, password, connected accounts) · Notifications (per-type toggles:
-matches, messages, likes, system) · Privacy & Safety (blocked users, show/hide
-distance, discovery on/off, read receipts toggle [decide]) · Subscription · Help &
-Support (ticket/contact — tool is a cost-deck line item) · Legal (ToS, Privacy —
-placeholder links [TBD]) · Log out · Delete account (confirmation + consequences + data
-export offer, per security doc §9 and §11).
+**Redesigned (UI redesign).** A large "Settings" title over grouped cards (the shared
+`SectionCard`/`SectionRow`), each row a tinted icon + title (+ description): **Account**
+(Account, Profile preferences, Notifications) · **Privacy & safety** (Blocked users) ·
+**Subscription** · **Support** (Help & support, Legal, About Elcarino). **Log out** and
+**Delete account** sit apart in their own card at the bottom, Delete in danger red.
+
+*Real today:* Profile preferences (the Edit preferences screen), Blocked users,
+Subscription, About (wordmark, tagline and Flutter's built-in open-source licences page),
+Log out (confirms first). *Not built yet* — shown with a "Soon" label and a "Coming soon"
+notice rather than a dead navigation: Account (email/phone, password, connected accounts),
+Notifications (per-type toggles need a preferences table that doesn't exist), Help &
+Support, Legal (ToS/Privacy — placeholder links [TBD]) and Delete account (confirmation +
+consequences + data export offer, per security doc §9 and §11). Show/hide distance,
+discovery on/off and a read-receipts toggle are likewise not built.
 
 ### 3.10 Admin panel (Filament, web — not part of the Flutter app)
 
@@ -187,45 +200,60 @@ Payments (read + plan CRUD), Dashboard (metrics per spec §19), Audit log (read-
 
 ### 4.1 Colour tokens
 
-Values are provisional (neutral, brand-agnostic). Semantic names are stable.
+Confirmed direction (UI/UX redesign, 2026-09): premium, clean, warm, photo-first.
+Roughly **70% neutral · 20% white surface · 10% Elcarino red** — red marks the
+important action (like, send, primary CTA, the selected tab), never large fills; the
+user's photos are the most important thing on any screen.
 
-| Token | Placeholder value | Use |
+| Token | Light / Dark | Use |
 |---|---|---|
-| `color.bg` | `#FFFFFF` / dark `#121317` | screen background |
-| `color.surface` | `#F5F5F7` / dark `#1E1F24` | cards, sheets |
-| `color.text.primary` | `#1B1B1F` / dark `#ECECEE` | body text |
-| `color.text.secondary` | `#6B6B72` | captions, metadata |
-| `color.primary` | `#DC2626` (confirmed — Elcarino brand red, decision #2) | primary actions, like |
+| `color.bg` | `#FAFAFA` / `#111111` | screen background |
+| `color.surface` | `#FFFFFF` / `#1C1C1E` | cards, sheets, nav bar |
+| `color.fill` | `#F1F1F3` / `#2A2A2D` | quiet fill on surfaces: chips, incoming bubble, inputs |
+| `color.text.primary` | `#111111` / `#FFFFFF` | body text |
+| `color.text.secondary` | `#6B6B6B` / `#A1A1AA` | captions, metadata |
+| `color.border` | `#E5E5E5` / `#2C2C2E` | hairlines, dividers |
+| `color.primary` | `#DC2626` (Elcarino brand red, decision #2) | primary actions, like, selected tab |
+| `color.primary.dark` | `#B91C1C` | pressed / emphasis on light |
+| `color.primary.tint` | `#FEE2E2` / `#3B1414` | selected chip fill, soft highlights |
 | `color.on-primary` | `#FFFFFF` | text/icons on primary |
 | `color.pass` | `#8A8A8E` | pass action |
 | `color.success` | `#2E9C68` | verified, confirmations |
 | `color.warning` | `#D9832A` | caution states |
 | `color.danger` | `#D64545` | destructive, block, errors |
-| `color.border` | `#E4E4E9` / dark `#33343A` | dividers |
+| `color.on-photo` (+ muted / faint / scrim / control) | white / black-alpha | text and controls over a user's photo — white in both themes, since a photo isn't themed |
 
-Dark mode is **required** (system-driven). Every token has a light and dark value; no
-hard-coded colours in widgets.
+Dark mode is **required** (system-driven) and is designed, not inverted. Every token has
+a light and dark value; no hard-coded colours in widgets — read `AppColors.*` or, for
+anything that changes with brightness, `context.palette.*`.
 
 ### 4.2 Typography
 
-Single family (system default until brand type is chosen). Scale:
+One family — the platform's own (SF on iOS, Roboto on Android; Inter is not bundled).
+Three weights only (400 / 600 / 700); hierarchy comes from size. Scale:
 
-| Style | Size / weight |
+| Role | Size / weight |
 |---|---|
-| Display | 32 / 700 |
-| Title | 22 / 700 |
-| Headline | 18 / 600 |
-| Body | 16 / 400 |
-| Callout | 14 / 400 |
+| Hero | 32 / 700 |
+| Screen title | 28 / 700 |
+| Section title | 22 / 600 |
+| Card title | 22 / 700 |
+| Row title | 17 / 600 |
+| Body | 16 / 400 (dense 15) |
+| Secondary | 13 / 400 |
+| Button | 16 / 600 |
+| Chip / label | 13 / 600 |
 | Caption | 12 / 400 |
 
 All sizes scale with the OS dynamic-type setting.
 
 ### 4.3 Spacing & radius
 
-4 pt base grid: `xs 4 · sm 8 · md 12 · lg 16 · xl 24 · 2xl 32`. Corner radius:
-`sm 8 · md 12 · lg 20 · pill 999`. Card elevation via subtle shadow or 1 px border
-(theme-dependent), never both.
+Spacing: `xs 4 · sm 8 · md 12 · lg 16 · screen 20 · xl 24 · xxl 32 · huge 40`; default
+horizontal screen padding **20**. Corner radius: `sm 8 · md 12 · lg 16 · card 20 ·
+profile-card 24 · button 16 · pill 999` — pills only for avatars, circular actions and
+small chips; rounding is a hierarchy. Card separation by a 1 px border, not shadow
+(never both).
 
 ### 4.4 Component library (Phase 1 build order roughly follows this)
 
