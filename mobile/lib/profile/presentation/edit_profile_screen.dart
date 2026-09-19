@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/section_row.dart';
+
 /// docs/07-ui-ux-design.md §3.5 "Edit profile": "Sections: photos, prompts,
 /// bio, basics, relationship goal, interests. Each opens a focused editor."
 /// Bio/basics/relationship goal are combined into one "Basics & bio" editor
@@ -17,30 +21,41 @@ class EditProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Edit profile')),
       body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.screen),
         children: [
-          ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Photos'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/edit/photos'),
+          Text(
+            'Choose a section to edit. Changes show on your profile straight away.',
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: context.palette.textSecondary),
           ),
-          ListTile(
-            leading: const Icon(Icons.chat_bubble_outline),
-            title: const Text('Prompts'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/edit/prompts'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text('Basics & bio'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/edit/basics'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.interests_outlined),
-            title: const Text('Interests'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/edit/interests'),
+          const SizedBox(height: AppSpacing.lg),
+          SectionCard(
+            children: [
+              SectionRow(
+                icon: Icons.photo_library_outlined,
+                title: 'Photos',
+                subtitle: 'Add, remove and reorder',
+                onTap: () => context.push('/profile/edit/photos'),
+              ),
+              SectionRow(
+                icon: Icons.person_outline,
+                title: 'Basics & bio',
+                subtitle: 'Name, birthday, gender, about me, goals',
+                onTap: () => context.push('/profile/edit/basics'),
+              ),
+              SectionRow(
+                icon: Icons.interests_outlined,
+                title: 'Interests',
+                subtitle: 'What you’re into',
+                onTap: () => context.push('/profile/edit/interests'),
+              ),
+              SectionRow(
+                icon: Icons.chat_bubble_outline,
+                title: 'Prompts',
+                subtitle: 'Conversation starters',
+                onTap: () => context.push('/profile/edit/prompts'),
+              ),
+            ],
           ),
         ],
       ),

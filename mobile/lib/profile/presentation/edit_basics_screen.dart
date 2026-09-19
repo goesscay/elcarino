@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_exception.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/section_row.dart';
 import '../data/profile_repository.dart';
 import '../domain/gender.dart';
 
@@ -129,98 +131,139 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Scaffold(
       appBar: AppBar(title: const Text('Basics & bio')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    children: [
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'First name',
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.screen,
+                          0,
+                          AppSpacing.screen,
+                          AppSpacing.lg,
                         ),
-                        validator: (value) =>
-                            (value == null || value.trim().isEmpty)
-                            ? 'Enter your name'
-                            : null,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          _birthDate == null
-                              ? 'Date of birth'
-                              : '${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
-                        ),
-                        trailing: const Icon(Icons.calendar_today_outlined),
-                        onTap: _pickBirthDate,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      RadioGroup<Gender>(
-                        groupValue: _gender,
-                        onChanged: (value) => setState(() => _gender = value),
-                        child: Column(
-                          children: [
-                            for (final gender in Gender.values)
-                              RadioListTile<Gender>(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(gender.label),
-                                value: gender,
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      TextFormField(
-                        controller: _bioController,
-                        maxLength: 500,
-                        maxLines: 4,
-                        decoration: const InputDecoration(labelText: 'Bio'),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      TextFormField(
-                        controller: _relationshipGoalController,
-                        maxLength: 100,
-                        decoration: const InputDecoration(
-                          labelText: 'Relationship goal',
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      // Phase 2 item 2 — feeds the (premium-gated) advanced
-                      // filters in Edit preferences; free for anyone to set
-                      // on their own profile, same as bio/relationship goal.
-                      TextFormField(
-                        controller: _religionController,
-                        maxLength: 100,
-                        decoration: const InputDecoration(
-                          labelText: 'Religion (optional)',
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      TextFormField(
-                        controller: _politicsController,
-                        maxLength: 100,
-                        decoration: const InputDecoration(
-                          labelText: 'Politics (optional)',
-                        ),
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
+                        children: [
+                          const SectionHeading('Basic information'),
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'First name',
+                            ),
+                            validator: (value) =>
+                                (value == null || value.trim().isEmpty)
+                                ? 'Enter your name'
+                                : null,
                           ),
-                        ),
-                      ],
-                      const SizedBox(height: AppSpacing.xl),
-                      FilledButton(
+                          const SizedBox(height: AppSpacing.md),
+                          InkWell(
+                            onTap: _pickBirthDate,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Date of birth',
+                                suffixIcon: Icon(Icons.calendar_today_outlined),
+                              ),
+                              child: Text(
+                                _birthDate == null
+                                    ? 'Select'
+                                    : '${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      color: _birthDate == null
+                                          ? p.textSecondary
+                                          : null,
+                                    ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          Text(
+                            'Gender',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: p.textSecondary),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            runSpacing: AppSpacing.sm,
+                            children: [
+                              for (final gender in Gender.values)
+                                ChoiceChip(
+                                  label: Text(gender.label),
+                                  selected: _gender == gender,
+                                  onSelected: (_) =>
+                                      setState(() => _gender = gender),
+                                ),
+                            ],
+                          ),
+                          const SectionHeading('About me'),
+                          TextFormField(
+                            controller: _bioController,
+                            maxLength: 500,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'Bio',
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                          const SectionHeading('Relationship goal'),
+                          TextFormField(
+                            controller: _relationshipGoalController,
+                            maxLength: 100,
+                            decoration: const InputDecoration(
+                              labelText: 'What are you looking for?',
+                            ),
+                          ),
+                          // Phase 2 item 2 — feeds the (premium-gated) advanced
+                          // filters in Edit preferences; free for anyone to set
+                          // on their own profile, same as bio/relationship goal.
+                          const SectionHeading(
+                            'Optional',
+                            hint: 'Used for the advanced filters.',
+                          ),
+                          TextFormField(
+                            controller: _religionController,
+                            maxLength: 100,
+                            decoration: const InputDecoration(
+                              labelText: 'Religion',
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          TextFormField(
+                            controller: _politicsController,
+                            maxLength: 100,
+                            decoration: const InputDecoration(
+                              labelText: 'Politics',
+                            ),
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              _error!,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: AppColors.danger),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // The Save button stays pinned below the scrolling form,
+                    // always reachable however long the form gets.
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.screen,
+                        AppSpacing.sm,
+                        AppSpacing.screen,
+                        AppSpacing.lg,
+                      ),
+                      child: FilledButton(
                         onPressed: _submitting ? null : _submit,
                         child: _submitting
                             ? const SizedBox(
@@ -228,12 +271,13 @@ class _EditBasicsScreenState extends ConsumerState<EditBasicsScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: AppColors.onPrimary,
                                 ),
                               )
                             : const Text('Save'),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

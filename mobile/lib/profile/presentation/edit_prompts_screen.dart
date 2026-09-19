@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_exception.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/state_message.dart';
 import '../data/profile_repository.dart';
 import '../domain/prompt.dart';
 
@@ -153,10 +155,23 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
 
     final chosen = await showModalBottomSheet<PromptLibraryItem>(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                0,
+                AppSpacing.screen,
+                AppSpacing.sm,
+              ),
+              child: Text(
+                'Choose a prompt',
+                style: Theme.of(sheetContext).textTheme.headlineSmall,
+              ),
+            ),
             for (final prompt in available)
               ListTile(
                 title: Text(prompt.prompt),
@@ -192,46 +207,113 @@ class _EditPromptsScreenState extends ConsumerState<EditPromptsScreen> {
       );
     }
 
+    final p = context.palette;
+    final text = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Prompts')),
       floatingActionButton: (_answered.length >= _maxPrompts || _busy)
           ? null
           : FloatingActionButton(
               onPressed: _addPrompt,
-              child: const Icon(Icons.add),
+              tooltip: 'Add a prompt',
+              child: const Icon(Icons.add_rounded),
             ),
       body: SafeArea(
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                AppSpacing.sm,
+                AppSpacing.screen,
+                AppSpacing.sm,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _answered.length > 1
+                      ? 'Tap to edit. Press and hold, then drag, to reorder.'
+                      : 'Answer up to $_maxPrompts prompts — they\'re great '
+                            'conversation starters.',
+                  style: text.bodyMedium?.copyWith(color: p.textSecondary),
+                ),
+              ),
+            ),
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screen,
+                  vertical: AppSpacing.sm,
+                ),
                 child: Text(
                   _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: text.bodyMedium?.copyWith(color: AppColors.danger),
                 ),
               ),
             Expanded(
               child: _answered.isEmpty
-                  ? const Center(
-                      child: Text('No prompts answered yet. Tap + to add one.'),
+                  ? const StateMessage(
+                      icon: Icons.chat_bubble_outline,
+                      title: 'No prompts yet',
+                      message: 'Tap + to answer your first one.',
                     )
                   : ReorderableListView.builder(
-                      padding: const EdgeInsets.all(AppSpacing.md),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.screen,
+                        AppSpacing.sm,
+                        AppSpacing.screen,
+                        96, // clears the floating add button
+                      ),
                       itemCount: _answered.length,
                       onReorderItem: _busy ? (_, _) {} : _onReorder,
                       itemBuilder: (context, index) {
                         final prompt = _answered[index];
                         return Card(
                           key: ValueKey(prompt.promptId),
-                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          child: ListTile(
-                            title: Text(prompt.promptText),
-                            subtitle: Text(prompt.answer),
+                          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(AppRadius.card),
                             onTap: _busy ? null : () => _editAnswer(prompt),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: _busy ? null : () => _remove(prompt),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.md,
+                                AppSpacing.sm,
+                                AppSpacing.md,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          prompt.promptText,
+                                          style: text.labelMedium?.copyWith(
+                                            color: p.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppSpacing.xs),
+                                        Text(
+                                          prompt.answer,
+                                          style: text.bodyLarge,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                    ),
+                                    tooltip: 'Remove prompt',
+                                    color: p.textSecondary,
+                                    onPressed: _busy
+                                        ? null
+                                        : () => _remove(prompt),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );

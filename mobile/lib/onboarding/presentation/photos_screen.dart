@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/network/api_exception.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/network_photo.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/domain/profile.dart';
 import 'onboarding_scaffold.dart';
@@ -117,6 +119,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Remove'),
           ),
         ],
@@ -161,40 +164,52 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
       );
     }
 
+    final text = Theme.of(context).textTheme;
     return OnboardingScaffold(
       title: 'Photos',
       step: widget.step,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Add at least one photo. The first is your primary photo.',
+          Text(
+            'Add at least one photo — your first one is what people see '
+            'first. You can add up to $_maxPhotos.',
+            style: text.bodyMedium?.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
           Expanded(
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                mainAxisSpacing: AppSpacing.sm,
-                crossAxisSpacing: AppSpacing.sm,
+                mainAxisSpacing: AppSpacing.md,
+                crossAxisSpacing: AppSpacing.md,
+                childAspectRatio: 0.75,
               ),
               itemCount: _maxPhotos,
               itemBuilder: (context, index) {
                 if (index < _photos.length) {
                   final photo = _photos[index];
-                  return _PhotoTile(
+                  return ProfilePhotoTile(
                     photo: photo,
                     isPrimary: index == 0,
                     onDelete: _busy ? null : () => _removePhoto(photo),
-                    onMoveLeft: (!_busy && index > 0)
+                    onMoveEarlier: (!_busy && index > 0)
                         ? () => _move(index, -1)
                         : null,
-                    onMoveRight: (!_busy && index < _photos.length - 1)
+                    onMoveLater: (!_busy && index < _photos.length - 1)
                         ? () => _move(index, 1)
                         : null,
                   );
                 }
-                return _AddTile(onTap: _busy ? null : _addPhoto);
+                // Only the next empty slot invites an upload; the rest are
+                // quiet placeholders, so the grid reads as "6 slots, filling
+                // in order" rather than six competing buttons.
+                return AddPhotoTile(
+                  onTap: _busy ? null : _addPhoto,
+                  prominent: index == _photos.length,
+                );
               },
             ),
           ),
@@ -203,7 +218,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
               padding: const EdgeInsets.only(top: AppSpacing.sm),
               child: Text(
                 _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: text.bodyMedium?.copyWith(color: AppColors.danger),
               ),
             ),
           const SizedBox(height: AppSpacing.md),
@@ -219,86 +234,78 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen> {
   }
 }
 
-class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({
+/// One photo slot: the photo (rounded, top-biased crop), a "Main" badge on
+/// the first, "Pending review" while moderation hasn't cleared it, a small
+/// remove button, and a compact earlier/later control. Reordering stays as
+/// buttons (not drag) — see [PhotosScreen]'s doc comment.
+class ProfilePhotoTile extends StatelessWidget {
+  const ProfilePhotoTile({
     required this.photo,
     required this.isPrimary,
     required this.onDelete,
-    required this.onMoveLeft,
-    required this.onMoveRight,
+    required this.onMoveEarlier,
+    required this.onMoveLater,
+    super.key,
   });
 
   final ProfilePhoto photo;
   final bool isPrimary;
   final VoidCallback? onDelete;
-  final VoidCallback? onMoveLeft;
-  final VoidCallback? onMoveRight;
+  final VoidCallback? onMoveEarlier;
+  final VoidCallback? onMoveLater;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.sm),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(photo.url, fit: BoxFit.cover),
-          if (isPrimary)
-            const Positioned(left: 4, top: 4, child: _Badge(label: 'Primary')),
-          if (photo.moderationStatus == 'pending')
-            const Positioned(
-              left: 4,
-              bottom: 4,
-              child: _Badge(label: 'Pending review'),
+          NetworkPhoto(photo.url),
+          // Status badges sit just above the reorder controls (not beside the
+          // remove button — on a narrow tile they'd collide with it).
+          if (isPrimary || photo.moderationStatus == 'pending')
+            Positioned(
+              left: 6,
+              bottom: 44,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isPrimary) const _PhotoBadge(label: 'Main'),
+                  if (isPrimary && photo.moderationStatus == 'pending')
+                    const SizedBox(height: 4),
+                  if (photo.moderationStatus == 'pending')
+                    const _PhotoBadge(label: 'In review'),
+                ],
+              ),
             ),
           Positioned(
-            right: 0,
-            top: 0,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 18),
+            right: 6,
+            top: 6,
+            child: _PhotoControl(
+              icon: Icons.close_rounded,
+              label: 'Remove photo',
               onPressed: onDelete,
-              style: IconButton.styleFrom(backgroundColor: Colors.black45),
             ),
           ),
           Positioned(
-            bottom: 0,
             left: 0,
             right: 0,
-            // Two IconButtons at Material's default 48x48 min tap target
-            // don't fit side by side in a 3-column tile on a narrow screen
-            // (confirmed live: overflows by ~11px — plain `constraints:` on
-            // IconButton doesn't shrink it below the platform's mandatory
-            // tap-target padding; `tapTargetSize: shrinkWrap` is what
-            // actually removes that floor).
+            bottom: 6,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.chevron_left,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  onPressed: onMoveLeft,
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.black45,
-                    minimumSize: const Size(32, 32),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: EdgeInsets.zero,
-                  ),
+                _PhotoControl(
+                  icon: Icons.chevron_left_rounded,
+                  label: 'Move earlier',
+                  onPressed: onMoveEarlier,
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.chevron_right,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  onPressed: onMoveRight,
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.black45,
-                    minimumSize: const Size(32, 32),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: EdgeInsets.zero,
-                  ),
+                const SizedBox(width: AppSpacing.xs),
+                _PhotoControl(
+                  icon: Icons.chevron_right_rounded,
+                  label: 'Move later',
+                  onPressed: onMoveLater,
                 ),
               ],
             ),
@@ -309,57 +316,115 @@ class _PhotoTile extends StatelessWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label});
+/// A small round control over a photo. Dimmed when unavailable rather than
+/// hidden, so the layout doesn't shift between tiles.
+class _PhotoControl extends StatelessWidget {
+  const _PhotoControl({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      excludeSemantics: true,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.4,
+        child: Material(
+          color: AppColors.photoControl,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onPressed,
+            child: SizedBox(
+              width: 32,
+              height: 32,
+              child: Icon(icon, color: AppColors.onPhoto, size: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoBadge extends StatelessWidget {
+  const _PhotoBadge({required this.label});
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        color: AppColors.photoControl,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: AppColors.onPhoto, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
 }
 
-class _AddTile extends StatelessWidget {
-  const _AddTile({required this.onTap});
+/// An empty slot. [prominent] (the next slot to fill) is a tinted, labelled
+/// invitation; the others are quiet outlines.
+class AddPhotoTile extends StatelessWidget {
+  const AddPhotoTile({required this.onTap, this.prominent = false, super.key});
 
   final VoidCallback? onTap;
+  final bool prominent;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
-      child: DottedBorderBox(child: const Icon(Icons.add_a_photo_outlined)),
-    );
-  }
-}
-
-/// A plain dashed-look placeholder box — no extra package for one border
-/// style.
-class DottedBorderBox extends StatelessWidget {
-  const DottedBorderBox({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+    final p = context.palette;
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: 'Add photo',
+      excludeSemantics: true,
+      child: Material(
+        color: prominent ? p.primaryTint : p.fill,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  size: 28,
+                  color: prominent ? AppColors.primary : p.textSecondary,
+                ),
+                if (prominent) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Add photo',
+                    style: Theme.of(context).textTheme.labelMedium
+                        ?.copyWith(color: AppColors.primary),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
-      child: Center(child: child),
     );
   }
 }
