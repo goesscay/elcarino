@@ -37,6 +37,15 @@ class DiscoveryCandidateResource extends JsonResource
             'distance_km' => $this->distance_km,
             'shared_interests_count' => $this->shared_interests_count,
             'shared_interests' => $this->shared_interest_names,
+            // Every interest, for the profile-detail screen — interests are a
+            // public part of a profile (unlike religion/politics, which no
+            // resource another user can fetch ever includes).
+            'interests' => $this->interests->pluck('name')->values(),
+            // Only set on the Likes lists: when the like happened.
+            'liked_at' => $this->when(
+                $this->getAttribute('liked_at') !== null,
+                fn () => $this->getAttribute('liked_at')->toIso8601String(),
+            ),
             'photos' => ProfilePhotoResource::collection($profile->photos),
             'prompts' => UserProfilePromptResource::collection($this->profilePrompts),
         ];

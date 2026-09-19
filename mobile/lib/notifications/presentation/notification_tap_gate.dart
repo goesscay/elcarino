@@ -33,9 +33,10 @@ NotificationRoute? routeForNotificationData(Map<String, dynamic> data) {
               NotificationNavMode.push,
             );
     case 'like':
-      // No "who liked me" screen exists yet (Phase 2, [PROPOSED]) — the
-      // inbox is the closest thing to a sensible landing spot.
-      return const NotificationRoute('/matches', NotificationNavMode.go);
+      // The Likes tab. The push itself carries no liker identity (docs/03
+      // Notifications); the tab shows the count to everyone and the people to
+      // subscribers.
+      return const NotificationRoute('/likes', NotificationNavMode.go);
     default:
       return null;
   }

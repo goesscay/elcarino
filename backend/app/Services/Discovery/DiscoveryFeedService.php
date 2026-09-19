@@ -9,7 +9,6 @@ use App\Models\Swipe;
 use App\Models\User;
 use App\Models\UserLocation;
 use App\Models\UserPreference;
-use App\Services\Geo\Haversine;
 use Illuminate\Support\Collection;
 
 /**
@@ -40,6 +39,8 @@ use Illuminate\Support\Collection;
  */
 class DiscoveryFeedService
 {
+    public function __construct(private readonly CandidateAnnotator $annotator) {}
+
     /**
      * @return array{candidates: Collection<int, User>, hasMore: bool}
      */
@@ -109,25 +110,12 @@ class DiscoveryFeedService
             ->pluck('user_id')
             ->all();
 
-        $withinRadius = $candidates
-            ->map(function (User $candidate) use ($viewerLocation, $viewerInterestIds, $boostedUserIds) {
-                $km = Haversine::kilometers(
-                    $viewerLocation->latitude,
-                    $viewerLocation->longitude,
-                    $candidate->location->latitude,
-                    $candidate->location->longitude,
-                );
-                $candidate->setAttribute('distance_km', DistanceBucketer::bucketKm($km));
-                $candidate->setAttribute('raw_distance_km', $km);
-
-                $shared = $candidate->interests->whereIn('id', $viewerInterestIds);
-                $candidate->setAttribute('shared_interests_count', $shared->count());
-                $candidate->setAttribute('shared_interest_names', $shared->pluck('name')->values());
-
-                $candidate->setAttribute('is_boosted', in_array($candidate->id, $boostedUserIds, true));
-
-                return $candidate;
-            })
+        $withinRadius = $this->annotator
+            ->annotate($candidates, $viewerLocation, $viewerInterestIds)
+            ->each(fn (User $candidate) => $candidate->setAttribute(
+                'is_boosted',
+                in_array($candidate->id, $boostedUserIds, true),
+            ))
             ->filter(fn (User $candidate) => $candidate->raw_distance_km <= $preferences->max_distance_km)
             // Rule-based ranking (item 7): boosted first (item 3), then more
             // shared interests, then nearer (bucketed), then id as a stable,

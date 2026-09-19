@@ -124,6 +124,12 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::define('banUsers', fn (User $user) => $user->isAdmin());
         Gate::define('deleteUsers', fn (User $user) => $user->isAdmin());
+
+        // Who liked me (docs/07 §3.4) is a subscriber feature, checked here
+        // so the rule has one home; LikesController answers a denial with a
+        // locked, identity-free payload rather than a 403 (the tab still
+        // shows the count and the upgrade prompt).
+        Gate::define('view-who-liked-me', fn (User $user) => $user->isSubscriber());
     }
 
     /**
@@ -171,6 +177,10 @@ class AppServiceProvider extends ServiceProvider
 
         // docs/06 §7 rate limit table: "discovery/feed | 60 / hour / user".
         RateLimiter::for('discovery-feed', fn ($request) => Limit::perHour(60)->by($request->user()->id));
+
+        // Likes tab lists: same scraping concern as the feed, but a person
+        // pulls to refresh two tabs, so a separate, roomier bucket.
+        RateLimiter::for('likes-list', fn ($request) => Limit::perHour(120)->by($request->user()->id));
 
         // docs/06 §7: "swipes | 100 / hour / user (free), higher for
         // subscribers; hard ceiling regardless of tier." isSubscriber() is

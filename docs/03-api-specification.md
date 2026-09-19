@@ -158,8 +158,12 @@ score — "do not hardcode a scoring algorithm in Phase 1" — so `shared_intere
 opaque number. 422s: `location_required` / `preferences_required` if the viewer hasn't
 set either yet (`PUT /users/me/location`, `PUT /preferences/me`). Response shape:
 `{"candidates": [{id, display_name, age, bio, relationship_goal, is_verified,
-distance_km, shared_interests_count, shared_interests, photos, prompts}], "meta":
-{page, per_page, has_more}}`. `refresh=1` is accepted but currently a no-op — there's
+distance_km, shared_interests_count, shared_interests, interests, photos, prompts}],
+"meta": {page, per_page, has_more}}`. `interests` is every interest name (the profile-
+detail screen shows them all; `shared_interests` is the subset the viewer also has).
+This same candidate shape is reused by the Likes lists and Explore. `distance_km` is
+`null` only where the viewer or the person has no stored location (never in the feed
+itself, which requires both). `refresh=1` is accepted but currently a no-op — there's
 no feed cache yet for it to bust.
 
 | Method | Path | Notes |
@@ -206,7 +210,24 @@ being deleted.
 | GET | `/` | list active matches, ordered by most recent activity |
 | GET | `/{id}` | match detail |
 | DELETE | `/{id}` | unmatch |
-| GET | `/who-liked-me` | **[PROPOSED]** premium-gated list from `likes` — not built; Phase 2 (subscriptions) doesn't exist yet for the gate to check against |
+
+## Likes — `/api/v1/likes` — **[PROPOSED], implemented**
+
+The Likes tab (docs/07 §3.4). Supersedes the earlier sketch of `GET /matches/who-liked-me`
+— two symmetrical reads under their own prefix instead. Both use the discovery-feed
+candidate shape (above) plus `liked_at`, paginate with `page`/`per_page`, and are
+rate-limited (`likes-list`, 120/hour/user). Both drop anyone who is inactive
+(suspended/banned/deleted), blocked in either direction, or already matched with the
+viewer; `received` also drops anyone the viewer has already swiped on, so answering a
+like removes it from the list.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/received` | **Subscriber-gated** (`view-who-liked-me` gate → `isSubscriber()`, [TBD-13]). Subscriber: `{locked: false, total, likes: [candidate + liked_at], meta}`, newest first. **Non-subscriber: `{locked: true, total, likes: [], meta}` — 200, not 403**, because the tab still shows the count and the upgrade prompt; the point is that *no identity, photo or id is in the response at all* (nothing to blur client-side or scrape). |
+| GET | `/sent` | free. `{total, likes: [candidate + liked_at], meta}` — people the viewer liked who haven't matched with them. |
+
+Liking someone back is the existing `POST /swipes` (a mutual like returns
+`matched: true`); passing is a left swipe.
 
 ## Chat — `/api/v1/chat`
 
@@ -309,7 +330,7 @@ the swipe/match/message that triggered it, it just leaves `sent_via_push` false.
 `verification`/`report_status`/`system` are schema-reserved for features that don't
 exist yet. **`like`'s `payload` deliberately carries no identity of the liker** — "who
 liked me" is a separate, premium-gated browsing feature ([PROPOSED],
-`GET /matches/who-liked-me` above) that reads the `likes` table directly; putting an
+`GET /likes/received`, below) that reads the `likes` table directly; putting an
 id here would let a free user see it for free through the notification feed, the same
 "no derivative signal leaks precision" principle docs/06 §4 applies to location.
 
@@ -323,9 +344,9 @@ id here would let a free user see it for free through the notification feed, the
 `new_match` → `{match_id, conversation_id, other_user_id}`; `new_message` →
 `{conversation_id, message_id}`; `like` → `{}` (see above). The mobile client's
 tap-to-open routing (`NotificationTapGate`) switches on `type` — `new_match`/
-`new_message` open `conversation_id`'s conversation, `like` opens the inbox
-(no "who liked me" screen exists yet), everything else opens nothing (no screen
-built for it yet either).
+`new_message` open `conversation_id`'s conversation, `like` opens the Likes tab
+(the push names no one; the tab shows the count to everyone and the people to
+subscribers), everything else opens nothing (no screen built for it yet either).
 
 ## Devices — `/api/v1/users/me/devices`
 
