@@ -302,9 +302,14 @@ disposition actions (`ReportModerationService`) — Phase 1 item 11.
 |---|---|---|
 | id | bigint PK | |
 | user_id | FK → users | |
-| method | enum: ai_selfie, manual_review, id_document | open decisions #21–23 |
-| status | enum: pending, processing, approved, rejected | |
+| method | enum: ai_selfie, manual_review, id_document | open decisions #21–23. A request starts `ai_selfie`; when the matcher can't approve it confidently it becomes `manual_review` (the human queue). `id_document` (#23) is in the enum but not built. |
+| status | enum: pending, processing, approved, rejected | `processing` while the matcher runs (and briefly while a reviewer's decision is being applied); `pending` = waiting for a human; the other two are terminal |
+| pose | string(40) | **Added in Phase 4.** The server-issued liveness prompt the selfie had to show (`thumbs_up`, `peace_sign`, …). Shown to the reviewer. |
+| selfie_path | string, nullable | **Added in Phase 4.** The *encrypted* selfie on the private disk (`verification/{uuid}.enc`, encrypted with the app key before it is written). **Set to null, and the file deleted, the moment a decision is made** — docs/06 §5 "shortest viable retention". |
+| ai_outcome | string(30), nullable | **Added in Phase 4.** What the matcher said: `matched`, `not_matched`, `no_face`, `inconclusive`. For the reviewer's context; never shown to the person. |
+| ai_score | float, nullable | **Added in Phase 4.** The matcher's 0–100 confidence. Reviewer-only, never shown to the person. |
 | submitted_at | timestamp | |
+| index | (user_id, status), (status, method) | the queue and the "open request?" check |
 
 ### `verification_results`
 | Column | Type | Notes |
@@ -312,9 +317,16 @@ disposition actions (`ReportModerationService`) — Phase 1 item 11.
 | id | bigint PK | |
 | verification_request_id | FK → verification_requests | |
 | decided_by | enum: ai, admin | |
-| confidence_score | float, nullable | AI-path only |
+| confidence_score | float, nullable | AI-path only (a reviewer's decision carries the AI's score for context) |
 | reviewer_id | FK → users (admin), nullable | manual-path only |
+| reason | string(40), nullable | **Added in Phase 4.** Rejection reason code (`no_face_detected`, `face_mismatch`, `photo_unclear`, `pose_not_followed`, `other`); null on approval |
 | decided_at | timestamp | |
+
+The doc's earlier claim that these two tables "support any of the three methods without a
+schema change" held for the *decision*, but not for the evidence: the selfie itself, the
+pose it had to show, and what the matcher said had nowhere to live, hence the four added
+columns. A `verification_results` row is written for every decision, so the Phase 4 gate
+("verification decisions are auditable") is a query, not a reconstruction.
 
 ## Notifications
 

@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Subscriptions\SubscriptionController;
 use App\Http\Controllers\Api\Swipe\SwipeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserDeviceController;
+use App\Http\Controllers\Api\Verification\VerificationController;
 use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -75,6 +76,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [InterestController::class, 'index']);
             Route::get('me', [InterestController::class, 'mine']);
             Route::put('me', [InterestController::class, 'update']);
+        });
+
+        Route::prefix('verification')->group(function () {
+            Route::get('challenge', [VerificationController::class, 'challenge']);
+            Route::post('request', [VerificationController::class, 'submit'])->middleware('throttle:verification-submit');
+            Route::get('status', [VerificationController::class, 'status']);
         });
 
         Route::prefix('explore')->middleware('throttle:explore')->group(function () {

@@ -38,6 +38,7 @@ import '../../safety/presentation/blocked_users_screen.dart';
 import '../../safety/presentation/report_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../subscriptions/presentation/premium_screen.dart';
+import '../../verification/presentation/verification_screen.dart';
 import '../widgets/main_shell.dart';
 import '../widgets/splash_screen.dart';
 
@@ -261,6 +262,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/subscription',
         builder: (context, state) => const PremiumScreen(),
+      ),
+      // Selfie verification (docs/07 section 3.6), from the profile's "Get verified".
+      GoRoute(
+        path: '/verification',
+        builder: (context, state) => const VerificationScreen(),
       ),
       // The people behind one Explore tile, over the tab bar. `extra` is the
       // ExploreInterest that was tapped.

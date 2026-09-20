@@ -414,12 +414,49 @@ request signature is the entire authentication.
 | POST | `/stripe` | `Stripe-Signature` header HMAC-verified against `STRIPE_WEBHOOK_SECRET` (`App\Services\Payments\StripeWebhookSignatureVerifier`) — `503` if unconfigured, `400` if the signature doesn't verify. Handles `checkout.session.completed` (activates the subscription), `customer.subscription.deleted` (cancels it), `invoice.payment_failed` (marks it `past_due`). **Not handled:** `invoice.payment_succeeded` extending `ends_at` on renewal — every subscription this feature creates gets exactly one billing period and then lapses even if Stripe keeps charging successfully. Flagged as the natural next fast-follow, not silently dropped |
 | POST | `/webhook/{provider}` | **public**, signature-verified — gateway callback, not user-facing |
 
-## Verification — `/api/v1/verification`
+## Verification — `/api/v1/verification` — **[PROPOSED], implemented (Phase 4)**
+
+A selfie showing a **server-issued pose** is compared with the person's profile photos; the
+outcome earns the verified badge (`profiles.is_verified`, already rendered on the Discover
+card and profile). The provider is an open decision [TBD-21], so the matcher is behind a
+`FaceMatcher` interface and **no real provider is wired**: by default (`VERIFICATION_PROVIDER=none`)
+nothing is decided automatically and every request goes to the human review queue in the
+admin panel (#22).
+
+**Decision rules** (`VerificationService`). The AI may **approve** a match only at or above
+`verification.approve_threshold` (default 90, a placeholder, [TBD-21]). It may **reject** for
+exactly one reason: no face was found. Every other outcome — a non-match, a score below the
+threshold, a provider error, no provider — is *never* an automatic rejection: the request
+becomes `manual_review`/`pending` and waits for a person. Face-match models fail unevenly
+across skin tones, lighting and cameras, so a model alone must not deny a trust badge.
+
+**Privacy** (docs/06 §5, "Critical" data). The selfie is re-encoded (EXIF stripped), then
+**encrypted with the app key before it touches the private disk**, and **deleted the moment a
+decision is made**. Reviewers see it only through an audited, session-only admin route
+(`verification.selfie_viewed` in `audit_log`). The person never sees the matcher's score or
+outcome, and rejection copy never says how a decision was reached.
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/request` | submits selfie/ID per chosen method (open decisions #21–23) |
-| GET | `/status` | current `verification_requests` state for the user |
+| GET | `/challenge` | `{challenge: {pose, label, expires_at}}` — the pose the selfie must show. Idempotent within its lifetime (`verification.challenge_ttl_minutes`, 15) so re-opening the screen doesn't change it. 409 `already_verified`. |
+| POST | `/request` | **multipart**: `selfie` (jpeg/png/webp, ≤ 5 MB, camera capture) + `pose` (the code from `/challenge`). Decided synchronously; **201** `{request: {id, status, submitted_at, decided_at, reason, reason_message}}` where `status` is `approved`, `rejected` or `in_review` (both the AI's `processing` and a human's `pending` read as "we're checking"). Rate-limited (`verification-submit`, 10/hour). Errors below. |
+| GET | `/status` | `{is_verified, can_start, request}` — `request` is the latest one or null; `can_start` is false when verified, when one is already in review, or at the daily cap. |
+
+Error codes (docs/03 envelope): `422 challenge_expired` (no prompt issued, expired, not the one
+issued, or already used — a prompt is **single-use**, so a selfie can't be replayed against it),
+`422 photo_required` (add a profile photo first — nothing to compare), `422 invalid_image`,
+`409 already_verified`, `409 verification_in_progress` (one open request at a time),
+`429 too_many_attempts` (`verification.max_attempts_per_day`, 3 per rolling 24 h).
+
+**Review queue** (Filament, `/admin` → Verification; docs/06 §3.3: admins *and* moderators).
+Defaults to the requests waiting for a person. Per row: **View selfie** (audited), **Approve**,
+**Reject** (with a reason). Both go through `VerificationModerationService` → the same code
+path as the AI (verified flag, selfie deletion, notification, `audit_log`
+`verification.approved|rejected`). A decision is claimed with an atomic compare-and-swap, so two
+reviewers clicking the same row can't both decide it.
+
+The outcome is also pushed (`notifications.type = verification`, payload `{status}`), and a tap
+opens the profile.
 
 ## Safety — `/api/v1/safety`
 

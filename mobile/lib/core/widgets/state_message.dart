@@ -14,6 +14,7 @@ class StateMessage extends StatelessWidget {
     this.title,
     this.actionLabel,
     this.onAction,
+    this.celebratory = false,
     super.key,
   });
 
@@ -22,6 +23,10 @@ class StateMessage extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// A good-news state (verified, matched...): the icon sits on the brand tint
+  /// in brand red instead of the usual quiet grey.
+  final bool celebratory;
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +42,16 @@ class StateMessage extends StatelessWidget {
             children: [
               DecoratedBox(
                 decoration: BoxDecoration(
-                  color: p.fill,
+                  color: celebratory ? p.primaryTint : p.fill,
                   shape: BoxShape.circle,
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Icon(icon, size: 36, color: p.textSecondary),
+                  child: Icon(
+                    icon,
+                    size: 36,
+                    color: celebratory ? AppColors.primary : p.textSecondary,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),

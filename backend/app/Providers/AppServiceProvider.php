@@ -20,6 +20,10 @@ use App\Services\Push\PushSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Sms\SmsSender;
 use App\Services\Sms\TwilioSmsSender;
+use App\Services\Verification\FaceMatcher;
+use App\Services\Verification\FaceMatchOutcome;
+use App\Services\Verification\FakeFaceMatcher;
+use App\Services\Verification\UnconfiguredFaceMatcher;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
@@ -52,6 +56,22 @@ class AppServiceProvider extends ServiceProvider
                     config('services.push.fcm.service_account_private_key'),
                 ),
                 default => new LogPushSender,
+            };
+        });
+
+        $this->app->bind(FaceMatcher::class, function () {
+            return match (config('verification.provider')) {
+                // Local dev / tests only. "Always matched" would hand out
+                // verified badges to anyone, so it must not be reachable in
+                // production even if the env var is set by mistake.
+                'fake' => $this->app->environment(['local', 'testing'])
+                    ? new FakeFaceMatcher(
+                        FaceMatchOutcome::from(config('verification.fake.outcome')),
+                        config('verification.fake.score'),
+                    )
+                    : throw new \LogicException('VERIFICATION_PROVIDER=fake is only allowed in local/testing environments.'),
+                // [TBD-21] No real provider is chosen yet. Add its case here.
+                default => new UnconfiguredFaceMatcher,
             };
         });
 
@@ -177,6 +197,12 @@ class AppServiceProvider extends ServiceProvider
 
         // docs/06 §7 rate limit table: "discovery/feed | 60 / hour / user".
         RateLimiter::for('discovery-feed', fn ($request) => Limit::perHour(60)->by($request->user()->id));
+
+        // Verification submissions: each one runs a face match (a paid,
+        // rate-limited provider call once one is wired) and stores a selfie,
+        // so a tighter cap than ordinary writes. The per-day attempt cap in
+        // VerificationService is the real product rule; this is the abuse guard.
+        RateLimiter::for('verification-submit', fn ($request) => Limit::perHour(10)->by($request->user()->id));
 
         // Explore runs the same eligibility scan as the feed on every call, so
         // it is limited in the same spirit: room for browsing a few categories,

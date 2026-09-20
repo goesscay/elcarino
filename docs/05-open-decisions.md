@@ -52,9 +52,9 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 
 | # | Decision | Working assumption | Status |
 |---|---|---|---|
-| 21 | AI verification | Assumed primary method (selfie-match pipeline) | 🔴 |
-| 22 | Manual verification | Assumed fallback/appeal path for AI rejections | 🔴 |
-| 23 | ID verification | Not assumed in scope unless required for a specific launch market's compliance | 🔴 |
+| 21 | AI verification | Assumed primary method (selfie-match pipeline). **Built (Phase 4 item 1) behind a provider-agnostic `FaceMatcher`; no real provider is chosen or wired**, so by default every request goes to human review. Still needed from the client: **the provider** (the spec's OpenAI isn't suited to face matching — e.g. AWS Rekognition, Azure Face) and **the approval threshold** (`verification.approve_threshold`, 90 is a placeholder — too low lets impostors get a badge, too high floods the review queue). Also a legal call: biometric-adjacent data under Malaysia's PDPA / India's DPDP — the selfie is currently deleted on decision | 🟡 |
+| 22 | Manual verification | Assumed fallback/appeal path for AI rejections. **Built:** in fact the *default* path — the AI never rejects a non-match, it hands it to a human. Filament review queue for admins and moderators (docs/06 §3.3): view selfie (audited), approve, reject with a reason. No separate "appeal" screen: a non-match is already reviewed by a person | 🟡 |
+| 23 | ID verification | Not assumed in scope unless required for a specific launch market's compliance. `id_document` is in the `verification_requests.method` enum but **not built** | 🔴 |
 
 ## AI
 

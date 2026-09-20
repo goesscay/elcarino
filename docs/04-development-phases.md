@@ -912,8 +912,51 @@ bug above). Non-subscribers are rejected server-side at token issuance
 
 ## Phase 4 — AI (~3–4 weeks)
 
-- [ ] AI profile verification (photo/selfie pipeline — per chosen method, open
-      decisions #21–23)
+- [x] AI profile verification (selfie pipeline, open decisions #21–23) — **built and
+      verified end to end; no real face-match provider is wired**, on purpose (see below).
+      **Backend:** `verification_requests`/`verification_results` (docs/02, plus four columns
+      the doc's "supports any method" claim hadn't covered: `pose`, `selfie_path`,
+      `ai_outcome`, `ai_score`, and `reason` on results), `GET /verification/challenge`,
+      `POST /verification/request` (multipart), `GET /verification/status` (docs/03
+      "Verification"). **The decisions this rests on:** (1) the matcher is behind a
+      `FaceMatcher` interface with an `UnconfiguredFaceMatcher` default that never approves or
+      rejects anything, so until a provider is chosen every request goes to the human review
+      queue — failing toward a person, not toward a badge. The spec's AI provider (OpenAI) isn't
+      suited to face *identity* matching, so this is a real provider decision left open [TBD-21],
+      not a gap. A `fake` driver exists for local development and **refuses to boot outside
+      local/testing** (an always-approve matcher leaking to production would hand out verified
+      badges). (2) The AI may approve only at `verification.approve_threshold` (90, a
+      placeholder [TBD-21]) and may auto-reject only for **no face detected**; a non-match or a
+      low score is *never* an automatic rejection, it goes to a human (#22), because face-match
+      models fail unevenly across skin tones, lighting and cameras. (3) A **server-issued,
+      single-use pose prompt** (15-minute TTL) must be shown in the selfie, so a photo taken or
+      stolen beforehand doesn't fit. (4) **Selfies are "Critical" data (docs/06 §5):** encrypted
+      with the app key before they touch disk, deleted the moment a decision is made, viewable
+      only through an audited session-only admin route, and the person never sees the score.
+      (5) Limits: one open request at a time, 3 per rolling 24 h. **Admin:** a Filament
+      `Verification` queue for admins and moderators (docs/06 §3.3) — view selfie, approve,
+      reject with a reason — all through `VerificationModerationService`, audited, with an atomic
+      compare-and-swap claim so two reviewers can't both decide one request. The decision is
+      synchronous (the request returns the answer), not queued: a real provider call is a second
+      or two, and it avoids requiring a queue worker locally. 46 new backend tests (339 → 385).
+      **Mobile:** a "Get verified" card on the profile and a `VerificationScreen` (intro with
+      the pose and the privacy promise → front-camera selfie → checking → approved / in review /
+      rejected with "Try again"), camera-only by design (no gallery option), behind an injectable
+      `SelfieCapture`. A `verification` push opens the profile. 24 new mobile tests (225 → 249).
+      **Two real bugs found by live testing, not by the suite:** the challenge stored a `Carbon`
+      object in the cache, which the `database` cache driver (dev) and Redis (production) return as
+      an unusable "incomplete object" — the array driver the tests use never serialises, so the
+      suite passed; fixed by storing a plain timestamp, with a regression test on the serialising
+      store; and a guest hitting the audited selfie route got a 500 (the `auth` middleware tried to
+      redirect to a `login` route this API-first app doesn't have), caught by its own test.
+      **Verified on the emulator:** the card, the pose prompt, the real camera, submitting,
+      approved (badge on the profile), and the human path (in review → admin approves → the file is
+      gone, the badge appears, the notification and audit entry exist). **Not done, disclosed:**
+      no real provider (so the AI path only ever ran against the `fake` driver); the verified badge
+      is **not revoked when the main photo changes** (a verified person can swap in someone else's
+      photo — re-verification on photo change is the natural fast-follow); ID-document verification
+      (#23) is not built; selfie retention after a decision is "none" — if legal wants a retained
+      audit copy that is a policy decision, not a default.
 - [ ] Compatibility scoring (formula finalized with client before this phase starts —
       spec §10)
 - [ ] Smart recommendations (`recommendation_history`)

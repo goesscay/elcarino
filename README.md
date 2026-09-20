@@ -61,7 +61,7 @@ rather than a copy of any existing dating app.
 | 09 | Match | ✅ Redesigned | Dark celebration screen, animated overlapping photos, **Send a message** / **Keep discovering** |
 | 10 | Chat list | ✅ Redesigned | New-matches row and conversations. **No** search, **no** unread badge |
 | 11 | Chat | ✅ Redesigned | Bubbles, date separators, read receipts, typing indicator, voice notes, photos, GIFs, voice and video calls |
-| 12 | Profile | ✅ Redesigned | Photo header, interests, bio, completeness meter. **No** verified badge or location line |
+| 12 | Profile | ✅ Redesigned | Photo header, interests, bio, completeness meter, a **Get verified** card and the verified badge. **No** location line |
 | 13 | Edit profile | ✅ Redesigned | Photos plus grouped section rows (Basics & bio, Interests, Prompts, Preferences) |
 | 14 | Filters | ✅ Redesigned | "Show people" / "Reset", age and distance sliders, looking-for and goal chips |
 | 15 | Settings | ✅ Redesigned | Grouped cards; Log out and Delete account set apart at the bottom |
@@ -74,16 +74,18 @@ the layout. Everything still marked "not built" is recorded, with the reason, in
 
 ## Where the project stands
 
-**Phases 0 through 3 are complete. Phase 4 (AI) is paused on client decisions. Phase 5
+**Phases 0 through 3 are complete. Phase 4 (AI) is under way: selfie verification is built;
+compatibility scoring, recommendations and icebreakers wait on client decisions. Phase 5
 (production hardening) has not started.**
 
 | | |
 |---|---|
-| Backend tests | **339 passing** (990 assertions) |
-| Mobile tests | **225 passing**, `flutter analyze` clean, `dart format` clean |
+| Backend tests | **385 passing** |
+| Mobile tests | **249 passing**, `flutter analyze` clean, `dart format` clean |
 | UI redesign | Merged ([#2](https://github.com/goesscay/elcarino/pull/2)) — theme, tab shell and nine screens |
 | Likes tab | Built — premium "who liked me" enforced by the API, plus "people you like" and a shared profile-detail screen |
 | Explore tab | Built — browse people by interest, using the same eligibility as the Discover deck |
+| Verification | Built end to end (backend, admin review queue, mobile). **No real face-match provider is wired**: by default every selfie goes to human review |
 | Verified live | Two-emulator voice and video calls, real-time chat, voice notes, photos, GIF picker states, admin panel with TOTP |
 | Not verified live | Stripe, Firebase push, Twilio SMS, Giphy, iOS (no credentials or toolchain on the dev machine) — see [Known gaps](#known-gaps-and-unverified-integrations) |
 
@@ -117,6 +119,13 @@ the layout. Everything still marked "not built" is recorded, with the reason, in
 - **People you like** (free): your pending likes, read-only
 - Both lists hide inactive, blocked and already-matched people
 - A push for a new like opens this tab (and names no one)
+
+### Profile verification
+- A **Get verified** card on the profile opens a guided selfie: the server picks a pose (e.g. "Show a peace sign"), the person takes a **front-camera** selfie showing it, and the answer comes back on the spot
+- A confident match is approved automatically. The AI may reject only for "no face detected"; **a non-match or a low score is never an automatic rejection, it goes to a person**, because face-match models fail unevenly across skin tones and lighting
+- A **Filament review queue** for admins and moderators: view the selfie (every view is audit-logged), approve, or reject with a reason. Two reviewers can't both decide one request
+- **Selfies are treated as critical data:** encrypted with the app key before they touch disk, deleted the moment a decision is made, and the person never sees the matcher's score
+- The provider is an open decision. With none configured, everything goes to the queue: a badge is never handed out by default
 
 ### Explore
 - A grid of interest tiles (Sports, Arts, Food & drink, Lifestyle, Learning...), most popular first, each with **how many people you could actually be shown** who share it, and a tick on the ones already on your profile
@@ -197,7 +206,7 @@ in services:
 ```
 Services/
   Auth · Discovery · Explore · Likes · Matching · Geo · Media · Safety
-  Calls · Gifs · Notifications · Push · Sms
+  Calls · Gifs · Notifications · Push · Sms · Verification
   Subscriptions · Payments · Admin
 Filament/        admin resources, widgets and the panel provider
 Policies/        SwipePolicy, UserMatchPolicy, ConversationPolicy, CallPolicy, ...
@@ -215,7 +224,7 @@ Feature-first Clean Architecture: each feature has `presentation/`, `domain/` an
 
 ```
 lib/
-  authentication · onboarding · profile · discovery · explore · matching · likes
+  authentication · onboarding · profile · discovery · explore · matching · likes · verification
   chat · calls · safety · settings · subscriptions · notifications
   core/
     theme/     AppColors, AppPalette, AppTypography, AppSpacing, AppTheme
@@ -305,12 +314,12 @@ Mobile builds pick their environment with `--dart-define-from-file=config/{dev,s
 ## Testing and CI
 
 ```powershell
-# Backend: 339 tests
+# Backend: 385 tests
 cd backend
 php artisan test
 ./vendor/bin/pint --test
 
-# Mobile: 225 tests. The dart-define file is required: AppConfig fails loudly without it.
+# Mobile: 249 tests. The dart-define file is required: AppConfig fails loudly without it.
 cd mobile
 flutter test --dart-define-from-file=config/dev.json
 flutter analyze
@@ -366,6 +375,7 @@ response shapes is in [`docs/03-api-specification.md`](docs/03-api-specification
 | Auth | `register`, `login`, `logout`, `otp/request`, `otp/verify`, `password/forgot`, `password/reset`, `oauth/google`, `oauth/apple` |
 | Profile | `profiles/me` (+ `photos`, `photos/order`), `prompts` and `prompts/me`, `interests` and `interests/me`, `preferences/me`, `users/me`, `users/me/location` |
 | Discovery | `discovery/feed`, `discovery/boost`, `swipes` |
+| Verification | `verification/challenge`, `verification/request` (multipart selfie), `verification/status` |
 | Explore | `explore/interests`, `explore/interests/{id}/people` |
 | Likes | `likes/received` (subscriber-gated, count-only for free users), `likes/sent` |
 | Matches | `matches`, `matches/{id}` (show, unmatch) |
@@ -391,7 +401,7 @@ Real-time events travel over presence channels `presence-conversation.{id}`.
 | **UI redesign** | Theme, tab shell, nine screens | ✅ Done and merged |
 | **Likes** tab | "Who liked me" (premium) and "people you like", plus profile detail | ✅ Done |
 | **Explore** tab | Interest categories with member counts, and the people behind them | ✅ Done |
-| **4** AI | Selfie verification, compatibility scoring, recommendations, icebreakers | ⏸ Paused on client decisions #21–25 |
+| **4** AI | Selfie verification ✅ (no real provider yet). Compatibility scoring, recommendations, icebreakers | 🟡 In progress; the rest is paused on client decisions #24–25 |
 | **5** Production | Security audit, load testing, store submission, deployment, monitoring, backups | ⬜ Not started |
 
 Planning-level total: **20–28 weeks**. Each phase has a gate that must be met before the
@@ -414,6 +424,7 @@ Stated plainly, so nobody assumes they work:
 - **Stripe renewals:** `invoice.payment_succeeded` doesn't yet extend `ends_at` on renewal.
 - **iOS** hasn't been built or run. Only Android was exercised.
 - **Feed gating on photos:** candidates need at least one photo of *any* moderation status, because nothing can be approved until a moderation UI exists. Tighten to approved-only before real users.
+- **No face-match provider (open decision #21).** Verification is built and tested, but the AI path has only ever run against a `fake` driver; every real selfie goes to human review until a provider and an approval threshold are chosen. Also **the verified badge is not revoked when the main photo changes**, so a verified person could swap in someone else's photo. Re-verifying on a photo change is the natural follow-up
 - **Not built:** Undo / Super Like, opening a profile from a Discover card tap, the Likes "Recently liked you" strip, chat search, tab unread badge, notification centre, per-type notification toggles, account deletion UX, Help & Legal content, drag-and-drop photo reorder, report evidence attachments, verification review.
 - **Throttled requests** return Laravel's default 429 body, not the app's error envelope.
 
@@ -431,7 +442,8 @@ gender options (man / woman / non-binary), religion and politics as required fil
 subscriber-only unmatched messaging, and **WebRTC** for calls.
 
 Still open and business-critical: target niche (#1), **pricing (#12)**, number of plans
-(#11), the verification approach (#21–23) and AI icebreakers (#25).
+(#11), the **face-match provider and approval threshold (#21)**, the compatibility formula
+(#24) and AI icebreakers (#25).
 
 ---
 

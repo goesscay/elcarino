@@ -243,6 +243,11 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         return $this->hasMany(Subscription::class);
     }
 
+    public function verificationRequests(): HasMany
+    {
+        return $this->hasMany(VerificationRequest::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
