@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../onboarding/data/onboarding_gate.dart';
 import '../../onboarding/domain/onboarding_step.dart';
 import '../auth/auth_controller.dart';
+import '../theme/app_colors.dart';
 import 'app_logo.dart';
 
 /// docs/07-ui-ux-design.md §3.1 "Splash": "Logo centred; decides authed vs
@@ -33,7 +35,17 @@ class SplashScreen extends ConsumerWidget {
       });
     }
 
-    return const Scaffold(body: Center(child: AppLogo(width: 200)));
+    // The logo in white, centred on the logo's own red, full-bleed. Exactly what
+    // the native launch screen shows (same colour, same 170 dp logo), so the
+    // hand-off from it to this screen is invisible. Always red, in light and
+    // dark mode alike: it is the brand's moment, not a themed page.
+    return const AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: AppColors.logoRed,
+        body: Center(child: AppLogo(width: 170, white: true)),
+      ),
+    );
   }
 
   Future<void> _resolveAndGo(
