@@ -50,7 +50,7 @@ rather than a copy of any existing dating app.
 
 | # | Screen | State | Notes |
 |---|---|---|---|
-| 01 | Splash | ✅ Built | Uses the unmodified logo asset |
+| 01 | Splash | ✅ Built | The Elcarino logo, centred |
 | 02 | Welcome | ✅ Built | Create account / Sign in |
 | 03 | Register | ✅ Built | Email and phone + OTP. Google / Apple buttons are present but show "coming soon" (need real OAuth client IDs) |
 | 04 | Onboarding | ✅ Built | Profile basics, prompts and preferences steps, resumable from the API |
@@ -471,7 +471,7 @@ Still open and business-critical: target niche (#1), **pricing (#12)**, number o
 | [`docs/07-ui-ux-design.md`](docs/07-ui-ux-design.md) | Screens, navigation, design system, built-vs-not-built |
 | [`docs/08-environment-setup.md`](docs/08-environment-setup.md) | Local setup, environments, gotchas |
 | [`CLAUDE.md`](CLAUDE.md) | Working rules for contributors and AI assistants |
-| [`branding/`](branding) | Logo (SVG and PNG), colour, app icon notes |
+| [`branding/`](branding) | The logo (as supplied, plus the transparent version the app uses), colour, app icon notes |
 | [`proposal/`](proposal) | Client-facing proposal and cost decks (reference only) |
 
 ---
