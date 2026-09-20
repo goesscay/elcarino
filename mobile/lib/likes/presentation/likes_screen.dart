@@ -8,9 +8,9 @@ import '../../core/network/api_exception.dart';
 import '../../core/router/tab_refresh.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/network_photo.dart';
 import '../../core/widgets/state_message.dart';
 import '../../discovery/domain/candidate.dart';
+import '../../discovery/presentation/person_tile.dart';
 import '../data/likes_repository.dart';
 import '../domain/likes_page.dart';
 
@@ -349,80 +349,9 @@ class _LikesListState extends ConsumerState<_LikesList> {
           childAspectRatio: 0.78,
         ),
         itemCount: _likes.length,
-        itemBuilder: (context, index) => LikeTile(
+        itemBuilder: (context, index) => PersonTile(
           candidate: _likes[index],
           onTap: () => _open(_likes[index]),
-        ),
-      ),
-    );
-  }
-}
-
-/// One person in the grid: photo, and name + age over a soft bottom fade.
-class LikeTile extends StatelessWidget {
-  const LikeTile({required this.candidate, required this.onTap, super.key});
-
-  final DiscoveryCandidate candidate;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final distance = candidate.distanceLabel;
-    final photos = candidate.photos;
-    return Semantics(
-      button: true,
-      label: '${candidate.displayName}, ${candidate.age}. Open profile',
-      excludeSemantics: true,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: InkWell(
-          onTap: onTap,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              photos.isEmpty
-                  ? const PhotoPlaceholder()
-                  : NetworkPhoto(photos.first.url),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.center,
-                    end: Alignment.bottomCenter,
-                    colors: [AppColors.photoScrimClear, AppColors.photoScrim],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: AppSpacing.md,
-                right: AppSpacing.md,
-                bottom: AppSpacing.md,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${candidate.displayName}, ${candidate.age}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.titleMedium?.copyWith(
-                        color: AppColors.onPhoto,
-                      ),
-                    ),
-                    if (distance != null)
-                      Text(
-                        distance,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.onPhotoMuted,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

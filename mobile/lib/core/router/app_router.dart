@@ -18,6 +18,9 @@ import '../../chat/presentation/inbox_screen.dart';
 import '../../discovery/domain/candidate.dart';
 import '../../discovery/presentation/candidate_detail_screen.dart';
 import '../../discovery/presentation/discover_feed_screen.dart';
+import '../../explore/domain/explore_interest.dart';
+import '../../explore/presentation/explore_people_screen.dart';
+import '../../explore/presentation/explore_screen.dart';
 import '../../likes/presentation/likes_screen.dart';
 import '../../onboarding/presentation/location_permission_screen.dart';
 import '../../onboarding/presentation/notification_permission_screen.dart';
@@ -45,7 +48,7 @@ import '../widgets/splash_screen.dart';
 /// simpler to reason about, and this app has no automatic session-loss event
 /// yet that would need a global redirect to react to.
 ///
-/// Main tabs (Discover / Likes / Chats / Profile) are a real bottom-nav shell —
+/// Main tabs (Discover / Explore / Likes / Chats / Profile) are a real bottom-nav shell —
 /// [MainShell]. Explore and Likes join it once they have screens and APIs.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -68,6 +71,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/discover',
                 builder: (context, state) => const DiscoverFeedScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/explore',
+                builder: (context, state) => const ExploreScreen(),
               ),
             ],
           ),
@@ -250,6 +261,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/subscription',
         builder: (context, state) => const PremiumScreen(),
+      ),
+      // The people behind one Explore tile, over the tab bar. `extra` is the
+      // ExploreInterest that was tapped.
+      GoRoute(
+        path: '/explore/interest',
+        builder: (context, state) =>
+            ExplorePeopleScreen(interest: state.extra! as ExploreInterest),
       ),
       // Another person's profile, over the tab bar. `extra` is a
       // (DiscoveryCandidate, canRespond) record; the screen pops `true` once

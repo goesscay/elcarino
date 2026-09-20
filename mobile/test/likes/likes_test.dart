@@ -284,7 +284,8 @@ void main() {
       expect(find.text('Priya, 26'), findsOneWidget);
       expect(find.text('3 km away'), findsOneWidget);
       expect(find.text('Ananya, 29'), findsOneWidget);
-      expect(find.text('less than 1 km away'), findsOneWidget);
+      // Tiles use the short form so it isn't cut off.
+      expect(find.text('< 1 km away'), findsOneWidget);
       expect(find.text('2'), findsOneWidget); // header badge
       expect(find.text('Upgrade to see who likes you'), findsNothing);
     });

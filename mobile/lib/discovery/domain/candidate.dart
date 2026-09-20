@@ -86,4 +86,12 @@ class DiscoveryCandidate {
     if (km == null) return null;
     return km == 0 ? 'less than 1 km away' : '$km km away';
   }
+
+  /// A shorter form for narrow places (photo tiles), where "less than 1 km
+  /// away" would be cut off.
+  String? get shortDistanceLabel {
+    final km = distanceKm;
+    if (km == null) return null;
+    return km == 0 ? '< 1 km away' : '$km km away';
+  }
 }

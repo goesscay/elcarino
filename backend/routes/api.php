@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Chat\ChatController;
 use App\Http\Controllers\Api\Chat\GifController;
 use App\Http\Controllers\Api\Discovery\BoostController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
+use App\Http\Controllers\Api\Explore\ExploreController;
 use App\Http\Controllers\Api\Likes\LikesController;
 use App\Http\Controllers\Api\Matches\MatchController;
 use App\Http\Controllers\Api\Notifications\NotificationController;
@@ -74,6 +75,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [InterestController::class, 'index']);
             Route::get('me', [InterestController::class, 'mine']);
             Route::put('me', [InterestController::class, 'update']);
+        });
+
+        Route::prefix('explore')->middleware('throttle:explore')->group(function () {
+            Route::get('interests', [ExploreController::class, 'interests']);
+            Route::get('interests/{interest}/people', [ExploreController::class, 'people']);
         });
 
         Route::prefix('likes')->middleware('throttle:likes-list')->group(function () {
