@@ -159,7 +159,13 @@ php artisan test
 ```
 
 Tests run against an in-memory SQLite database (configured in `phpunit.xml`) — fast,
-no setup. The CI `test-postgres` job re-runs the same suite against PostgreSQL 16 to
+no setup. They also run against **fake storage disks** (`Tests\TestCase::setUp` fakes
+`local` and `public` for every test), so the suite can never touch your real
+`storage/app/private` — the folder the dev server serves profile photos, voice notes and
+chat media from. (Until this was fixed, two test classes deleted `photos/`, `voice-notes/`
+and `chat-photos/` there on every run, wiping seeded dev media.) A test that needs to
+write a file just writes it; `tests/Feature/TestIsolationTest.php` fails if the isolation
+is ever removed. The CI `test-postgres` job re-runs the same suite against PostgreSQL 16 to
 catch engine differences before they reach staging.
 
 ### Environment matrix (backend)

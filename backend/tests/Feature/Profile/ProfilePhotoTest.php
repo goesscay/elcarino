@@ -15,12 +15,6 @@ class ProfilePhotoTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function tearDown(): void
-    {
-        Storage::disk('local')->deleteDirectory('photos');
-        parent::tearDown();
-    }
-
     private function profileFor(User $user): Profile
     {
         return Profile::factory()->for($user)->create();
