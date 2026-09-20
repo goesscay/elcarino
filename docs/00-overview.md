@@ -1,7 +1,7 @@
 # Elcarino — Development Documentation
 
 > **Naming note:** open decision #2 (brand name) is now confirmed — **Elcarino**,
-> package/bundle id `com.mgs.elcarino`, brand red `#DC2626`. See
+> package/bundle id `com.mgs.elcarino`, brand red `#D81D1F` (the logo's own red). See
 > [`05-open-decisions.md`](05-open-decisions.md) and the logo/brand asset in
 > [`/branding`](../branding). The rename has been applied across `/docs`, `/mobile`, and
 > `/backend`. Full hi-fi visual design (imagery, illustration style, a clickable

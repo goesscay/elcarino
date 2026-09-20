@@ -23,15 +23,16 @@ Resolves open decision #2 ([`docs/05-open-decisions.md`](../docs/05-open-decisio
   - On a dark surface the white cutouts (the heart in the "e", the gap in its swoosh) show the
     surface through them, and the glossy highlight beside the heart reads as a slightly darker
     red. That is what removing a white background does; it looks right at app sizes.
-- **Colour:** brand red `#DC2626`. **Note:** the supplied logo's red is `#D81D1F` (216, 29, 31), a
-  little deeper than the `#DC2626` token, so buttons sit a hair lighter than the logo where the
-  two appear together (e.g. the Welcome screen). It hasn't been reconciled: changing the token
-  would restyle the whole app, so it's a call for the client or a designer. The logo's own red
-  is used in exactly one place, the splash background, as `AppColors.logoRed`; everything
-  else stays on the primary token. Wired into the app
-  as `AppColors.primary`
-  ([`mobile/lib/core/theme/app_colors.dart`](../mobile/lib/core/theme/app_colors.dart))
-  and `color.primary` in [`docs/07-ui-ux-design.md`](../docs/07-ui-ux-design.md) §4.1.
+- **Colour:** brand red **`#D81D1F`** (216, 29, 31): the red of the supplied logo file itself, so
+  buttons and highlights match the logo exactly. (The working value was `#DC2626`, a hair lighter,
+  until the logo arrived; every place that used it was changed.) Wired into the app as
+  `AppColors.primary` ([`mobile/lib/core/theme/app_colors.dart`](../mobile/lib/core/theme/app_colors.dart)),
+  which is also the splash's background, into the admin panel's primary colour, and into the web
+  manifest's `theme_color`. `primaryDark` (`#B0181A`) is the same hue a step darker; the tints
+  (`#FEE2E2` on light, `#3B1414` on dark) are unchanged. A test checks that the logo asset's red is
+  exactly `AppColors.primary`, so the two can't drift apart. White text on it is 5.1:1 (WCAG AA);
+  the red on the dark background (`#111111`) is 3.7:1, fine for large text and icons, and
+  marginally below the old red's 3.9:1 for small red-on-dark text. See `docs/07-ui-ux-design.md` §4.1.
 - **App icon:** the client-supplied "e" icon: a red mark with a white heart cut out of it.
   [`app-icon-source.png`](app-icon-source.png) is **the icon exactly as supplied** (a 1254 px
   render of a white puffy tile with a soft shadow and glow holding the mark), converted to PNG
@@ -41,12 +42,12 @@ Resolves open decision #2 ([`docs/05-open-decisions.md`](../docs/05-open-decisio
   as drawn (its gradients and shading are kept; nothing is redrawn or recoloured) and places it
   on white, so the system supplies the tile. See "Regenerating the app icon" below.
 - **Splash / launch screen:** the logo in **white**, centred, on a **full-bleed background of
-  the logo's own red** (`#D81D1F`, `AppColors.logoRed`), in light and dark mode alike. The native
+  the brand red** (`#D81D1F`, `AppColors.primary` — which is the logo's own red), in light and dark mode alike. The native
   launch screen (Android, iOS) and the in-app `SplashScreen` are identical (same colour, same
   170 dp logo), so the hand-off between them is invisible. The white logo is the same artwork
   and the same shape as the red one with only the colour swapped
   ([`elcarino-logo-white.png`](elcarino-logo-white.png), made by `prepare_logo.py`), never a
-  tint applied at runtime. A test checks that the red asset really is `AppColors.logoRed` and
+  tint applied at runtime. A test checks that the red asset really is `AppColors.primary` and
   that the white asset is pixel-for-pixel the same shape. See "Regenerating the splash screen".
 - **Package/bundle id:** `com.mgs.elcarino` (Android `applicationId`/`namespace`, iOS
   `PRODUCT_BUNDLE_IDENTIFIER`).
