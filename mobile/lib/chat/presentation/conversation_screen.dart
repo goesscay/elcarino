@@ -26,6 +26,7 @@ import '../domain/message.dart';
 import '../domain/read_receipt.dart';
 import 'chat_formatting.dart';
 import 'gif_picker_sheet.dart';
+import 'icebreaker_suggestions.dart';
 import 'message_widgets.dart';
 
 /// docs/07-ui-ux-design.md §3.3 "Conversation": message list (bubbles, own =
@@ -588,6 +589,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     super.dispose();
   }
 
+  /// Puts a suggested opening line in the composer. It is *not* sent: the
+  /// person can edit it, and nothing goes out in their voice without Send.
+  void _useIcebreaker(String line) {
+    _composerController.value = TextEditingValue(
+      text: line,
+      selection: TextSelection.collapsed(offset: line.length),
+    );
+    _onComposerChanged(line);
+  }
+
   @override
   Widget build(BuildContext context) {
     final otherUser = widget.conversation.otherUser;
@@ -737,10 +748,27 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       );
     }
     if (_messages.isEmpty) {
-      return StateMessage(
-        icon: Icons.waving_hand_outlined,
-        title: 'You matched!',
-        message: 'Say hi to ${widget.conversation.otherUser.displayName}.',
+      // One scroll, so a tall set of suggestions plus a multi-line draft can't
+      // squeeze the greeting out of view.
+      return ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          SizedBox(
+            height: 240,
+            child: StateMessage(
+              icon: Icons.waving_hand_outlined,
+              title: 'You matched!',
+              message:
+                  'Say hi to ${widget.conversation.otherUser.displayName}.',
+            ),
+          ),
+          // Opening lines (Phase 4, #25) — only where the person could send one.
+          if (!_requiresSubscriptionToMessage)
+            IcebreakerSuggestions(
+              conversationId: widget.conversation.id,
+              onPick: _useIcebreaker,
+            ),
+        ],
       );
     }
 

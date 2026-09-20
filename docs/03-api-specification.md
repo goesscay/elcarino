@@ -278,7 +278,29 @@ extra HTTP round-trip to Reverb per message, the right trade here.
 | GET | `/conversations/{id}/messages` | paginated history, newest first |
 | POST | `/conversations/{id}/messages` | **server-side rule:** if the conversation's match is unmatched (or there is none), reject with 403 `error.code = "subscription_required"` unless `request.user->isSubscriber()` — the mandatory unmatched-messaging gate (spec §12), enforced here, not just in the app UI. Rate-limited 30/min/conversation + 300/hour/user (docs/06 §7). Body: `body` (string, required unless `voice_note`, `gif_id`, or `photo` present) **or** `voice_note` (multipart file upload, audio, ≤ `media.max_voice_note_size_kb`) + `duration_seconds` (int, client-reported, required with `voice_note`) — Phase 3 item 1 (open decision #16) — **or** `gif_id` (string, from a prior `GET /gifs/search` result — never a raw URL, see below) — Phase 3 item 2 (open decision #17) — **or** `photo` (multipart file upload, image, ≤ `media.max_photo_size_kb`, re-encoded/EXIF-stripped exactly like `POST /profiles/me/photos`) — Phase 3 item 3 (open decision #18). At most one of `voice_note`/`gif_id`/`photo` may be present at once. A voice-note or photo message gets `type: "voice_note"`/`"photo"`, `body: null`, and a populated `attachment` object in the response/resource (`url` — signed, short TTL per `media.chat_media_signed_url_ttl_minutes`; `mime_type`; `duration_seconds` — always `null` for a photo). A gif message gets `type: "gif"` and `body` set to the *server-resolved* gif URL (`attachment` stays null — a gif is already public third-party-hosted content, nothing to store privately); an unknown/expired `gif_id` is rejected with 422 `error.code = "gif_not_found"`; an invalid/corrupt/oversized-dimension `photo` is rejected with 422 `error.code = "invalid_image"` (same as `PhotoUploadRequest`) |
 | PUT | `/conversations/{id}/read` | marks the *other* participant's unread messages read; broadcasts a read-receipt event so an open conversation screen updates live |
+| GET | `/conversations/{id}/icebreakers` | **[PROPOSED], implemented (Phase 4, open decision #25).** A few tappable opening lines for a new conversation: `{icebreakers: [string], source: "template" \| "ai"}`. Authorised by `ConversationPolicy::icebreakers` — participant, not blocked either way, both accounts active (the same bar as sending a message). Cached per (conversation, viewer) for `icebreakers.cache_ttl_hours` (24), so re-opening the chat costs nothing. Rate-limited (`icebreakers`, 60/hour/user). |
+| POST | `/conversations/{id}/icebreakers/refresh` | A new set that avoids repeating the last one (`{icebreakers, source}`). Its own, much tighter limit (`icebreaker-refresh`, 10/hour/user) because each call can be a paid generator run. |
 | WS | `presence-conversation.{id}` | typing indicator + online/offline via Reverb channel — a presence channel's own member list *is* the online/offline signal, and typing indicators are peer-to-peer client (`whisper`) events over the same channel; neither needs a REST endpoint. `routes/channels.php`'s authorizer reuses `ConversationPolicy::view`, so the socket subscription is gated by the exact same participant-and-not-blocked rule as the REST endpoints. Auth for the socket handshake goes through `POST /api/broadcasting/auth` (registered outside the `/api/v1` prefix — see `bootstrap/app.php`), Sanctum-bearer-token-guarded like every other endpoint. Server → client events: `message.new` (`{ "message": MessageResource }`, now including `attachment` when present), `messages.read` (`{ "read_by_user_id", "read_at" }`). Client → client (`whisper`) event: `client-typing` |
+
+**Icebreakers** (Phase 4, #25). Suggestions are written about the **other** person, from what
+you have in common: the interests you share, their answered prompts, and their bio — nothing
+else. The generator sits behind an `IcebreakerGenerator` interface with two implementations:
+`template` (**the default**: fixed patterns, no key, **sends nothing to any third party**) and
+`openai` (opt-in via `ICEBREAKER_PROVIDER=openai` plus `OPENAI_API_KEY`; with no key it stays on
+`template`). Whichever wrote the lines, **every line goes through `IcebreakerFilter` before it is
+shown**: no links, handles, email addresses or phone numbers, no "add me on…"/"send pics"-style
+pushes off the platform, 10–160 characters, de-duplicated. If a provider fails or *everything* it
+wrote is rejected, the response quietly falls back to templates — this endpoint never errors for
+what is only a nicety. `source` tells the app whether to label the lines "AI".
+
+Data minimisation is enforced by type, not by convention: a generator receives an
+`IcebreakerContext` (shared interest names, ≤3 prompt Q&As, a bio truncated to 300 characters) and
+**nothing else** — there is no field for a name, age, gender, location, photo, religion, politics
+or relationship goal, so none of them *can* reach a provider. The bio and prompt answers are
+typed by another user and are **untrusted**: the OpenAI request puts them in a delimited JSON
+`data` block that the system message declares to be data, never instructions, and treats the
+reply as untrusted too (strict JSON, then the filter). Tapping a suggestion in the app **fills the
+composer; it never sends**.
 
 `message_attachments` (docs/02): written by voice notes (Phase 3 item 1, open decision
 #16, `duration_seconds` set) and photo sharing (Phase 3 item 3, open decision #18,

@@ -61,7 +61,7 @@ Status legend: 🔴 Open · 🟡 Partially answered · 🟢 Confirmed
 | # | Decision | Working assumption | Status |
 |---|---|---|---|
 | 24 | AI compatibility score | Deferred to Phase 4; formula not started | 🔴 |
-| 25 | AI icebreakers | Deferred to Phase 4; assume in-scope pending confirmation | 🔴 |
+| 25 | AI icebreakers | Deferred to Phase 4; assume in-scope pending confirmation. **Built (Phase 4 item 4)**: tappable opening lines in an empty conversation, free for everyone, template-based by default. The client's decks define no behaviour, so the shape is a proposal. **Needs the client and legal:** (a) whether to switch on the OpenAI generator at all — it sends the *other* person's prompt answers and bio to OpenAI and must be disclosed in the privacy policy; (b) whether icebreakers should be a premium benefit (currently free); (c) the wording/tone and languages | 🟡 |
 | 26 | AI profile assistance (e.g. bio suggestions) | Not currently scheduled in any phase — flag if wanted | 🔴 |
 
 ## Business

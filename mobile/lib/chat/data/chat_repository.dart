@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import '../domain/conversation.dart';
 import '../domain/gif_result.dart';
+import '../domain/icebreakers.dart';
 import '../domain/message.dart';
 
 class MessagePage {
@@ -36,6 +37,27 @@ class ChatRepository {
     return (response.data['conversations'] as List<dynamic>)
         .map((e) => Conversation.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Opening lines for a conversation (Phase 4, open decision #25). Cached
+  /// server-side per person and conversation, so calling this on every open is
+  /// cheap.
+  Future<IcebreakerSet> getIcebreakers(int conversationId) async {
+    final response = await _client.request(
+      '/chat/conversations/$conversationId/icebreakers',
+      method: 'GET',
+    );
+    return IcebreakerSet.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// A fresh set that avoids repeating the last one. Rate-limited server-side
+  /// (each call can be a paid generator run).
+  Future<IcebreakerSet> refreshIcebreakers(int conversationId) async {
+    final response = await _client.request(
+      '/chat/conversations/$conversationId/icebreakers/refresh',
+      method: 'POST',
+    );
+    return IcebreakerSet.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Newest-first, per the backend's pagination order — callers building a

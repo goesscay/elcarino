@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Calls\CallController;
 use App\Http\Controllers\Api\Chat\ChatController;
 use App\Http\Controllers\Api\Chat\GifController;
+use App\Http\Controllers\Api\Chat\IcebreakerController;
 use App\Http\Controllers\Api\Discovery\BoostController;
 use App\Http\Controllers\Api\Discovery\DiscoveryController;
 use App\Http\Controllers\Api\Explore\ExploreController;
@@ -114,6 +115,10 @@ Route::prefix('v1')->group(function () {
             Route::post('conversations/{conversation}/messages', [ChatController::class, 'sendMessage'])
                 ->middleware('throttle:chat-messages');
             Route::put('conversations/{conversation}/read', [ChatController::class, 'markRead']);
+            Route::get('conversations/{conversation}/icebreakers', [IcebreakerController::class, 'show'])
+                ->middleware('throttle:icebreakers');
+            Route::post('conversations/{conversation}/icebreakers/refresh', [IcebreakerController::class, 'refresh'])
+                ->middleware('throttle:icebreaker-refresh');
         });
 
         // Phase 3 item 2 (open decision #17) — a plain top-level resource,
