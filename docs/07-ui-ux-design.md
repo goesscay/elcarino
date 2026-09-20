@@ -93,7 +93,7 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 | Screen | Spec |
 |---|---|
-| **Splash** | Logo centred; decides authed vs not; ≤ 1.5 s then routes. States: checking / update-required / offline. |
+| **Splash** | **Built.** The logo in white, centred (170 dp), on a **full-bleed logo-red** background (`AppColors.logoRed`, `#D81D1F`), the same in light and dark mode. The native launch screen matches it exactly, so the hand-off is invisible. Decides authed vs not; ≤ 1.5 s then routes. States: checking / update-required / offline. |
 | **Welcome** | Full-bleed brand imagery placeholder; value prop line; `Create account` / `Sign in`. |
 | **Auth method** | Buttons: Continue with phone, email, Google, Apple. Legal microcopy with ToS/Privacy links (placeholder URLs, [TBD] legal). |
 | **Email / phone entry** | Single field; country-code picker for phone; `Continue`. Validation inline. |

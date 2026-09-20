@@ -38,6 +38,13 @@ abstract final class AppColors {
   static const primaryTintDark = Color(0xFF3B1414); // tinted fills on dark
   static const onPrimary = Color(0xFFFFFFFF);
 
+  /// The red of the supplied logo file itself (`#D81D1F`), a little deeper than
+  /// [primary]. Used only where the logo is shown *as the brand*: the splash's
+  /// full-bleed background, so the white logo sits on exactly the colour it was
+  /// drawn in. A test checks it against the logo asset's pixels. Not a UI
+  /// accent: buttons and highlights stay [primary].
+  static const logoRed = Color(0xFFD81D1F);
+
   // Semantic
   static const pass = Color(0xFF8A8A8E);
   static const success = Color(0xFF2E9C68);

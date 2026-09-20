@@ -50,7 +50,7 @@ rather than a copy of any existing dating app.
 
 | # | Screen | State | Notes |
 |---|---|---|---|
-| 01 | Splash | ✅ Built | The Elcarino logo, centred |
+| 01 | Splash | ✅ Built | The logo in white, centred on a full-bleed logo-red background; the native launch screen matches it |
 | 02 | Welcome | ✅ Built | Create account / Sign in |
 | 03 | Register | ✅ Built | Email and phone + OTP. Google / Apple buttons are present but show "coming soon" (need real OAuth client IDs) |
 | 04 | Onboarding | ✅ Built | Profile basics, prompts and preferences steps, resumable from the API |
