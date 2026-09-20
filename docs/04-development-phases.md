@@ -719,8 +719,34 @@ suspend a user and it takes effect immediately.
       (including a person with no photo or location), the free paywall, the upgrade →
       subscribe → back loop, and dark mode. Not built: the reference layout's "Recently
       liked you" strip (it would show identities), Discover-card-tap → detail.
-- [ ] Explore — interest categories with member counts (docs/07 §2.1). **Not started.**
-      Reuses the candidate shape, `CandidateAnnotator` and the profile-detail screen.
+- [x] Explore tab — interest categories with member counts ([PROPOSED], docs/07 §3.4b).
+      **Backend:** `GET /explore/interests` and `GET /explore/interests/{interest}/people`
+      (docs/03 "Explore"); no migration — it reads `interests`/`user_interests`, which
+      exist since Phase 1 item 3. The decision that shapes it: Explore is derived from the
+      **discovery feed's own eligibility**, not a raw head-count. `DiscoveryFeedService`
+      was split into `eligible()` (the filtered, annotated, ranked set) and pagination, and
+      the new `ExploreService` counts and lists from `eligible()`. So a member count means
+      "people you could actually be shown who share this", a tile can't open onto someone
+      the deck would hide (wrong gender/age/distance, blocked either way, suspended, or
+      already swiped), and a person vanishes from Explore once liked or passed. The cost:
+      counts are bounded by `discovery.candidate_scan_limit` (500), like the feed itself,
+      and each call runs the feed's scan (hence its own `explore` limiter, 120/h). An
+      interest nobody eligible shares is omitted. The 422 checks the feed controller had
+      inline moved into a shared `ResolvesDiscoveryContext` trait. Free — no entitlement.
+      13 new backend tests (326 → 339), including that filtered-out and answered people are
+      never counted or listed and that no raw coordinates are serialised.
+      **Mobile:** the fifth tab (Discover · Explore · Likes · Chats · Profile — the target
+      layout's full bar), `ExploreScreen` (category chips, client-side search, tiles with
+      counts and a tick on your own interests), and `ExplorePeopleScreen` reusing the
+      `PersonTile` grid (extracted from Likes) and the profile-detail screen with Like /
+      Pass. Counts refresh on tab re-select and on returning from a category. Live
+      verification caught a real bug tests missed: a two-line name ("Gym & fitness")
+      overflowed its tile by 18 px on a 320-wide screen with a fixed aspect ratio, so the
+      tile height now follows the OS text scale (with a regression test at 1x and 1.6x),
+      and "less than 1 km away" was ellipsized in the narrow photo tiles, so tiles use a
+      short "< 1 km away". Verified on the emulator: the tab, chips, search (combined with
+      a chip), a people list with photos, Pass → the person leaves and every count updates,
+      and dark mode. 19 new mobile tests (206 → 225).
 
 **Phase 2 status: functionally complete pending item 6.** Items 1–5 (and the Likes tab) are built, tested,
 and CI-green. Assessed against this phase's own gate:

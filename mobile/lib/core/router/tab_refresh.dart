@@ -30,3 +30,16 @@ class LikesTabRefresh extends Notifier<int> {
 final likesTabRefreshProvider = NotifierProvider<LikesTabRefresh, int>(
   LikesTabRefresh.new,
 );
+
+/// And for Explore: its member counts move as you swipe, so they're refreshed
+/// whenever the tab is (re)selected.
+class ExploreTabRefresh extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
+final exploreTabRefreshProvider = NotifierProvider<ExploreTabRefresh, int>(
+  ExploreTabRefresh.new,
+);

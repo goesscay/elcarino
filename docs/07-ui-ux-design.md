@@ -32,18 +32,16 @@ provisional; the token *names* and component structure stay as branding fills in
 
 ### 2.1 Top-level navigation (authenticated)
 
-Bottom tab bar. **Built (`MainShell`): Discover · Likes · Chats · Profile.**
-Explore is part of the target design (it sits between Discover and Likes) but is not a
-tab yet — it has no screen or API behind it — and it joins the bar as one more
-destination when it does. Each tab keeps its own stack and state; the Likes and Chats
-tabs reload whenever they are (re)selected.
+Bottom tab bar. **Built (`MainShell`): Discover · Explore · Likes · Chats · Profile** — all
+five tabs of the target layout. Each tab keeps its own stack and state; Explore, Likes
+and Chats reload whenever they are (re)selected.
 
 | Tab | Screen | Notes |
 |---|---|---|
 | **Discover** | Card stack | Default tab on launch |
 | **Chats** | Matches + inbox | Badge = unread conversations *(not built — needs a shared unread source)* |
 | **Likes** | Who liked me / people you like | **Built.** "People who like you" is premium; a free user gets the count and a paywall, never the people (§3.4) |
-| **Explore** *(not built)* | Interest categories | Needs a categories/member-count endpoint |
+| **Explore** | Interest categories | **Built (§3.4b).** Sits between Discover and Likes. |
 | **Profile** | Own profile + entry to Edit / Verification / Settings | |
 
 Modal / pushed flows (not tabs): Onboarding, Filters, Profile detail, Match
@@ -144,6 +142,28 @@ is there when you come back). Pull to refresh.
 show identities, which is the paywalled data) and a Likes-tab unread badge on the bar.
 The paywall's benefit list is plan data, so it only mentions "see who likes you" if the
 plan's copy does.
+
+### 3.4b Explore
+
+**Built.** A large "Explore" title with a search icon, "Find people who share your
+interests" beneath, then a row of category chips (**All** plus one per category that has a
+tile) over a two-column grid of interest tiles: a brand-tinted icon circle (per category —
+Sports, Arts, Food & drink, Lifestyle, Learning, a neutral one for anything else), the
+name (up to two lines), and "N people" / "1 person". An interest already on your own
+profile carries a small brand-red tick. Most popular first.
+
+| Screen | Spec |
+|---|---|
+| **Explore** | The grid above. **Chips** narrow it by category; the **search** icon swaps the subtitle for a field that filters by name (case-insensitive) — both client-side, the list is a couple of dozen tiles, and they combine. Tile height follows the OS text size so a two-line name never overflows. Pull to refresh; it also reloads on tab re-select and on returning from a category, because every count moves as you swipe. Errors match Discover's: no location → "Set location", no preferences → "Set preferences", otherwise Retry; empty → "Nothing to explore yet". |
+| **People in an interest** | A pushed screen titled with the interest: "N people share this" and the same photo grid as Likes (name + age, distance). Tap → Profile detail (§3.2) with **Like / Pass**; once answered or blocked the person leaves the grid and the count drops. Empty (everyone answered): "You've seen everyone here" + `Back to Explore`. |
+
+The counts are *people you could actually be shown*, not everyone with the interest: they
+come from the Discover deck's own eligibility (your filters, distance, blocks and earlier
+swipes — docs/03 "Explore"), so a tile never opens onto someone the deck would hide.
+*Not built:* the reference layout's photographic tiles (there is no imagery for an
+interest; an icon on a tint stands in) and named "collections" such as "Binge Watchers" or
+"New Friends" — the tiles are the interest catalogue itself, so any new collection is a
+catalogue entry, not code.
 
 ### 3.5 Profile (own)
 

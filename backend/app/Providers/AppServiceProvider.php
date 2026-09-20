@@ -178,6 +178,11 @@ class AppServiceProvider extends ServiceProvider
         // docs/06 §7 rate limit table: "discovery/feed | 60 / hour / user".
         RateLimiter::for('discovery-feed', fn ($request) => Limit::perHour(60)->by($request->user()->id));
 
+        // Explore runs the same eligibility scan as the feed on every call, so
+        // it is limited in the same spirit: room for browsing a few categories,
+        // not for enumerating everyone (docs/06 section 7).
+        RateLimiter::for('explore', fn ($request) => Limit::perHour(120)->by($request->user()->id));
+
         // Likes tab lists: same scraping concern as the feed, but a person
         // pulls to refresh two tabs, so a separate, roomier bucket.
         RateLimiter::for('likes-list', fn ($request) => Limit::perHour(120)->by($request->user()->id));

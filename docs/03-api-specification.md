@@ -211,6 +211,25 @@ being deleted.
 | GET | `/{id}` | match detail |
 | DELETE | `/{id}` | unmatch |
 
+## Explore — `/api/v1/explore` — **[PROPOSED], implemented**
+
+The Explore tab (docs/07 §3.4b): browse people by interest. Everything here is derived
+from the **same eligibility set as `GET /discovery/feed`** (`DiscoveryFeedService::eligible()`):
+the viewer's own filters, distance, blocks either way, inactive accounts, and anyone they
+have already swiped on are all excluded. So a member count means "people you could
+actually be shown who share this", a tile never promises someone the deck wouldn't show,
+and a person disappears from Explore the moment they are liked or passed. The set is
+bounded by `discovery.candidate_scan_limit` (500), so on a large user base the counts are
+"within the best 500 candidates", like the feed. Same 422s as the feed
+(`location_required`, `preferences_required`), same candidate shape, rate-limited
+(`explore`, 120/hour/user). Free for everyone — no gate. Liking or passing someone from
+here is the existing `POST /swipes`.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/interests` | `{interests: [{id, name, category, member_count, is_yours}]}`, most popular first (ties by name). An interest no eligible person has is **omitted** (an empty tile is a dead end). `is_yours`: it is on the viewer's own profile. |
+| GET | `/interests/{interest}/people` | `{interest: {id, name, category}, total, people: [candidate], meta: {page, per_page, has_more}}` — the eligible people who have that interest, in the feed's own order (boosted first, then shared interests, then bucketed distance). 404 for an unknown interest. |
+
 ## Likes — `/api/v1/likes` — **[PROPOSED], implemented**
 
 The Likes tab (docs/07 §3.4). Supersedes the earlier sketch of `GET /matches/who-liked-me`

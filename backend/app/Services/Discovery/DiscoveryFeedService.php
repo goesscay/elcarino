@@ -46,6 +46,28 @@ class DiscoveryFeedService
      */
     public function feed(User $viewer, UserLocation $viewerLocation, UserPreference $preferences, int $page, int $perPage): array
     {
+        $eligible = $this->eligible($viewer, $viewerLocation, $preferences);
+
+        return [
+            'candidates' => $eligible->slice(($page - 1) * $perPage, $perPage)->values(),
+            'hasMore' => $eligible->count() > $page * $perPage,
+        ];
+    }
+
+    /**
+     * Everyone the viewer could be shown right now, annotated and ranked — the
+     * feed's whole result before it's paginated. Explore reads the same set, so
+     * a person it lists is always someone the Discover deck could also show
+     * (same filters, distance, exclusions and order), and never someone the
+     * viewer has already swiped on.
+     *
+     * Bounded by `discovery.candidate_scan_limit`, so on a large user base this
+     * is "the best N within reach", not everyone.
+     *
+     * @return Collection<int, User>
+     */
+    public function eligible(User $viewer, UserLocation $viewerLocation, UserPreference $preferences): Collection
+    {
         $excludedIds = $this->excludedUserIds($viewer);
         $viewerInterestIds = $viewer->interests()->pluck('interests.id');
 
@@ -124,12 +146,7 @@ class DiscoveryFeedService
             ->sortBy([['is_boosted', 'desc'], ['shared_interests_count', 'desc'], ['distance_km', 'asc'], ['id', 'asc']])
             ->values();
 
-        $paged = $withinRadius->slice(($page - 1) * $perPage, $perPage)->values();
-
-        return [
-            'candidates' => $paged,
-            'hasMore' => $withinRadius->count() > $page * $perPage,
-        ];
+        return $withinRadius;
     }
 
     /**

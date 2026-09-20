@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\Discovery;
 
-use App\Http\Concerns\RespondsWithErrorEnvelope;
+use App\Http\Concerns\ResolvesDiscoveryContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Discovery\DiscoveryFeedRequest;
 use App\Http\Resources\Discovery\DiscoveryCandidateResource;
@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 
 class DiscoveryController extends Controller
 {
-    use RespondsWithErrorEnvelope;
+    use ResolvesDiscoveryContext;
 
     public function __construct(private readonly DiscoveryFeedService $feed) {}
 
@@ -22,23 +22,11 @@ class DiscoveryController extends Controller
     {
         $viewer = $request->user();
 
-        $location = $viewer->location;
-        if (! $location) {
-            return $this->errorResponse(
-                'location_required',
-                'Set your location before viewing the discovery feed.',
-                422,
-            );
+        $context = $this->discoveryContext($viewer);
+        if ($context instanceof JsonResponse) {
+            return $context;
         }
-
-        $preferences = $viewer->preferences;
-        if (! $preferences) {
-            return $this->errorResponse(
-                'preferences_required',
-                'Set your discovery preferences before viewing the discovery feed.',
-                422,
-            );
-        }
+        [$location, $preferences] = $context;
 
         $result = $this->feed->feed(
             $viewer,
