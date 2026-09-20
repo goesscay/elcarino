@@ -31,13 +31,6 @@ class ChatTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function tearDown(): void
-    {
-        Storage::disk('local')->deleteDirectory('voice-notes');
-        Storage::disk('local')->deleteDirectory('chat-photos');
-        parent::tearDown();
-    }
-
     private function matchedPair(): array
     {
         $userA = User::factory()->create();

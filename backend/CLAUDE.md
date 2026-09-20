@@ -34,11 +34,18 @@ only adds Laravel/PHP specifics for work under `backend/`.
 ```powershell
 composer install
 php artisan migrate            # local SQLite
-php artisan test               # in-memory SQLite — must pass before a task is "done"
+php artisan test               # in-memory SQLite + fake storage disks — must pass before a task is "done"
 vendor/bin/pint                # fix style;  vendor/bin/pint --test  to check
 composer audit                 # dependency advisories — must be clean
 php artisan reverb:start       # only when working on chat/real-time
 ```
+
+## Tests never touch real storage
+
+`Tests\TestCase::setUp` fakes the `local` and `public` disks for every test. Don't add
+`Storage::disk('local')->deleteDirectory(...)` cleanup (there is nothing to clean up, and
+against a real disk it deletes a developer's seeded media), and don't bypass the fake by
+writing to `storage_path()` directly in a test.
 
 ## Not installed here
 
