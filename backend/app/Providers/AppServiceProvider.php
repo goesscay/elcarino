@@ -9,6 +9,9 @@ use App\Services\Auth\OtpService;
 use App\Services\Gifs\GifProvider;
 use App\Services\Gifs\GiphyGifProvider;
 use App\Services\Gifs\LogGifProvider;
+use App\Services\Icebreakers\IcebreakerGenerator;
+use App\Services\Icebreakers\OpenAiIcebreakerGenerator;
+use App\Services\Icebreakers\TemplateIcebreakerGenerator;
 use App\Services\Payments\AppStoreReceiptVerifier;
 use App\Services\Payments\LogPaymentGateway;
 use App\Services\Payments\PaymentGateway;
@@ -73,6 +76,21 @@ class AppServiceProvider extends ServiceProvider
                 // [TBD-21] No real provider is chosen yet. Add its case here.
                 default => new UnconfiguredFaceMatcher,
             };
+        });
+
+        // [TBD-25] Whether to send anyone's profile text to OpenAI is a data-sharing
+        // decision for the client and legal, so `template` (nothing leaves the
+        // system) is the default, and `openai` with no key quietly stays on it.
+        $this->app->bind(IcebreakerGenerator::class, function () {
+            if (config('icebreakers.provider') === 'openai' && filled(config('icebreakers.openai.api_key'))) {
+                return new OpenAiIcebreakerGenerator(
+                    config('icebreakers.openai.api_key'),
+                    config('icebreakers.openai.model'),
+                    config('icebreakers.openai.timeout_seconds'),
+                );
+            }
+
+            return new TemplateIcebreakerGenerator;
         });
 
         $this->app->bind(GoogleTokenVerifier::class, fn () => new GoogleTokenVerifier(config('services.google.client_id')));
@@ -197,6 +215,11 @@ class AppServiceProvider extends ServiceProvider
 
         // docs/06 §7 rate limit table: "discovery/feed | 60 / hour / user".
         RateLimiter::for('discovery-feed', fn ($request) => Limit::perHour(60)->by($request->user()->id));
+
+        // Icebreakers: reading is cheap (cached), but a refresh can be a paid
+        // generator run, so it gets its own, much tighter, cap.
+        RateLimiter::for('icebreakers', fn ($request) => Limit::perHour(60)->by($request->user()->id));
+        RateLimiter::for('icebreaker-refresh', fn ($request) => Limit::perHour(10)->by($request->user()->id));
 
         // Verification submissions: each one runs a face match (a paid,
         // rate-limited provider call once one is wired) and stores a selfie,

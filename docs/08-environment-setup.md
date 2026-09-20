@@ -151,6 +151,15 @@ changing these `.env` values — the dev server reads them at boot.
 **Selfie capture on the Android emulator:** the front-camera pick opens the emulator's virtual
 camera scene; press the shutter and the tick. It needs no host webcam.
 
+### Icebreakers (Phase 4)
+
+Opening-line suggestions work with **no key and no third party**: `ICEBREAKER_PROVIDER=template`
+(the default) builds them from fixed patterns. `openai` is opt-in (`ICEBREAKER_PROVIDER=openai`
+plus `OPENAI_API_KEY`) and **sends the other person's prompt answers and bio to OpenAI** — agree
+that with the client and legal, and disclose it in the privacy policy, before enabling it anywhere
+real. With no key it silently stays on templates. Suggestions are cached for 24 h per person and
+conversation, so after changing profile data while testing, `php artisan cache:clear`.
+
 ### Backend tests
 
 ```powershell
@@ -266,6 +275,13 @@ flutter test --dart-define-from-file=config/dev.json
 - See [`06-security-architecture.md`](06-security-architecture.md) §10.
 
 ## Common gotchas
+
+- **Tests seem to run stale code, or fail/pass inexplicably right after an edit** → on this
+  machine PHP's CLI has `opcache.enable_cli=1` with `opcache.revalidate_freq=60`, so a `php
+  artisan test` started within a minute of editing a file can run the *old* version of it (you
+  see failures that match code you already fixed, or a test count that doesn't include a test you
+  just added). Run the suite with opcache off: `php -d opcache.enable_cli=0 artisan test`. CI is
+  unaffected.
 
 - **`flutter` not found** → the SDK is at `C:\Users\user\flutter`; add `...\bin` to PATH
   (per-session `$env:Path += ";C:\Users\user\flutter\bin"` or permanently via System

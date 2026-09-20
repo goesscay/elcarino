@@ -960,7 +960,38 @@ bug above). Non-subscribers are rejected server-side at token issuance
 - [ ] Compatibility scoring (formula finalized with client before this phase starts —
       spec §10)
 - [ ] Smart recommendations (`recommendation_history`)
-- [ ] AI icebreakers — open decision #25
+- [x] AI icebreakers — open decision #25 (working assumption: in scope; free for everyone;
+      the client's decks list the capability but define no behaviour, so the product shape below
+      is a proposal to confirm). **Backend:** `GET /chat/conversations/{id}/icebreakers` and
+      `POST .../icebreakers/refresh` (docs/03 "Chat"); no migration. **The decisions this rests
+      on:** (1) **Nothing leaves the system by default.** The default generator writes lines from
+      fixed patterns (a shared interest, a prompt answer, the bio, or a warm generic question);
+      OpenAI (the spec's AI provider, and — unlike face matching — a good fit for text) is
+      **opt-in** (`ICEBREAKER_PROVIDER=openai` + a key), because it sends another person's prompt
+      answers and bio to a third party: a data-sharing decision for the client and legal, and one
+      the privacy policy must disclose. With no key it stays on templates. (2) **Data
+      minimisation by type:** generators receive an `IcebreakerContext` and nothing else — no name,
+      age, gender, location, photo, religion or politics *exist as fields* to send. (3) **The other
+      person's text is an injection surface**: it goes to the model as delimited data, and the
+      model's reply is untrusted too — an `IcebreakerFilter` (no links, handles, emails, phone
+      numbers, "add me on…"/"send pics") runs on *every* generator's output, so a profile written
+      to hijack the model can't put an off-platform push on someone's screen whatever the model
+      does. If a provider fails or everything it wrote is rejected, it falls back to templates
+      rather than erroring. (4) Cached per person and conversation (24 h); refresh has its own
+      10/hour limit because each call can be a paid run; AI-written lines are labelled `AI`.
+      46 new backend tests (389 → 435), including that hostile bios never reach the system
+      prompt, that a fully hijacked reply is filtered, and that a serialising cache store works.
+      **Mobile:** an `IcebreakerSuggestions` widget under "You matched!" in an empty conversation
+      (three tappable cards, `More ideas`, an `AI` tag when a model wrote them). **A tap fills the
+      composer and never sends** — nothing goes out in the person's voice without Send. Best-effort
+      and silent: a failed load takes no space. 11 new mobile tests (249 → 260). Verified on the
+      emulator against a real match with shared interests: three suggestions from a shared interest,
+      the bio and a generic question, a tap filling the composer without sending, and `More ideas`
+      returning a completely different set. **Not verified:** the OpenAI path against the real API
+      (no key; only `Http::fake()`), and no content-moderation call on the output — the filter is
+      deliberately narrow (contact details / off-platform pushes), not a general profanity check.
+      Not built: suggestions once a conversation has messages, and locale-specific lines (English
+      only).
 
 **Gate:** verification decisions are auditable (`verification_results` links every
 approval/rejection to a model version or reviewer); compatibility scores are stable

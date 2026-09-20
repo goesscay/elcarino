@@ -53,6 +53,18 @@ class ConversationPolicy
         return $this->sendMessage($user, $conversation);
     }
 
+    /**
+     * Phase 4 (icebreakers). The same bar as sending a message — participant,
+     * not blocked either way, both accounts active — because an opening line is
+     * only useful where you could actually send it. (The unmatched-messaging
+     * *subscription* rule is deliberately not here: the app simply doesn't offer
+     * suggestions where the composer is disabled.)
+     */
+    public function icebreakers(User $user, Conversation $conversation): bool
+    {
+        return $this->sendMessage($user, $conversation);
+    }
+
     private function blockedEitherDirection(Conversation $conversation, User $viewer): bool
     {
         $other = $conversation->otherUser($viewer);

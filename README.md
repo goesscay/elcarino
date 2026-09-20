@@ -74,17 +74,18 @@ the layout. Everything still marked "not built" is recorded, with the reason, in
 
 ## Where the project stands
 
-**Phases 0 through 3 are complete. Phase 4 (AI) is under way: selfie verification is built;
-compatibility scoring, recommendations and icebreakers wait on client decisions. Phase 5
+**Phases 0 through 3 are complete. Phase 4 (AI) is under way: selfie verification and
+icebreakers are built; compatibility scoring and recommendations wait on client decisions. Phase 5
 (production hardening) has not started.**
 
 | | |
 |---|---|
-| Backend tests | **385 passing** |
-| Mobile tests | **249 passing**, `flutter analyze` clean, `dart format` clean |
+| Backend tests | **435 passing** |
+| Mobile tests | **260 passing**, `flutter analyze` clean, `dart format` clean |
 | UI redesign | Merged ([#2](https://github.com/goesscay/elcarino/pull/2)) — theme, tab shell and nine screens |
 | Likes tab | Built — premium "who liked me" enforced by the API, plus "people you like" and a shared profile-detail screen |
 | Explore tab | Built — browse people by interest, using the same eligibility as the Discover deck |
+| Icebreakers | Built — tappable opening lines in an empty chat. Template-based by default, so nothing leaves the system; the OpenAI generator is opt-in |
 | Verification | Built end to end (backend, admin review queue, mobile). **No real face-match provider is wired**: by default every selfie goes to human review |
 | Verified live | Two-emulator voice and video calls, real-time chat, voice notes, photos, GIF picker states, admin panel with TOTP |
 | Not verified live | Stripe, Firebase push, Twilio SMS, Giphy, iOS (no credentials or toolchain on the dev machine) — see [Known gaps](#known-gaps-and-unverified-integrations) |
@@ -119,6 +120,13 @@ compatibility scoring, recommendations and icebreakers wait on client decisions.
 - **People you like** (free): your pending likes, read-only
 - Both lists hide inactive, blocked and already-matched people
 - A push for a new like opens this tab (and names no one)
+
+### Icebreakers
+- In an empty conversation, under "You matched!", up to three tappable opening lines built from what you share: a common interest, their prompt answer or bio, or a warm generic question. `More ideas` gives a fresh set
+- **A tap fills the composer; it never sends.** The line is a starting point you can change
+- **Nothing leaves the system by default.** The default writer uses fixed patterns. An OpenAI-backed writer is opt-in, because it sends the other person's prompt answers and bio to a third party, which the client and legal must sign off first
+- **Safe by construction:** the writer only ever receives shared interests, prompt answers and a truncated bio (no name, age, location, photo, religion or politics exist as fields to send). Their text is treated as untrusted, and every line, whoever wrote it, is filtered for links, handles, emails, phone numbers and "add me on…" before it is shown
+- AI-written lines are labelled `AI`
 
 ### Profile verification
 - A **Get verified** card on the profile opens a guided selfie: the server picks a pose (e.g. "Show a peace sign"), the person takes a **front-camera** selfie showing it, and the answer comes back on the spot
@@ -206,7 +214,7 @@ in services:
 ```
 Services/
   Auth · Discovery · Explore · Likes · Matching · Geo · Media · Safety
-  Calls · Gifs · Notifications · Push · Sms · Verification
+  Calls · Gifs · Icebreakers · Notifications · Push · Sms · Verification
   Subscriptions · Payments · Admin
 Filament/        admin resources, widgets and the panel provider
 Policies/        SwipePolicy, UserMatchPolicy, ConversationPolicy, CallPolicy, ...
@@ -314,12 +322,12 @@ Mobile builds pick their environment with `--dart-define-from-file=config/{dev,s
 ## Testing and CI
 
 ```powershell
-# Backend: 385 tests
+# Backend: 435 tests
 cd backend
 php artisan test
 ./vendor/bin/pint --test
 
-# Mobile: 249 tests. The dart-define file is required: AppConfig fails loudly without it.
+# Mobile: 260 tests. The dart-define file is required: AppConfig fails loudly without it.
 cd mobile
 flutter test --dart-define-from-file=config/dev.json
 flutter analyze
@@ -376,6 +384,7 @@ response shapes is in [`docs/03-api-specification.md`](docs/03-api-specification
 | Profile | `profiles/me` (+ `photos`, `photos/order`), `prompts` and `prompts/me`, `interests` and `interests/me`, `preferences/me`, `users/me`, `users/me/location` |
 | Discovery | `discovery/feed`, `discovery/boost`, `swipes` |
 | Verification | `verification/challenge`, `verification/request` (multipart selfie), `verification/status` |
+| Icebreakers | `chat/conversations/{id}/icebreakers`, `.../icebreakers/refresh` |
 | Explore | `explore/interests`, `explore/interests/{id}/people` |
 | Likes | `likes/received` (subscriber-gated, count-only for free users), `likes/sent` |
 | Matches | `matches`, `matches/{id}` (show, unmatch) |
@@ -401,7 +410,7 @@ Real-time events travel over presence channels `presence-conversation.{id}`.
 | **UI redesign** | Theme, tab shell, nine screens | ✅ Done and merged |
 | **Likes** tab | "Who liked me" (premium) and "people you like", plus profile detail | ✅ Done |
 | **Explore** tab | Interest categories with member counts, and the people behind them | ✅ Done |
-| **4** AI | Selfie verification ✅ (no real provider yet). Compatibility scoring, recommendations, icebreakers | 🟡 In progress; the rest is paused on client decisions #24–25 |
+| **4** AI | Selfie verification ✅ (no real provider yet), icebreakers ✅. Compatibility scoring and recommendations | 🟡 In progress; the rest is paused on the client's compatibility formula (#24) |
 | **5** Production | Security audit, load testing, store submission, deployment, monitoring, backups | ⬜ Not started |
 
 Planning-level total: **20–28 weeks**. Each phase has a gate that must be met before the
@@ -424,6 +433,7 @@ Stated plainly, so nobody assumes they work:
 - **Stripe renewals:** `invoice.payment_succeeded` doesn't yet extend `ends_at` on renewal.
 - **iOS** hasn't been built or run. Only Android was exercised.
 - **Feed gating on photos:** candidates need at least one photo of *any* moderation status, because nothing can be approved until a moderation UI exists. Tighten to approved-only before real users.
+- **The OpenAI icebreaker writer is untested against the real API** (no key here; only `Http::fake()`), and is opt-in for a reason: it sends another person's prompt answers and bio to a third party. Enabling it needs client and legal sign-off and a privacy-policy disclosure (open decision #25).
 - **No face-match provider (open decision #21).** Verification is built and tested, but the AI path has only ever run against a `fake` driver; every real selfie goes to human review until a provider and an approval threshold are chosen. Also **the verified badge is not revoked when the main photo changes**, so a verified person could swap in someone else's photo. Re-verifying on a photo change is the natural follow-up
 - **Not built:** Undo / Super Like, opening a profile from a Discover card tap, the Likes "Recently liked you" strip, chat search, tab unread badge, notification centre, per-type notification toggles, account deletion UX, Help & Legal content, drag-and-drop photo reorder, report evidence attachments, verification review.
 - **Throttled requests** return Laravel's default 429 body, not the app's error envelope.
@@ -443,7 +453,7 @@ subscriber-only unmatched messaging, and **WebRTC** for calls.
 
 Still open and business-critical: target niche (#1), **pricing (#12)**, number of plans
 (#11), the **face-match provider and approval threshold (#21)**, the compatibility formula
-(#24) and AI icebreakers (#25).
+(#24) and the icebreaker decisions in #25 (whether to enable OpenAI, premium or free, wording).
 
 ---
 
