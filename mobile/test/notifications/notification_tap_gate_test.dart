@@ -29,6 +29,13 @@ void main() {
       expect(route.mode, NotificationNavMode.go);
     });
 
+    test('verification routes to the profile, replacing not pushed', () {
+      final route = routeForNotificationData({'type': 'verification'});
+
+      expect(route!.path, '/profile');
+      expect(route.mode, NotificationNavMode.go);
+    });
+
     test('a new_match missing conversation_id routes nowhere', () {
       expect(routeForNotificationData({'type': 'new_match'}), isNull);
     });

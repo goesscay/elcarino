@@ -37,6 +37,10 @@ NotificationRoute? routeForNotificationData(Map<String, dynamic> data) {
       // Notifications); the tab shows the count to everyone and the people to
       // subscribers.
       return const NotificationRoute('/likes', NotificationNavMode.go);
+    case 'verification':
+      // The outcome is on the profile (the badge, or the Get verified card to
+      // try again), so that is where the tap lands.
+      return const NotificationRoute('/profile', NotificationNavMode.go);
     default:
       return null;
   }

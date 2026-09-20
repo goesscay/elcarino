@@ -46,6 +46,7 @@ Widget _view(
   List<AnsweredPrompt> prompts = const [],
   VoidCallback? onEditProfile,
   VoidCallback? onEditPreferences,
+  VoidCallback? onVerify,
   ThemeData? theme,
 }) => MaterialApp(
   theme: theme ?? AppTheme.light,
@@ -56,6 +57,7 @@ Widget _view(
       prompts: prompts,
       onEditProfile: onEditProfile ?? () {},
       onEditPreferences: onEditPreferences ?? () {},
+      onVerify: onVerify,
     ),
   ),
 );
@@ -257,6 +259,32 @@ void main() {
 
     test('birthday still to come this year', () {
       expect(ageFromBirthDate(DateTime(2000, 9, 20), now: now), 25);
+    });
+  });
+  group('Get verified card', () {
+    testWidgets('an unverified profile is offered verification', (
+      tester,
+    ) async {
+      var opened = 0;
+      await tester.pumpWidget(_view(_profile(), onVerify: () => opened++));
+
+      expect(find.text('Get verified'), findsOneWidget);
+      await tester.tap(find.text('Get verified'));
+
+      expect(opened, 1);
+    });
+
+    testWidgets('a verified profile is not', (tester) async {
+      await tester.pumpWidget(_view(_profile(verified: true), onVerify: () {}));
+
+      expect(find.text('Get verified'), findsNothing);
+      expect(find.text('Verified'), findsOneWidget);
+    });
+
+    testWidgets('no card without a way to open the flow', (tester) async {
+      await tester.pumpWidget(_view(_profile()));
+
+      expect(find.text('Get verified'), findsNothing);
     });
   });
 }

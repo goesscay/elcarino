@@ -3,6 +3,8 @@
 namespace App\Services\Notifications;
 
 use App\Enums\NotificationType;
+use App\Enums\VerificationRejection;
+use App\Enums\VerificationStatus;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Notification;
@@ -76,6 +78,24 @@ class NotificationService
     public function notifyLike(User $target): void
     {
         $this->notify($target, NotificationType::Like, 'New like!', 'Someone likes you.', []);
+    }
+
+    /**
+     * The outcome of a verification request (docs/07 §3.6 "can leave and get a
+     * notification"). The rejection message is the person-safe copy from
+     * VerificationRejection — never the matcher's score or how it decided.
+     */
+    public function notifyVerification(User $user, VerificationStatus $status, ?VerificationRejection $reason = null): void
+    {
+        $approved = $status === VerificationStatus::Approved;
+
+        $this->notify(
+            $user,
+            NotificationType::Verification,
+            $approved ? "You're verified" : 'Verification not completed',
+            $approved ? 'Your profile now shows the verified badge.' : ($reason?->userMessage() ?? "We couldn't verify you this time."),
+            ['status' => $status->value],
+        );
     }
 
     private function notify(User $recipient, NotificationType $type, string $title, string $body, array $payload): void

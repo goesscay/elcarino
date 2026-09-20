@@ -177,12 +177,25 @@ catalogue entry, not code.
 
 ### 3.6 Verification — **[PROPOSED]**
 
-| Screen | Spec |
+**Built (Phase 4).** One screen (`/verification`, from the profile's **Get verified** card) that moves
+through the four steps below. The profile shows a brand-tinted "Get verified" card under the
+"Not verified" pill; once verified the card is gone and the avatar carries the badge.
+
+| Step | Spec |
 |---|---|
-| **Verification intro** | What it is, why (trust/safety), what's captured, privacy note (photos handled per security doc §6). `Start`. |
-| **Selfie capture** | Guided pose prompt(s); camera with overlay; auto or manual capture. [TBD-21/22/23 — method]. |
-| **Processing** | Spinner / progress; "usually takes under a minute"; can leave and get a notification. |
-| **Result** | Approved → verified badge celebration. Rejected → reason (if safe to show) + `Try again` / `Request manual review` [TBD-22]. |
+| **Intro** | A shield icon, "Show you're really you", one line on why, the **pose** to strike in a bordered card (chosen by the server, e.g. "Show a peace sign"), and three points: take a selfie showing the pose; we compare it with your profile photos; **your selfie is encrypted, used only for this check, deleted as soon as it's done, and never shown to other people.** `Take selfie`. If the last attempt was rejected, a short notice says why. |
+| **Selfie** | The **front camera only** — deliberately no gallery option, because a verification selfie has to be taken now, showing the pose. Capped at 1600 px. Backing out of the camera submits nothing. |
+| **Checking** | Spinner and "This usually takes just a moment." The server decides synchronously, so this is the wait for the answer. |
+| **Result** | **Approved:** brand-tinted badge, "You're verified", `Done`. **In review:** "We're reviewing your selfie — a person is taking a look. We'll notify you as soon as there's an answer — you can leave this screen." (Never says *why* it went to a person, never a score.) **Rejected:** the reason in plain words and what to do differently, `Try again` (a new pose) / `Not now`. |
+
+Opening it when **already verified**, **already in review**, or **out of attempts for today**
+shows that state instead of inviting a doomed selfie; an expired pose prompt is replaced with a
+fresh one and a snackbar says so. A `verification` push opens the profile.
+
+*Deviation from the earlier sketch:* there is no `Request manual review` button. The AI never
+rejects a non-match — it sends it to a person automatically — so the only rejection the user
+can see from the AI is "no face detected", and the fix for that is retaking the photo. See
+docs/03 "Verification" for the decision rules.
 
 ### 3.7 Safety
 

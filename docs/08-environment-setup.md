@@ -132,6 +132,25 @@ Logging in for the first time redirects straight into TOTP setup (scan the QR wi
 any authenticator app) before the panel becomes usable at all — there's no way to
 opt out of 2FA once a role is `admin`/`moderator`.
 
+### Profile verification (Phase 4)
+
+Selfie verification runs with **no provider account**: `VERIFICATION_PROVIDER=none` (the
+default in `.env.example`) never approves or rejects anything itself, so every request lands
+in `/admin` → **Verification** for a person to approve or reject. To drive the whole flow on a
+laptop, set `VERIFICATION_PROVIDER=fake` in `.env` and choose what it reports with
+`VERIFICATION_FAKE_OUTCOME` (`matched` | `not_matched` | `no_face` | `inconclusive`;
+`matched` uses `VERIFICATION_FAKE_SCORE`). **The `fake` driver only boots when `APP_ENV` is
+`local` or `testing`** — anywhere else the container refuses to build it, so a stray env var
+can't hand out verified badges. `.env.example` documents the other knobs
+(`VERIFICATION_APPROVE_THRESHOLD`, `VERIFICATION_MAX_ATTEMPTS_PER_DAY`, …).
+
+Selfies are written **encrypted** to the private disk under `verification/` and deleted as soon
+as a request is decided, so that folder is normally empty. Restart `php artisan serve` after
+changing these `.env` values — the dev server reads them at boot.
+
+**Selfie capture on the Android emulator:** the front-camera pick opens the emulator's virtual
+camera scene; press the shutter and the tick. It needs no host webcam.
+
 ### Backend tests
 
 ```powershell

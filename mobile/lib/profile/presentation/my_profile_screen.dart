@@ -127,6 +127,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
         prompts: _prompts,
         onEditProfile: () => context.push('/profile/edit').then((_) => _load()),
         onEditPreferences: () => context.push('/profile/preferences'),
+        onVerify: () => context.push('/verification').then((_) => _load()),
       ),
     );
   }
@@ -141,6 +142,7 @@ class ProfileView extends StatelessWidget {
     required this.prompts,
     required this.onEditProfile,
     required this.onEditPreferences,
+    this.onVerify,
     super.key,
   });
 
@@ -149,6 +151,10 @@ class ProfileView extends StatelessWidget {
   final List<AnsweredPrompt> prompts;
   final VoidCallback onEditProfile;
   final VoidCallback onEditPreferences;
+
+  /// Opens the verification flow. The "Get verified" card only shows when this
+  /// is set and the profile isn't verified yet.
+  final VoidCallback? onVerify;
 
   static const _avatarSize = 128.0;
 
@@ -182,6 +188,10 @@ class ProfileView extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         Center(child: _VerificationPill(verified: profile.isVerified)),
         const SizedBox(height: AppSpacing.xl),
+        if (!profile.isVerified && onVerify != null) ...[
+          _VerifyCard(onPressed: onVerify!),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         _CompletenessCard(percent: profile.completionPct),
         const SizedBox(height: AppSpacing.lg),
         FilledButton(
@@ -330,6 +340,63 @@ class _VerificationPill extends StatelessWidget {
                   ?.copyWith(color: color),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The nudge to get verified: one soft card, brand-tinted, on the profile of
+/// anyone who isn't yet. Gone once they are (the pill above says "Verified").
+class _VerifyCard extends StatelessWidget {
+  const _VerifyCard({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: 'Get verified. Show you are really you with a quick selfie.',
+      excludeSemantics: true,
+      child: Material(
+        color: p.primaryTint,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.verified_user_outlined,
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Get verified', style: text.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Show you are really you with a quick selfie.',
+                        style: text.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
