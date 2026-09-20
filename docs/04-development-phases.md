@@ -27,7 +27,7 @@ fundamentals mid-build.
       Phase 1: gender options (#6 → man/woman/non-binary), age policy (#4 → 18+),
       state management (Riverpod), local DB (SQLite local / Postgres staging+prod).
       **#2 app name/branding is now confirmed:** **Elcarino** / `com.mgs.elcarino`,
-      brand red `#DC2626` — logo in [`/branding`](../branding); full hi-fi visual
+      brand red now `#D81D1F` (the logo's own red; it was `#DC2626`) — logo in [`/branding`](../branding); full hi-fi visual
       design (imagery, illustration, clickable prototype) is still outstanding.
       **Still open (do not block Phase 1):** SMS/OTP provider (Phase 1 builds a
       provider-agnostic sender, default impl Twilio).

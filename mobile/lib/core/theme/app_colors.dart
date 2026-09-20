@@ -32,18 +32,16 @@ abstract final class AppColors {
   static const fillDark = Color(0xFF2A2A2D);
 
   // Brand
-  static const primary = Color(0xFFDC2626); // Elcarino brand red — decision #2
-  static const primaryDark = Color(0xFFB91C1C); // pressed / on-light emphasis
+  // The brand red IS the logo's red: `#D81D1F`, sampled from the supplied logo file, so
+  // buttons and highlights match the logo exactly (it was `#DC2626` until then; decision
+  // #2). A test checks it against the logo asset's pixels. It is also the splash's
+  // full-bleed background. White text on it is 5.1:1 (WCAG AA).
+  static const primary = Color(0xFFD81D1F);
+  // The same hue and saturation, a step darker (the old pair's lightness gap).
+  static const primaryDark = Color(0xFFB0181A); // pressed / on-light emphasis
   static const primaryLight = Color(0xFFFEE2E2); // tinted fills on light
   static const primaryTintDark = Color(0xFF3B1414); // tinted fills on dark
   static const onPrimary = Color(0xFFFFFFFF);
-
-  /// The red of the supplied logo file itself (`#D81D1F`), a little deeper than
-  /// [primary]. Used only where the logo is shown *as the brand*: the splash's
-  /// full-bleed background, so the white logo sits on exactly the colour it was
-  /// drawn in. A test checks it against the logo asset's pixels. Not a UI
-  /// accent: buttons and highlights stay [primary].
-  static const logoRed = Color(0xFFD81D1F);
 
   // Semantic
   static const pass = Color(0xFF8A8A8E);

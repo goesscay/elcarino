@@ -35,14 +35,15 @@ class SplashScreen extends ConsumerWidget {
       });
     }
 
-    // The logo in white, centred on the logo's own red, full-bleed. Exactly what
-    // the native launch screen shows (same colour, same 170 dp logo), so the
-    // hand-off from it to this screen is invisible. Always red, in light and
-    // dark mode alike: it is the brand's moment, not a themed page.
+    // The logo in white, centred on the brand red (the logo's own red),
+    // full-bleed. Exactly what the native launch screen shows (same colour,
+    // same 170 dp logo), so the hand-off from it to this screen is invisible.
+    // Always red, in light and dark mode alike: it is the brand's moment, not
+    // a themed page.
     return const AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: AppColors.logoRed,
+        backgroundColor: AppColors.primary,
         body: Center(child: AppLogo(width: 170, white: true)),
       ),
     );

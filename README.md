@@ -352,8 +352,8 @@ rather than inverted.
 
 | Token | Light | Dark |
 |---|---|---|
-| Primary | `#DC2626` | `#DC2626` |
-| Primary dark | `#B91C1C` | `#B91C1C` |
+| Primary (the logo's red) | `#D81D1F` | `#D81D1F` |
+| Primary dark | `#B0181A` | `#B0181A` |
 | Primary tint | `#FEE2E2` | dark-adjusted tint |
 | Background | `#FAFAFA` | `#111111` |
 | Surface | `#FFFFFF` | `#1C1C1E` |

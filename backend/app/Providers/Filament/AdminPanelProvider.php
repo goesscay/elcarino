@@ -41,9 +41,9 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->colors([
-                // Brand red confirmed in docs/00-overview.md / open decision
-                // #2 — /branding.
-                'primary' => Color::hex('#DC2626'),
+                // The brand red: the logo's own red (docs/05 decision #2 — /branding),
+                // the same value as the mobile app's AppColors.primary.
+                'primary' => Color::hex('#D81D1F'),
             ])
             ->multiFactorAuthentication([
                 AppAuthentication::make()->recoverable(),

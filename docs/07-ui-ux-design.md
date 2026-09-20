@@ -5,7 +5,7 @@ every screen, how they connect, the components they're built from, and the state
 must handle, so Phase 1 engineering can start without guessing.
 
 **What this document is not:** high-fidelity visual design. Open decision #2 (brand
-name + primary colour) is now confirmed — **Elcarino**, brand red `#DC2626`, logo in
+name + primary colour) is now confirmed — **Elcarino**, brand red `#D81D1F` (the logo's own red), logo in
 [`/branding`](../branding) — and `color.primary` below reflects it. Final imagery,
 illustration style, a brand typeface, motion polish, and a clickable prototype are
 still a separate track that needs a visual designer. The rest of the colour/type
@@ -93,7 +93,7 @@ Notation: **[REQUIRED]/[PROPOSED]/[TBD-#]** tags carry the same meaning as elsew
 
 | Screen | Spec |
 |---|---|
-| **Splash** | **Built.** The logo in white, centred (170 dp), on a **full-bleed logo-red** background (`AppColors.logoRed`, `#D81D1F`), the same in light and dark mode. The native launch screen matches it exactly, so the hand-off is invisible. Decides authed vs not; ≤ 1.5 s then routes. States: checking / update-required / offline. |
+| **Splash** | **Built.** The logo in white, centred (170 dp), on a **full-bleed logo-red** background (the brand red, `AppColors.primary`, `#D81D1F`), the same in light and dark mode. The native launch screen matches it exactly, so the hand-off is invisible. Decides authed vs not; ≤ 1.5 s then routes. States: checking / update-required / offline. |
 | **Welcome** | Full-bleed brand imagery placeholder; value prop line; `Create account` / `Sign in`. |
 | **Auth method** | Buttons: Continue with phone, email, Google, Apple. Legal microcopy with ToS/Privacy links (placeholder URLs, [TBD] legal). |
 | **Email / phone entry** | Single field; country-code picker for phone; `Continue`. Validation inline. |
@@ -257,8 +257,8 @@ user's photos are the most important thing on any screen.
 | `color.text.primary` | `#111111` / `#FFFFFF` | body text |
 | `color.text.secondary` | `#6B6B6B` / `#A1A1AA` | captions, metadata |
 | `color.border` | `#E5E5E5` / `#2C2C2E` | hairlines, dividers |
-| `color.primary` | `#DC2626` (Elcarino brand red, decision #2) | primary actions, like, selected tab |
-| `color.primary.dark` | `#B91C1C` | pressed / emphasis on light |
+| `color.primary` | `#D81D1F` (the logo's red; decision #2. White text on it is 5.1:1) | primary actions, like, selected tab, the splash |
+| `color.primary.dark` | `#B0181A` | pressed / emphasis on light |
 | `color.primary.tint` | `#FEE2E2` / `#3B1414` | selected chip fill, soft highlights |
 | `color.on-primary` | `#FFFFFF` | text/icons on primary |
 | `color.pass` | `#8A8A8E` | pass action |
@@ -343,7 +343,7 @@ Every screen that loads or submits data must handle:
 Pulled from [`05-open-decisions.md`](05-open-decisions.md) — these directly shape
 screens above:
 
-- **#2 brand name** — ✅ confirmed (Elcarino, `#DC2626`, logo in `/branding`); still
+- **#2 brand name** — ✅ confirmed (Elcarino, `#D81D1F`, logo in `/branding`); still
   needed: splash artwork and store listing assets built from it.
 - **#6 gender options** → Profile basics, Preferences, "interested in".
 - **#4 age policy** → DOB picker constraints, onboarding gate.

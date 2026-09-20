@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// The logo files and the colour that goes with them. The splash is the white
 /// logo on the logo's own red, so what must not be able to drift silently is:
-/// the red asset really is `AppColors.logoRed`, and the white asset really is the
+/// the red asset really is `AppColors.primary`, and the white asset really is the
 /// same artwork (same shape, same size) in white.
 class _Pixels {
   _Pixels(this.width, this.height, this.rgba);
@@ -36,23 +36,24 @@ Future<_Pixels> _decode(String asset) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('the red logo asset is exactly AppColors.logoRed', (
-    tester,
-  ) async {
-    final logo = (await tester.runAsync(
-      () => _decode('assets/branding/elcarino-logo.png'),
-    ))!;
+  testWidgets(
+    'the red logo asset is exactly the brand red, AppColors.primary',
+    (tester) async {
+      final logo = (await tester.runAsync(
+        () => _decode('assets/branding/elcarino-logo.png'),
+      ))!;
 
-    final solid = <(int, int, int)>{};
-    for (var i = 0; i < logo.width * logo.height; i++) {
-      if (logo.alpha(i) == 255) solid.add(logo.rgb(i));
-    }
+      final solid = <(int, int, int)>{};
+      for (var i = 0; i < logo.width * logo.height; i++) {
+        if (logo.alpha(i) == 255) solid.add(logo.rgb(i));
+      }
 
-    // Every fully opaque pixel is the one red, and it is the token's red.
-    expect(solid, hasLength(1));
-    final (r, g, b) = solid.single;
-    expect(Color.fromARGB(255, r, g, b), AppColors.logoRed);
-  });
+      // Every fully opaque pixel is the one red, and it is the token's red.
+      expect(solid, hasLength(1));
+      final (r, g, b) = solid.single;
+      expect(Color.fromARGB(255, r, g, b), AppColors.primary);
+    },
+  );
 
   testWidgets('the white logo is the same artwork, only white', (tester) async {
     final red = (await tester.runAsync(
@@ -98,11 +99,5 @@ void main() {
       await assetFor(const AppLogo(white: true)),
       'assets/branding/elcarino-logo-white.png',
     );
-  });
-
-  test('the logo red is distinct from the UI accent, on purpose', () {
-    // Documented in AppColors.logoRed: the logo's own red is used only for the
-    // splash background; buttons and highlights stay the primary token.
-    expect(AppColors.logoRed, isNot(AppColors.primary));
   });
 }
